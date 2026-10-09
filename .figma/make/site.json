@@ -1,0 +1,10 @@
+{
+  "description": "Discover and shop a curated selection of beauty products at Abaz Mart, featuring skincare, makeup, and more in an elegant, user-friendly online store.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
