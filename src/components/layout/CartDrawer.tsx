@@ -1,9 +1,14 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { ArrowRight, Minus, Plus, ShoppingBag, Sparkles, Trash2, X } from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "../ui"
 import { CartItem } from "../../context/StoreContext"
 import { formatPrice } from "../../utils/formatPrice"
+import {
+  DEFAULT_STORE_SETTINGS,
+  getStoreSettings,
+  StoreSettings,
+} from "../../services/checkout"
 
 export default function CartDrawer({
   open,
@@ -18,11 +23,22 @@ export default function CartDrawer({
   updateQuantity: (id: number, quantity: number) => void
   removeFromCart: (id: number) => void
 }) {
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
+
+  useEffect(() => {
+    if (open) {
+      getStoreSettings().then(setSettings)
+    }
+  }, [open])
+
   const subtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   )
-  const freeShippingRemaining = Math.max(0, 50 - subtotal)
+  const freeShippingRemaining = Math.max(
+    0,
+    settings.freeShippingThreshold - subtotal,
+  )
 
   useEffect(() => {
     if (!open) return
@@ -59,8 +75,8 @@ export default function CartDrawer({
                   : "You’ve unlocked free shipping"}
               </p>
               <progress
-                max="50"
-                value={Math.min(subtotal, 50)}
+                max={settings.freeShippingThreshold}
+                value={Math.min(subtotal, settings.freeShippingThreshold)}
                 aria-label="Free shipping progress"
               />
             </div>

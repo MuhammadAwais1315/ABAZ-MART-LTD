@@ -1,20 +1,38 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { Check, ChevronDown, LockKeyhole, ShoppingBag, ArrowRight } from "lucide-react"
 import { Breadcrumb, Button, Checkbox, Input, Select } from "../components/ui"
 import { CartItem, useStore } from "../context/StoreContext"
+import { useAuth } from "../context/AuthContext"
 import { formatPrice } from "../utils/formatPrice"
+import {
+  createOrderSecure,
+  DEFAULT_STORE_SETTINGS,
+  getStoreSettings,
+  getUserAddresses,
+  OrderResult,
+  saveAddressForUser,
+  StoreSettings,
+} from "../services/checkout"
+import { PaymentMethod } from "../types/database"
 
-export function CheckoutSummary({ cart }: { cart: CartItem[] }) {
+export function CheckoutSummary({
+  cart,
+  discount = 0,
+  settings = DEFAULT_STORE_SETTINGS,
+}: {
+  cart: CartItem[]
+  discount?: number
+  settings?: StoreSettings
+}) {
   const subtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   )
-  const shipping = subtotal >= 50 ? 0 : 6
-  const taxRate = 0.00
-  const tax = subtotal * taxRate
-  const discount = 0
-  const total = subtotal + shipping + tax - discount
+  const shipping =
+    subtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee
+  const tax = subtotal * settings.taxRate
+  const total = Math.max(0, subtotal + shipping + tax - discount)
 
   return (
     <div className="checkout-summary-content">
@@ -40,12 +58,16 @@ export function CheckoutSummary({ cart }: { cart: CartItem[] }) {
         <span>
           Shipping <b>{shipping === 0 ? "Free" : formatPrice(shipping)}</b>
         </span>
-        <span>
-          Tax <b>{formatPrice(tax)}</b>
-        </span>
-        <span>
-          Discount <b>−{formatPrice(discount)}</b>
-        </span>
+        {tax > 0 && (
+          <span>
+            Tax <b>{formatPrice(tax)}</b>
+          </span>
+        )}
+        {discount > 0 && (
+          <span>
+            Discount <b>−{formatPrice(discount)}</b>
+          </span>
+        )}
         <span className="total">
           Total <b>{formatPrice(total)}</b>
         </span>
@@ -56,46 +78,80 @@ export function CheckoutSummary({ cart }: { cart: CartItem[] }) {
 
 export default function Checkout() {
   const { cart, clearCart, notify } = useStore()
+  const { user, profile } = useAuth()
   const [step, setStep] = useState(1)
   const [complete, setComplete] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [confirmedCart, setConfirmedCart] = useState<CartItem[]>([])
-  const [paymentMethod, setPaymentMethod] = useState("card")
+  const [confirmedOrder, setConfirmedOrder] = useState<OrderResult | null>(null)
+  const [submittingOrder, setSubmittingOrder] = useState(false)
+  const [orderError, setOrderError] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card")
   const [saveAddress, setSaveAddress] = useState(false)
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
+  const [couponCode, setCouponCode] = useState(() => {
+    return window.sessionStorage.getItem("abaz_promo_code") || ""
+  })
+  const [couponDiscount, setCouponDiscount] = useState<number>(() => {
+    return Number(window.sessionStorage.getItem("abaz_promo_discount")) || 0
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [form, setForm] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
+    fullName: profile?.full_name || user?.user_metadata?.full_name || "",
+    email: profile?.email || user?.email || "",
+    phone: profile?.phone || "",
     address: "",
     city: "",
     postalCode: "",
     country: "United Kingdom",
     cardNumber: "",
-    cardName: "",
+    cardName: profile?.full_name || "",
     expiry: "",
     cvv: "",
   })
 
-  const orderNumber = useMemo(() => `ABZ-${String(Date.now()).slice(-6)}`, [])
-  const estimatedDelivery = useMemo(() => {
-    const date = new Date()
-    date.setDate(date.getDate() + 5)
-    return date.toLocaleDateString("en-GB", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    })
-  }, [])
+  useEffect(() => {
+    getStoreSettings().then(setSettings)
+    if (user) {
+      getUserAddresses(user.id).then((addresses) => {
+        if (addresses && addresses.length > 0) {
+          const defaultAddr =
+            addresses.find((a) => a.is_default) || addresses[0]
+          setForm((prev) => ({
+            ...prev,
+            fullName: defaultAddr.full_name || prev.fullName,
+            phone: defaultAddr.phone || prev.phone,
+            address: defaultAddr.address_line || prev.address,
+            city: defaultAddr.city || prev.city,
+            postalCode: defaultAddr.postal_code || prev.postalCode,
+            country: defaultAddr.country || prev.country,
+          }))
+        }
+      })
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (profile) {
+      setForm((prev) => ({
+        ...prev,
+        fullName: prev.fullName || profile.full_name || "",
+        email: prev.email || profile.email || "",
+        phone: prev.phone || profile.phone || "",
+        cardName: prev.cardName || profile.full_name || "",
+      }))
+    }
+  }, [profile])
 
   const activeCart = complete ? confirmedCart : cart
   const orderSubtotal = activeCart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   )
-  const shippingFee = orderSubtotal >= 50 ? 0 : 6
-  const taxAmount = 0
-  const orderTotal = orderSubtotal + shippingFee + taxAmount
+  const shippingFee =
+    orderSubtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee
+  const taxAmount = orderSubtotal * settings.taxRate
+  const orderTotal = Math.max(0, orderSubtotal + shippingFee + taxAmount - couponDiscount)
 
   const setField = (name: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [name]: value }))
@@ -147,6 +203,60 @@ export default function Checkout() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0) return
+    setSubmittingOrder(true)
+    setOrderError(null)
+
+    const res = await createOrderSecure({
+      shippingName: form.fullName,
+      shippingPhone: form.phone,
+      shippingAddress: form.address,
+      shippingCity: form.city,
+      shippingPostalCode: form.postalCode,
+      shippingCountry: form.country,
+      paymentMethod,
+      items: cart.map((item) => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+        option: item.option,
+      })),
+      couponCode: couponCode || undefined,
+    })
+
+    if (res.error) {
+      setSubmittingOrder(false)
+      setOrderError(res.error.message)
+      notify(res.error.message)
+      return
+    }
+
+    if (res.data) {
+      setConfirmedOrder(res.data)
+      setConfirmedCart(cart)
+      setComplete(true)
+      clearCart()
+      window.sessionStorage.removeItem("abaz_promo_code")
+      window.sessionStorage.removeItem("abaz_promo_discount")
+
+      if (saveAddress && user) {
+        saveAddressForUser({
+          userId: user.id,
+          fullName: form.fullName,
+          phone: form.phone,
+          addressLine: form.address,
+          city: form.city,
+          postalCode: form.postalCode,
+          country: form.country,
+        })
+      }
+
+      notify("Your order has been placed successfully")
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
+    setSubmittingOrder(false)
+  }
+
   const checkoutField = (
     name: keyof typeof form,
     label: string,
@@ -186,11 +296,23 @@ export default function Checkout() {
           <div className="confirmation-meta">
             <div>
               <span>Order number</span>
-              <strong>{orderNumber}</strong>
+              <strong>
+                {confirmedOrder?.order_number || "ABZ-CONFIRMED"}
+              </strong>
             </div>
             <div>
               <span>Estimated delivery</span>
-              <strong>{estimatedDelivery}</strong>
+              <strong>
+                {confirmedOrder?.estimated_delivery
+                  ? new Date(
+                      confirmedOrder.estimated_delivery,
+                    ).toLocaleDateString("en-GB", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "Within 5 business days"}
+              </strong>
             </div>
           </div>
           <div className="confirmation-summary">
@@ -208,7 +330,10 @@ export default function Checkout() {
               </div>
             ))}
             <p>
-              Total <strong>{formatPrice(orderTotal)}</strong>
+              Total{" "}
+              <strong>
+                {formatPrice(confirmedOrder?.total ?? orderTotal)}
+              </strong>
             </p>
           </div>
           <Link to="/shop" className="btn btn-primary">
@@ -242,7 +367,11 @@ export default function Checkout() {
       </Button>
       {summaryOpen && (
         <div className="mobile-checkout-summary">
-          <CheckoutSummary cart={cart} />
+          <CheckoutSummary
+            cart={activeCart}
+            discount={couponDiscount}
+            settings={settings}
+          />
         </div>
       )}
       <div
@@ -447,7 +576,11 @@ export default function Checkout() {
           )}
           <div className="checkout-actions">
             {step > 1 && (
-              <Button variant="outline" onClick={() => setStep(step - 1)}>
+              <Button
+                variant="outline"
+                onClick={() => setStep(step - 1)}
+                disabled={submittingOrder}
+              >
                 Back
               </Button>
             )}
@@ -456,24 +589,40 @@ export default function Checkout() {
                 Continue to {step === 1 ? "Payment" : "Review"} <ArrowRight />
               </Button>
             ) : (
-              <Button
-                onClick={() => {
-                  setConfirmedCart(cart)
-                  setComplete(true)
-                  clearCart()
-                  notify("Your order has been placed successfully")
-                  window.scrollTo({ top: 0, behavior: "smooth" })
-                }}
-                disabled={cart.length === 0}
-              >
-                <LockKeyhole /> Place Order
-              </Button>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+                {orderError && (
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: "8px",
+                      color: "#b91c1c",
+                      fontSize: "0.8rem",
+                    }}
+                    role="alert"
+                  >
+                    {orderError}
+                  </div>
+                )}
+                <Button
+                  onClick={handlePlaceOrder}
+                  disabled={cart.length === 0 || submittingOrder}
+                >
+                  <LockKeyhole />{" "}
+                  {submittingOrder ? "Placing Order..." : "Place Order"}
+                </Button>
+              </div>
             )}
           </div>
         </div>
         <aside className="checkout-summary">
           <h2>Order summary</h2>
-          <CheckoutSummary cart={cart} />
+          <CheckoutSummary
+            cart={activeCart}
+            discount={couponDiscount}
+            settings={settings}
+          />
           <p className="secure-note">
             <LockKeyhole /> Secure checkout powered by encrypted payments.
           </p>

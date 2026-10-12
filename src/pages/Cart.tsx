@@ -1,9 +1,15 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowRight, Check, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from "lucide-react"
 import { Link } from "react-router"
 import { Breadcrumb, Button, Input } from "../components/ui"
 import { CartItem, useStore } from "../context/StoreContext"
 import { formatPrice } from "../utils/formatPrice"
+import {
+  DEFAULT_STORE_SETTINGS,
+  getStoreSettings,
+  StoreSettings,
+  validateCoupon,
+} from "../services/checkout"
 
 export function OrderSummary({
   cart,
@@ -12,17 +18,52 @@ export function OrderSummary({
   cart: CartItem[]
   showCheckout?: boolean
 }) {
-  const [promoCode, setPromoCode] = useState("")
-  const [promoApplied, setPromoApplied] = useState(false)
+  const [promoCode, setPromoCode] = useState(() => {
+    return window.sessionStorage.getItem("abaz_promo_code") || ""
+  })
+  const [promoDiscount, setPromoDiscount] = useState<number>(() => {
+    return Number(window.sessionStorage.getItem("abaz_promo_discount")) || 0
+  })
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [validatingPromo, setValidatingPromo] = useState(false)
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
+
+  useEffect(() => {
+    getStoreSettings().then(setSettings)
+  }, [])
+
   const subtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   )
-  const shipping = subtotal >= 50 ? 0 : 6
-  const taxRate = 0.00
-  const tax = subtotal * taxRate
-  const discount = promoApplied ? subtotal * 0.1 : 0
-  const total = subtotal + shipping + tax - discount
+  const shipping =
+    subtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee
+  const tax = subtotal * settings.taxRate
+  const discount = Math.min(subtotal, promoDiscount)
+  const total = Math.max(0, subtotal + shipping + tax - discount)
+
+  const handleApplyCoupon = async () => {
+    if (!promoCode.trim()) return
+    setValidatingPromo(true)
+    setPromoError(null)
+
+    const res = await validateCoupon(promoCode, subtotal)
+    setValidatingPromo(false)
+
+    if (res.error) {
+      setPromoError(res.error.message)
+      setPromoDiscount(0)
+      window.sessionStorage.removeItem("abaz_promo_code")
+      window.sessionStorage.removeItem("abaz_promo_discount")
+    } else {
+      setPromoDiscount(res.discount)
+      window.sessionStorage.setItem(
+        "abaz_promo_code",
+        promoCode.trim().toUpperCase(),
+      )
+      window.sessionStorage.setItem("abaz_promo_discount", String(res.discount))
+    }
+  }
 
   return (
     <aside className="order-summary">
@@ -43,22 +84,32 @@ export function OrderSummary({
         <Input
           placeholder="Promo code"
           value={promoCode}
+          disabled={validatingPromo}
           onChange={(event) => {
             setPromoCode(event.target.value)
-            setPromoApplied(false)
+            setPromoError(null)
           }}
         />
         <Button
           variant="secondary"
-          disabled={!promoCode.trim()}
-          onClick={() => setPromoApplied(true)}
+          disabled={!promoCode.trim() || validatingPromo}
+          onClick={handleApplyCoupon}
         >
-          {promoApplied ? "Applied" : "Apply"}
+          {validatingPromo
+            ? "Checking..."
+            : promoDiscount > 0
+              ? "Applied"
+              : "Apply"}
         </Button>
       </div>
-      {promoApplied && (
+      {promoError && (
+        <p className="text-xs text-red-600 mt-1" role="alert">
+          {promoError}
+        </p>
+      )}
+      {promoDiscount > 0 && !promoError && (
         <p className="promo-success">
-          <Check /> 10% beauty offer applied
+          <Check /> Promo offer applied: {formatPrice(promoDiscount)} off
         </p>
       )}
       <div className="totals">
@@ -68,10 +119,12 @@ export function OrderSummary({
         <span>
           Shipping <b>{shipping === 0 ? "Free" : formatPrice(shipping)}</b>
         </span>
-        <span>
-          Estimated tax <b>{formatPrice(tax)}</b>
-        </span>
-        {promoApplied && (
+        {tax > 0 && (
+          <span>
+            Estimated tax <b>{formatPrice(tax)}</b>
+          </span>
+        )}
+        {promoDiscount > 0 && (
           <span className="discount-line">
             Promo discount <b>−{formatPrice(discount)}</b>
           </span>
