@@ -1,8 +1,9 @@
-import { FormEvent, useState } from "react"
-import { Link, useNavigate } from "react-router"
+import { FormEvent, useEffect, useState } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import { ArrowRight, Check, Eye, EyeOff } from "lucide-react"
 import { Button, Checkbox, Input } from "../components/ui"
 import { useStore } from "../context/StoreContext"
+import { useAuth } from "../context/AuthContext"
 
 export default function AuthPage({
   mode = "login",
@@ -10,14 +11,26 @@ export default function AuthPage({
   mode?: "login" | "register" | "forgot"
 }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirectTarget = searchParams.get("redirect") || "/account"
   const { notify } = useStore()
+  const { user, loading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth()
+
   const isRegister = mode === "register"
   const isForgot = mode === "forgot"
+
+  useEffect(() => {
+    if (!loading && user && !isForgot) {
+      navigate(redirectTarget, { replace: true })
+    }
+  }, [user, loading, isForgot, redirectTarget, navigate])
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [remember, setRemember] = useState(false)
   const [terms, setTerms] = useState(false)
   const [sent, setSent] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [form, setForm] = useState({
     fullName: "",
@@ -28,6 +41,7 @@ export default function AuthPage({
 
   const setAuthField = (name: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [name]: value }))
+    setAuthError(null)
     setErrors((current) => {
       const next = { ...current }
       delete next[name]
@@ -53,18 +67,73 @@ export default function AuthPage({
     return Object.keys(next).length === 0
   }
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (!validate()) return
-    if (isForgot) {
-      setSent(true)
-      notify("Password reset instructions sent")
-      return
+
+    setSubmitting(true)
+    setAuthError(null)
+
+    try {
+      if (isForgot) {
+        const { error } = await resetPassword(form.email)
+        if (error) {
+          setAuthError(error.message)
+        } else {
+          setSent(true)
+          notify("Password reset instructions sent")
+        }
+        return
+      }
+
+      if (isRegister) {
+        const { error } = await signUp(
+          form.email,
+          form.password,
+          form.fullName,
+        )
+        if (error) {
+          setAuthError(error.message)
+          notify(error.message)
+        } else {
+          notify("Account created successfully")
+          navigate(redirectTarget)
+        }
+        return
+      }
+
+      // Login
+      const { error } = await signIn(form.email, form.password)
+      if (error) {
+        setAuthError(error.message || "Invalid email or password.")
+        notify(error.message || "Invalid credentials")
+      } else {
+        notify("Signed in successfully")
+        navigate(redirectTarget)
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Authentication error"
+      setAuthError(message)
+    } finally {
+      setSubmitting(false)
     }
-    notify(
-      isRegister ? "Account created successfully" : "Signed in successfully",
-    )
-    navigate("/account")
+  }
+
+  const handleGoogleSignIn = async () => {
+    setSubmitting(true)
+    setAuthError(null)
+    try {
+      const { error } = await signInWithGoogle()
+      if (error) {
+        setAuthError(error.message)
+        notify(error.message)
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Google sign-in error"
+      setAuthError(message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const authInput = (
@@ -98,6 +167,7 @@ export default function AuthPage({
             value={form[name]}
             onChange={(event) => setAuthField(name, event.target.value)}
             aria-invalid={Boolean(errors[name])}
+            disabled={submitting}
           />
           {options.passwordToggle && (
             <Button
@@ -106,6 +176,7 @@ export default function AuthPage({
               className="password-toggle"
               aria-label={visible ? "Hide password" : "Show password"}
               onClick={toggle}
+              disabled={submitting}
             >
               {visible ? <EyeOff /> : <Eye />}
             </Button>
@@ -178,6 +249,25 @@ export default function AuthPage({
                     ? "Enter your email and we’ll send you a secure link to choose a new password."
                     : "Sign in to revisit your favorites and continue your ritual."}
               </p>
+
+              {authError && (
+                <div
+                  className="auth-error-banner"
+                  style={{
+                    padding: "12px 16px",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: "8px",
+                    color: "#b91c1c",
+                    fontSize: "0.85rem",
+                    marginBottom: "16px",
+                  }}
+                  role="alert"
+                >
+                  {authError}
+                </div>
+              )}
+
               <form onSubmit={submit} noValidate>
                 {isRegister &&
                   authInput("fullName", "Full name", {
@@ -204,6 +294,7 @@ export default function AuthPage({
                       label="Remember me"
                       checked={remember}
                       onChange={(event) => setRemember(event.target.checked)}
+                      disabled={submitting}
                     />
                     <Link to="/forgot-password">Forgot password?</Link>
                   </div>
@@ -213,6 +304,7 @@ export default function AuthPage({
                     <Checkbox
                       label="I agree to the Terms of Service and Privacy Policy"
                       checked={terms}
+                      disabled={submitting}
                       onChange={(event) => {
                         setTerms(event.target.checked)
                         setErrors((current) => {
@@ -227,12 +319,18 @@ export default function AuthPage({
                     )}
                   </div>
                 )}
-                <Button type="submit" className="auth-submit">
-                  {isRegister
-                    ? "Create Account"
-                    : isForgot
-                      ? "Send Reset Link"
-                      : "Sign In"}
+                <Button
+                  type="submit"
+                  className="auth-submit"
+                  disabled={submitting}
+                >
+                  {submitting
+                    ? "Please wait..."
+                    : isRegister
+                      ? "Create Account"
+                      : isForgot
+                        ? "Send Reset Link"
+                        : "Sign In"}
                   <ArrowRight />
                 </Button>
               </form>
@@ -241,7 +339,12 @@ export default function AuthPage({
                   <div className="auth-divider">
                     <span>or</span>
                   </div>
-                  <Button variant="outline" className="google-button">
+                  <Button
+                    variant="outline"
+                    className="google-button"
+                    onClick={handleGoogleSignIn}
+                    disabled={submitting}
+                  >
                     <b>G</b> Continue with Google
                   </Button>
                 </>

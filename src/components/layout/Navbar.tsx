@@ -7,11 +7,13 @@ import {
   House,
   Menu,
   Search,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   X,
 } from "lucide-react"
 import { Button } from "../ui"
+import { useAuth } from "../../context/AuthContext"
 import { categories, products } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
 
@@ -24,6 +26,7 @@ export default function Navbar({
   wishlistCount: number
   onCartOpen: () => void
 }) {
+  const { user, profile, isAdmin } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -116,8 +119,31 @@ export default function Navbar({
             )}
           </form>
           <div className="nav-icons">
-            <Link to="/login" aria-label="Account">
-              <CircleUserRound />
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-900 text-stone-100 hover:bg-stone-800 transition shadow-xs"
+                title="Admin Dashboard"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                <span>Admin</span>
+              </Link>
+            )}
+            <Link
+              to={user ? "/account" : "/login"}
+              aria-label={user ? (profile?.full_name || "My Account") : "Sign in / Register"}
+              title={user ? (profile?.full_name || "My Account") : "Sign in / Register"}
+              className="inline-flex items-center justify-center"
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.full_name || "Account"}
+                  className="w-6 h-6 rounded-full object-cover border border-stone-300"
+                />
+              ) : (
+                <CircleUserRound />
+              )}
             </Link>
             <Link
               to="/account"
@@ -207,9 +233,17 @@ export default function Navbar({
             Sale
           </NavLink>
           <div className="mobile-drawer-links">
-            <Link to="/account" onClick={() => setMobileOpen(false)}>
-              <CircleUserRound /> My Account
+            <Link
+              to={user ? "/account" : "/login"}
+              onClick={() => setMobileOpen(false)}
+            >
+              <CircleUserRound /> {user ? "My Account" : "Sign In / Register"}
             </Link>
+            {isAdmin && (
+              <Link to="/admin" onClick={() => setMobileOpen(false)}>
+                <ShieldCheck className="w-4 h-4 text-amber-600" /> Admin Portal
+              </Link>
+            )}
             <Link
               to="/account?tab=wishlist"
               onClick={() => setMobileOpen(false)}
@@ -238,9 +272,9 @@ export default function Navbar({
           {cartCount > 0 && <b>{cartCount}</b>}
           <span>Cart</span>
         </Button>
-        <NavLink to="/account">
+        <NavLink to={user ? "/account" : "/login"}>
           <CircleUserRound />
-          <span>Account</span>
+          <span>{user ? "Account" : "Sign In"}</span>
         </NavLink>
       </nav>
     </>

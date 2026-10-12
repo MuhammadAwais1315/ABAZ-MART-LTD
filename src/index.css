@@ -641,8 +641,8 @@ td small { color: var(--muted); }
 .admin-profile .btn small { color: var(--muted); font-size: .58rem; }
 .admin-profile .btn > svg { width: 14px; color: var(--muted); }
 .admin-profile-menu { position: absolute; right: 0; top: 54px; width: 160px; display: grid; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: var(--shadow); }
-.admin-profile-menu a { padding: 9px 10px; border-radius: 8px; font-size: .7rem; }
-.admin-profile-menu a:hover { color: var(--rose); background: var(--light); }
+.admin-profile-menu a, .admin-profile-menu button { padding: 9px 10px; border-radius: 8px; font-size: .7rem; text-align: left; background: transparent; border: none; cursor: pointer; color: inherit; width: 100%; font-family: inherit; }
+.admin-profile-menu a:hover, .admin-profile-menu button:hover { color: var(--rose); background: var(--light); }
 .admin-menu-toggle { display: none; }
 .admin-main { max-width: 1500px; margin: 0 auto; padding: 34px; }
 .admin-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }

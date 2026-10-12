@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link, NavLink, Outlet } from "react-router"
+import { Link, NavLink, Outlet, useNavigate } from "react-router"
 import {
   ArrowRight,
   Bell,
@@ -16,9 +16,12 @@ import {
 } from "lucide-react"
 import { Button } from "../../components/ui"
 import { useScrollReveal } from "../../hooks/useScrollReveal"
+import { useAuth } from "../../context/AuthContext"
 
 export default function AdminLayout() {
   useScrollReveal()
+  const navigate = useNavigate()
+  const { profile, user, signOut } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
 
@@ -86,20 +89,42 @@ export default function AdminLayout() {
                 onClick={() => setProfileOpen(!profileOpen)}
               >
                 <img
-                  src="https://images.unsplash.com/photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&w=100&q=80"
-                  alt="Amara Williams"
+                  src={
+                    profile?.avatar_url ||
+                    "https://images.unsplash.com/photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&w=100&q=80"
+                  }
+                  alt={profile?.full_name || "Admin"}
                 />
                 <span>
-                  <strong>Amara W.</strong>
+                  <strong>
+                    {profile?.full_name
+                      ? profile.full_name.split(" ")[0]
+                      : user?.email
+                        ? user.email.split("@")[0]
+                        : "Admin"}
+                  </strong>
                   <small>Administrator</small>
                 </span>
                 <ChevronDown />
               </Button>
               {profileOpen && (
                 <div className="admin-profile-menu">
-                  <Link to="/account">My profile</Link>
-                  <Link to="/">View store</Link>
-                  <Link to="/login">Sign out</Link>
+                  <Link to="/account" onClick={() => setProfileOpen(false)}>
+                    My profile
+                  </Link>
+                  <Link to="/" onClick={() => setProfileOpen(false)}>
+                    View store
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setProfileOpen(false)
+                      await signOut()
+                      navigate("/login")
+                    }}
+                  >
+                    Sign out
+                  </button>
                 </div>
               )}
             </div>

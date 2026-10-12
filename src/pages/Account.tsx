@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Badge, Breadcrumb, Button, Input, Modal } from "../components/ui"
 import { useStore } from "../context/StoreContext"
+import { useAuth } from "../context/AuthContext"
 import { products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 
@@ -58,6 +59,14 @@ type SavedAddress = {
 
 export default function Account() {
   const { wishlist, toggleWishlist, addToCart, notify } = useStore()
+  const {
+    user,
+    profile: authProfile,
+    signOut,
+    updateProfile,
+    updatePassword,
+    uploadAvatar,
+  } = useAuth()
   const navigate = useNavigate()
   const [accountParams] = useSearchParams()
   const accountTab = accountParams.get("tab")
@@ -67,15 +76,51 @@ export default function Account() {
   const [selectedOrder, setSelectedOrder] =
     useState<typeof accountOrders[number] | null>(null)
   const [avatar, setAvatar] = useState(
-    "https://images.unsplash.com/photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&w=240&q=85",
+    authProfile?.avatar_url ||
+      (user?.user_metadata?.avatar_url as string) ||
+      (user?.user_metadata?.picture as string) ||
+      "https://images.unsplash.com/photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&w=240&q=85",
   )
   const [profile, setProfile] = useState({
-    name: "Amara Williams",
-    email: "amara.williams@example.com",
-    phone: "+44 20 7946 0958",
+    name:
+      authProfile?.full_name ||
+      (user?.user_metadata?.full_name as string) ||
+      (user?.user_metadata?.name as string) ||
+      "",
+    email: authProfile?.email || user?.email || "",
+    phone: authProfile?.phone || "",
     currentPassword: "",
     newPassword: "",
   })
+
+  useEffect(() => {
+    if (authProfile) {
+      setProfile((prev) => ({
+        ...prev,
+        name: authProfile.full_name || prev.name,
+        email: authProfile.email || prev.email,
+        phone: authProfile.phone || prev.phone,
+      }))
+      if (authProfile.avatar_url) {
+        setAvatar(authProfile.avatar_url)
+      }
+    } else if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        email: user.email || prev.email,
+        name:
+          (user.user_metadata?.full_name as string) ||
+          (user.user_metadata?.name as string) ||
+          prev.name,
+      }))
+      if (user.user_metadata?.avatar_url || user.user_metadata?.picture) {
+        setAvatar(
+          (user.user_metadata.avatar_url as string) ||
+            (user.user_metadata.picture as string),
+        )
+      }
+    }
+  }, [authProfile, user])
   const [addresses, setAddresses] = useState<SavedAddress[]>([
     {
       id: 1,
@@ -171,7 +216,12 @@ export default function Account() {
       <div className="account-header">
         <div>
           <p className="eyebrow">My account</p>
-          <h1>Good morning, Amara.</h1>
+          <h1>
+            Good morning,{" "}
+            {profile.name.trim().split(" ")[0] ||
+              (user?.email ? user.email.split("@")[0] : "there")}
+            .
+          </h1>
           <p>Manage your profile, orders, addresses, and beauty favorites.</p>
         </div>
       </div>
@@ -192,7 +242,11 @@ export default function Account() {
           <Button
             variant="ghost"
             className="logout-button"
-            onClick={() => navigate("/login")}
+            onClick={async () => {
+              await signOut()
+              notify("Signed out successfully")
+              navigate("/login")
+            }}
           >
             <LogOut /> Logout
           </Button>
@@ -209,15 +263,23 @@ export default function Account() {
               </div>
               <div className="profile-layout">
                 <div className="avatar-editor">
-                  <img src={avatar} alt="Amara Williams" />
+                  <img src={avatar} alt={profile.name} />
                   <label className="btn btn-outline">
                     <Upload /> Upload photo
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(event) => {
+                      onChange={async (event) => {
                         const file = event.target.files?.[0]
-                        if (file) setAvatar(URL.createObjectURL(file))
+                        if (file) {
+                          const { url, error } = await uploadAvatar(file)
+                          if (error) {
+                            notify(error.message)
+                          } else if (url) {
+                            setAvatar(url)
+                            notify("Avatar updated successfully")
+                          }
+                        }
                       }}
                     />
                   </label>
@@ -225,8 +287,32 @@ export default function Account() {
                 </div>
                 <form
                   className="profile-form"
-                  onSubmit={(event) => {
+                  onSubmit={async (event) => {
                     event.preventDefault()
+                    const { error } = await updateProfile({
+                      full_name: profile.name,
+                      phone: profile.phone,
+                    })
+                    if (error) {
+                      notify(error.message)
+                      return
+                    }
+
+                    if (profile.newPassword) {
+                      const { error: passError } = await updatePassword(
+                        profile.newPassword,
+                      )
+                      if (passError) {
+                        notify(passError.message)
+                        return
+                      }
+                      setProfile((prev) => ({
+                        ...prev,
+                        currentPassword: "",
+                        newPassword: "",
+                      }))
+                    }
+
                     notify("Profile changes saved")
                   }}
                 >
@@ -243,9 +329,8 @@ export default function Account() {
                       label="Email address"
                       type="email"
                       value={profile.email}
-                      onChange={(event) =>
-                        setProfile({ ...profile, email: event.target.value })
-                      }
+                      disabled
+                      title="Email is managed via authentication"
                     />
                     <Input
                       label="Phone number"

@@ -1,5 +1,7 @@
 import { createBrowserRouter } from "react-router"
 import RootLayout from "./components/layout/RootLayout"
+import ProtectedRoute from "./components/auth/ProtectedRoute"
+import AdminRoute from "./components/auth/AdminRoute"
 import Home from "./pages/Home"
 import Shop from "./pages/Shop"
 import ProductPage from "./pages/ProductPage"
@@ -24,20 +26,38 @@ export const router = createBrowserRouter([
       { path: "shop", Component: Shop },
       { path: "product/:id", Component: ProductPage },
       { path: "cart", Component: Cart },
-      { path: "checkout", Component: Checkout },
+      {
+        path: "checkout",
+        Component: () => (
+          <ProtectedRoute>
+            <Checkout />
+          </ProtectedRoute>
+        ),
+      },
       { path: "login", Component: () => <AuthPage /> },
       { path: "register", Component: () => <AuthPage mode="register" /> },
       {
         path: "forgot-password",
         Component: () => <AuthPage mode="forgot" />,
       },
-      { path: "account", Component: Account },
+      {
+        path: "account",
+        Component: () => (
+          <ProtectedRoute>
+            <Account />
+          </ProtectedRoute>
+        ),
+      },
       { path: "*", Component: NotFound },
     ],
   },
   {
     path: "/admin",
-    Component: AdminLayout,
+    Component: () => (
+      <AdminRoute>
+        <AdminLayout />
+      </AdminRoute>
+    ),
     children: [
       { index: true, Component: AdminDashboard },
       { path: "products", Component: AdminProducts },
@@ -59,3 +79,4 @@ export const router = createBrowserRouter([
     ],
   },
 ])
+
