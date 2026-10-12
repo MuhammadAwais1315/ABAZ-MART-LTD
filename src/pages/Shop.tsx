@@ -24,16 +24,22 @@ import {
   Skeleton,
 } from "../components/ui"
 import { useStore } from "../context/StoreContext"
-import { categories, Product, products } from "../data/products"
+import { Product, products as initialProducts } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
+import { useBrands, useCategories } from "../hooks/useProducts"
+import { getProducts } from "../services/products"
 
 export default function Shop() {
   const { addToCart, wishlist, toggleWishlist } = useStore()
   const [params, setParams] = useSearchParams()
   const categoryParam = params.get("category")
+  const sortParam = params.get("sort")
   const query = (params.get("q") || "").toLowerCase()
-  const [sort, setSort] = useState("featured")
+  const [sort, setSort] = useState(sortParam || "featured")
   const [view, setView] = useState<"grid" | "list">("grid")
+  const [catalog, setCatalog] = useState<Product[]>(initialProducts)
+  const { categories } = useCategories()
+  const { brands: fetchedBrands } = useBrands()
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     categoryParam ? [categoryParam] : [],
   )
@@ -45,10 +51,32 @@ export default function Shop() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
 
-  const brands = useMemo(
-    () => Array.from(new Set(products.map((product) => product.brand))).sort(),
-    [],
-  )
+  useEffect(() => {
+    let mounted = true
+    getProducts({ limit: 100 })
+      .then((res) => {
+        if (mounted && res.data && res.data.length > 0) {
+          setCatalog(res.data)
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (sortParam) {
+      setSort(sortParam)
+    }
+  }, [sortParam])
+
+  const brands = useMemo(() => {
+    if (fetchedBrands && fetchedBrands.length > 0) return fetchedBrands
+    return Array.from(new Set(catalog.map((product) => product.brand))).sort()
+  }, [fetchedBrands, catalog])
 
   const skinTypes = ["Oily", "Dry", "Combination", "Sensitive"]
   const productSkinType = (product: Product) =>
@@ -85,7 +113,7 @@ export default function Shop() {
 
   const filtered = useMemo(
     () =>
-      products
+      catalog
         .filter(
           (product) =>
             selectedCategories.length === 0 ||
@@ -112,18 +140,27 @@ export default function Shop() {
               .toLowerCase()
               .includes(query),
         )
+        .filter((product) =>
+          sort === "sale"
+            ? Boolean(product.oldPrice && product.oldPrice > product.price)
+            : true,
+        )
         .sort((a, b) =>
-          sort === "low"
+          sort === "low" || sort === "price-asc"
             ? a.price - b.price
-            : sort === "high"
+            : sort === "high" || sort === "price-desc"
               ? b.price - a.price
-              : sort === "newest"
+              : sort === "newest" || sort === "new"
                 ? b.id - a.id
-                : sort === "rated"
+                : sort === "rated" || sort === "rating"
                   ? b.rating - a.rating
-                  : Number(Boolean(b.badge)) - Number(Boolean(a.badge)),
+                  : sort === "sale"
+                    ? (b.oldPrice ? b.oldPrice - b.price : 0) -
+                      (a.oldPrice ? a.oldPrice - a.price : 0)
+                    : Number(Boolean(b.badge)) - Number(Boolean(a.badge)),
         ),
     [
+      catalog,
       maxPrice,
       minimumRating,
       query,
@@ -271,6 +308,7 @@ export default function Shop() {
                 aria-label="Sort products"
               >
                 <option value="featured">Featured</option>
+                <option value="sale">On Sale</option>
                 <option value="low">Price Low to High</option>
                 <option value="high">Price High to Low</option>
                 <option value="newest">Newest</option>

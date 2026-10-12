@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 import { Link, NavLink, useNavigate } from "react-router"
 import {
   ArrowRight,
@@ -14,8 +14,10 @@ import {
 } from "lucide-react"
 import { Button } from "../ui"
 import { useAuth } from "../../context/AuthContext"
-import { categories, products } from "../../data/products"
+import { Product, products as initialProducts } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
+import { useCategories } from "../../hooks/useProducts"
+import { getProducts } from "../../services/products"
 
 export default function Navbar({
   cartCount,
@@ -27,13 +29,27 @@ export default function Navbar({
   onCartOpen: () => void
 }) {
   const { user, profile, isAdmin } = useAuth()
+  const { categories } = useCategories()
+  const [catalog, setCatalog] = useState<Product[]>(initialProducts)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [query, setQuery] = useState("")
   const navigate = useNavigate()
 
+  useEffect(() => {
+    let mounted = true
+    getProducts({ limit: 50 }).then((res) => {
+      if (mounted && res.data && res.data.length > 0) {
+        setCatalog(res.data)
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   const suggestions = query.trim()
-    ? products
+    ? catalog
         .filter((product) =>
           `${product.name} ${product.brand} ${product.category}`
             .toLowerCase()

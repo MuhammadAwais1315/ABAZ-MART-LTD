@@ -7,10 +7,13 @@ import {
   Truck,
 } from "lucide-react"
 import { Link } from "react-router"
+import { useEffect, useState } from "react"
 import ProductCard from "../components/ProductCard"
 import { Button, Input, RatingStars } from "../components/ui"
 import { useStore } from "../context/StoreContext"
-import { categories, products } from "../data/products"
+import { Product, products as initialProducts } from "../data/products"
+import { useCategories } from "../hooks/useProducts"
+import { getProducts } from "../services/products"
 
 function Hero() {
   return (
@@ -80,11 +83,29 @@ const testimonials = [
 
 export default function Home() {
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
-  const newArrivals = products.slice(0, 8).map((product) => ({
+  const [catalog, setCatalog] = useState<Product[]>(initialProducts)
+  const { categories } = useCategories()
+
+  useEffect(() => {
+    let mounted = true
+    getProducts({ limit: 16 }).then((res) => {
+      if (mounted && res.data && res.data.length > 0) {
+        setCatalog(res.data)
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const newArrivals = catalog.slice(0, 8).map((product) => ({
     ...product,
     oldPrice: product.oldPrice ?? Math.ceil(product.price * 1.18),
   }))
-  const bestSellers = [products[0], products[4], products[8], products[12]]
+  const bestSellers =
+    catalog.length >= 4
+      ? [catalog[0], catalog[4] || catalog[1], catalog[8] || catalog[2], catalog[12] || catalog[3]]
+      : catalog.slice(0, 4)
 
   return (
     <>
@@ -142,7 +163,10 @@ export default function Home() {
             Shop Skincare <ArrowRight />
           </Link>
         </div>
-        <img src={products[2].image} alt="Skincare essentials on sale" />
+        <img
+          src={(catalog[2] || initialProducts[2]).image}
+          alt="Skincare essentials on sale"
+        />
       </section>
       <section className="section shell">
         <div className="section-head home-section-head">

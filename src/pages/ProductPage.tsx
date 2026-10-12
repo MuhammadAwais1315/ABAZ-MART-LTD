@@ -1,29 +1,57 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router"
-import { Heart, Minus, Package, Plus, ShieldCheck, ShoppingBag, Truck } from "lucide-react"
+import {
+  Heart,
+  Minus,
+  Package,
+  Plus,
+  ShieldCheck,
+  ShoppingBag,
+  Star,
+  Truck,
+} from "lucide-react"
 import ProductCard from "../components/ProductCard"
 import {
   Badge,
   Breadcrumb,
   Button,
+  Input,
+  Modal,
   RatingStars,
   Skeleton,
   Tabs,
 } from "../components/ui"
 import { useStore } from "../context/StoreContext"
-import { products } from "../data/products"
+import { useAuth } from "../context/AuthContext"
+import { Product, products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
+import {
+  getProductById,
+  getProductReviews,
+  ReviewItem,
+  submitProductReview,
+} from "../services/products"
 
 export default function ProductPage() {
   const { id } = useParams()
-  const product = products.find((item) => item.id === Number(id)) || products[0]
-  const { addToCart, wishlist, toggleWishlist } = useStore()
+  const initialProduct =
+    products.find((item) => item.id === Number(id)) || products[0]
+  const [product, setProduct] = useState<Product>(initialProduct)
+  const { addToCart, wishlist, toggleWishlist, notify } = useStore()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [quantity, setQuantity] = useState(1)
-  const [option, setOption] = useState(product.options[0])
+  const [option, setOption] = useState(initialProduct.options[0])
   const [detailTab, setDetailTab] = useState("Description")
-  const [activeImage, setActiveImage] = useState(product.image)
+  const [activeImage, setActiveImage] = useState(initialProduct.image)
   const [productLoading, setProductLoading] = useState(true)
+  const [reviewsList, setReviewsList] = useState<ReviewItem[]>([])
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewTitle, setReviewTitle] = useState("")
+  const [reviewContent, setReviewContent] = useState("")
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
 
   const discount = product.oldPrice
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
@@ -55,32 +83,77 @@ export default function ProductPage() {
     "shade-cocoa",
   ]
 
-  const reviews = [
-    {
-      name: "Maya R.",
-      date: "February 12, 2026",
-      title: "My skin looks brighter",
-      text: "This fits beautifully into my morning routine. The texture feels light, absorbs quickly, and leaves a healthy glow without any stickiness.",
-    },
-    {
-      name: "Olivia K.",
-      date: "February 3, 2026",
-      title: "Beautiful formula",
-      text: "I noticed a softer, smoother finish within the first week. It also layers perfectly under makeup and never pills.",
-    },
-    {
-      name: "Samira D.",
-      date: "January 24, 2026",
-      title: "Worth every drop",
-      text: "The packaging feels premium and the formula is even better. A little goes a long way, so it has become a daily essential.",
-    },
-    {
-      name: "Chloe T.",
-      date: "January 9, 2026",
-      title: "Gentle and effective",
-      text: "My sensitive skin has been very happy with this. It feels soothing, looks luminous, and has no overwhelming fragrance.",
-    },
-  ]
+  useEffect(() => {
+    let mounted = true
+    if (id) {
+      getProductById(id).then((res) => {
+        if (mounted && res.data) {
+          setProduct(res.data)
+        }
+      })
+    }
+    return () => {
+      mounted = false
+    }
+  }, [id])
+
+  useEffect(() => {
+    let mounted = true
+    if (product.id) {
+      getProductReviews(product.id).then((res) => {
+        if (mounted && res.data) {
+          setReviewsList(res.data)
+        }
+      })
+    }
+    return () => {
+      mounted = false
+    }
+  }, [product.id])
+
+  const handleOpenReview = () => {
+    if (!user) {
+      notify("Please sign in to write a review")
+      navigate(
+        `/login?redirect=${encodeURIComponent(`/product/${product.id}`)}`,
+      )
+      return
+    }
+    setReviewError(null)
+    setReviewModalOpen(true)
+  }
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!reviewTitle.trim() || !reviewContent.trim()) {
+      setReviewError("Please provide both a title and review comments.")
+      return
+    }
+
+    setSubmittingReview(true)
+    setReviewError(null)
+
+    const res = await submitProductReview(
+      product.id,
+      reviewRating,
+      reviewTitle,
+      reviewContent,
+    )
+
+    setSubmittingReview(false)
+
+    if (res.error) {
+      setReviewError(res.error.message)
+    } else {
+      notify("Thank you! Your review has been submitted.")
+      setReviewModalOpen(false)
+      setReviewTitle("")
+      setReviewContent("")
+      getProductReviews(product.id).then((r) => {
+        if (r.data) setReviewsList(r.data)
+      })
+    }
+  }
 
   useEffect(() => {
     setProductLoading(true)
@@ -147,8 +220,8 @@ export default function ProductPage() {
           <div className="review-score">
             <strong>{product.rating}</strong>
             <RatingStars rating={product.rating} />
-            <span>Based on {product.reviewCount} reviews</span>
-            <Button>Write a review</Button>
+            <span>Based on {product.reviewsCount ?? reviewsList.length} reviews</span>
+            <Button onClick={handleOpenReview}>Write a review</Button>
           </div>
           <div className="rating-breakdown">
             {[5, 4, 3, 2, 1].map((stars) => (
@@ -173,15 +246,18 @@ export default function ProductPage() {
           </div>
         </div>
         <div className="review-list">
-          {reviews.map((review) => (
-            <article key={review.name}>
+          {reviewsList.map((review, idx) => (
+            <article key={review.id ?? idx}>
               <div>
-                <RatingStars rating={5} />
+                <RatingStars rating={review.rating} />
                 <span>{review.date}</span>
               </div>
               <h3>{review.title}</h3>
               <p>{review.text}</p>
-              <strong>{review.name} · Verified buyer</strong>
+              <strong>
+                {review.name}
+                {review.verified ? " · Verified buyer" : ""}
+              </strong>
             </article>
           ))}
         </div>
@@ -389,6 +465,80 @@ export default function ProductPage() {
           <ShoppingBag /> Add to Cart
         </Button>
       </div>
+
+      <Modal
+        open={reviewModalOpen}
+        title={`Review ${product.name}`}
+        onClose={() => setReviewModalOpen(false)}
+      >
+        <form onSubmit={handleSubmitReview} className="space-y-4 my-2 text-left">
+          {reviewError && (
+            <div
+              className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-xs mb-3"
+              role="alert"
+            >
+              {reviewError}
+            </div>
+          )}
+          <div className="mb-3">
+            <span className="block text-xs font-medium text-stone-700 mb-1">
+              Your Rating
+            </span>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  type="button"
+                  key={star}
+                  onClick={() => setReviewRating(star)}
+                  className="p-1 hover:scale-110 transition bg-transparent border-none cursor-pointer"
+                  aria-label={`${star} star`}
+                >
+                  <Star
+                    className={`w-6 h-6 ${
+                      star <= reviewRating
+                        ? "text-amber-500 fill-amber-500"
+                        : "text-stone-300"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+          <Input
+            label="Review Title"
+            placeholder="e.g. Life-changing formula!"
+            value={reviewTitle}
+            onChange={(e) => setReviewTitle(e.target.value)}
+            required
+            disabled={submittingReview}
+          />
+          <label className="field">
+            <span>Your Experience</span>
+            <textarea
+              className="w-full p-3 border border-stone-300 rounded-md text-sm outline-none focus:border-stone-800"
+              rows={4}
+              placeholder="Tell others how this product worked for your routine..."
+              value={reviewContent}
+              onChange={(e) => setReviewContent(e.target.value)}
+              required
+              disabled={submittingReview}
+            />
+          </label>
+          <div className="flex justify-end gap-2 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setReviewModalOpen(false)}
+              disabled={submittingReview}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submittingReview}>
+              {submittingReview ? "Submitting..." : "Submit Review"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
