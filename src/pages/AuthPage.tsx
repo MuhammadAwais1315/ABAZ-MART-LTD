@@ -125,11 +125,20 @@ export default function AuthPage({
     try {
       const { error } = await signInWithGoogle()
       if (error) {
-        setAuthError(error.message)
-        notify(error.message)
+        let msg = error.message
+        if (
+          msg.includes("provider is not enabled") ||
+          msg.includes("Unsupported provider")
+        ) {
+          msg =
+            "Google Sign-In is not enabled yet in your Supabase dashboard. Please go to Supabase -> Authentication -> Providers -> Google and turn it on, or sign in with your email and password below."
+        }
+        setAuthError(msg)
+        notify("Google Sign-In is not enabled in Supabase")
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Google sign-in error"
+      const message =
+        err instanceof Error ? err.message : "Google sign-in error"
       setAuthError(message)
     } finally {
       setSubmitting(false)
