@@ -1,21 +1,82 @@
 -- ============================================================================
 -- 00009_fix_order_rpc.sql
--- Fix create_order_secure RPC signature, permissions, and reload schema cache
+-- Robust, safe fix for create_order_secure RPC & payment_method enum
 -- ============================================================================
 
--- 1. Ensure 'bank_transfer' exists in public.payment_method enum
+-- 1. Safely create enums if they do not exist (without using ::regtype cast)
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_enum 
-    WHERE enumtypid = 'public.payment_method'::regtype 
-      AND enumlabel = 'bank_transfer'
+    SELECT 1 FROM pg_type t 
+    JOIN pg_namespace n ON n.oid = t.typnamespace 
+    WHERE t.typname = 'payment_method' AND n.nspname = 'public'
   ) THEN
-    ALTER TYPE public.payment_method ADD VALUE 'bank_transfer';
+    CREATE TYPE public.payment_method AS ENUM ('card', 'bank_transfer', 'cod', 'paypal');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t 
+    JOIN pg_namespace n ON n.oid = t.typnamespace 
+    WHERE t.typname = 'order_status' AND n.nspname = 'public'
+  ) THEN
+    CREATE TYPE public.order_status AS ENUM ('Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t 
+    JOIN pg_namespace n ON n.oid = t.typnamespace 
+    WHERE t.typname = 'payment_status' AND n.nspname = 'public'
+  ) THEN
+    CREATE TYPE public.payment_status AS ENUM ('pending', 'paid', 'failed', 'refunded');
   END IF;
 END $$;
 
--- 2. Create or Replace create_order_secure with text parameter for payment method
+-- 2. Ensure 'bank_transfer' exists in public.payment_method if it was created previously
+ALTER TYPE public.payment_method ADD VALUE IF NOT EXISTS 'bank_transfer';
+
+-- 3. Ensure validate_coupon function exists
+CREATE OR REPLACE FUNCTION public.validate_coupon(
+  p_code text,
+  p_subtotal numeric
+)
+RETURNS numeric
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_coupon record;
+  v_discount numeric := 0.00;
+BEGIN
+  IF p_subtotal <= 0 OR p_code IS NULL OR trim(p_code) = '' THEN
+    RETURN 0.00;
+  END IF;
+
+  SELECT * INTO v_coupon
+  FROM public.coupons
+  WHERE code = upper(trim(p_code))
+    AND is_active = true
+    AND (expires_at IS NULL OR expires_at > now());
+
+  IF NOT FOUND THEN
+    RETURN 0.00;
+  END IF;
+
+  IF p_subtotal < v_coupon.min_spend THEN
+    RETURN 0.00;
+  END IF;
+
+  v_discount := ROUND((p_subtotal * (v_coupon.discount_percent / 100.0)), 2);
+
+  IF v_coupon.max_discount IS NOT NULL AND v_discount > v_coupon.max_discount THEN
+    v_discount := v_coupon.max_discount;
+  END IF;
+
+  RETURN v_discount;
+END;
+$$;
+
+-- 4. Create or Replace create_order_secure
 CREATE OR REPLACE FUNCTION public.create_order_secure(
   p_shipping_name text,
   p_shipping_phone text,
@@ -204,8 +265,9 @@ BEGIN
 END;
 $$;
 
--- 3. Grant execute permissions to PostgREST roles
+-- 5. Grant execute permissions to PostgREST roles
+GRANT EXECUTE ON FUNCTION public.validate_coupon(text, numeric) TO authenticated, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.create_order_secure(text, text, text, text, text, text, text, jsonb, text) TO authenticated, anon, service_role;
 
--- 4. Reload PostgREST schema cache immediately
+-- 6. Reload PostgREST schema cache immediately
 NOTIFY pgrst, 'reload schema';
