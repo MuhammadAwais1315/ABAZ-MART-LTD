@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
-import { Database, OrderStatus } from "../types/database"
+import { Database, OrderStatus, PaymentMethod } from "../types/database"
 import { products } from "../data/products"
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"]
@@ -28,6 +28,7 @@ export interface CustomerOrder {
   tax: number
   discount: number
   total: number
+  paymentMethod?: PaymentMethod
   items: CustomerOrderItem[]
   shippingAddress: {
     name: string
@@ -114,6 +115,7 @@ export async function getCustomerOrders(
         tax: Number(o.tax),
         discount: Number(o.discount),
         total: Number(o.total),
+        paymentMethod: (o.payment_method as PaymentMethod) || "card",
         items,
         shippingAddress: {
           name: o.shipping_name,

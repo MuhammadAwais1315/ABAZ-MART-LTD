@@ -8,6 +8,7 @@ import {
   MapPin,
   Package,
   Plus,
+  Printer,
   ShoppingBag,
   Trash2,
   Upload,
@@ -17,6 +18,8 @@ import { useStore } from "../context/StoreContext"
 import { useAuth } from "../context/AuthContext"
 import { products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
+import { OrderReceipt } from "../components/checkout/OrderReceipt"
+import { PaymentMethod } from "../types/database"
 import {
   getCustomerOrders,
   cancelOrder,
@@ -48,6 +51,7 @@ export default function Account() {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<CustomerOrder | null>(null)
+  const [receiptModalOrder, setReceiptModalOrder] = useState<CustomerOrder | null>(null)
   const [avatar, setAvatar] = useState(
     authProfile?.avatar_url ||
       (user?.user_metadata?.avatar_url as string) ||
@@ -697,12 +701,20 @@ export default function Account() {
               })}
             </div>
 
-            {/* Order cancellation action for Pending orders */}
-            {selectedOrder.status === "Pending" && (
-              <div className="mt-4 pt-3 border-t border-border/40 flex justify-end">
+            {/* Modal actions: Print Receipt & Cancel Order */}
+            <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between flex-wrap gap-2">
+              <Button
+                variant="outline"
+                className="text-xs py-1 px-3 gap-1.5"
+                onClick={() => setReceiptModalOrder(selectedOrder)}
+              >
+                <Printer className="w-3.5 h-3.5" /> Print Tax Receipt / Invoice
+              </Button>
+
+              {selectedOrder.status === "Pending" && (
                 <Button
                   variant="outline"
-                  className="text-rose-600 hover:text-rose-700 hover:border-rose-300"
+                  className="text-xs py-1 px-3 text-rose-600 hover:text-rose-700 hover:border-rose-300"
                   disabled={cancellingOrderId === selectedOrder.id}
                   onClick={async () => {
                     if (
@@ -733,11 +745,66 @@ export default function Account() {
                     ? "Cancelling..."
                     : "Cancel Order"}
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </Modal>
+
+      {/* Printable Receipt / Tax Invoice Modal */}
+      {receiptModalOrder && (
+        <Modal
+          open={Boolean(receiptModalOrder)}
+          title={`Tax Invoice #${receiptModalOrder.number}`}
+          onClose={() => setReceiptModalOrder(null)}
+        >
+          <div className="max-h-[80vh] overflow-y-auto pr-1">
+            <OrderReceipt
+              order={{
+                order_id: receiptModalOrder.id,
+                order_number: receiptModalOrder.number,
+                subtotal: receiptModalOrder.subtotal ?? receiptModalOrder.total,
+                shipping: receiptModalOrder.shipping ?? 0,
+                tax: receiptModalOrder.tax ?? 0,
+                discount: receiptModalOrder.discount ?? 0,
+                total: receiptModalOrder.total,
+                estimated_delivery:
+                  receiptModalOrder.status === "Delivered"
+                    ? "Delivered"
+                    : "Within 5 business days",
+              }}
+              items={receiptModalOrder.items.map((it) => ({
+                id: it.id,
+                name: it.name,
+                brand: it.brand,
+                option: it.option,
+                price: it.unitPrice,
+                quantity: it.quantity,
+              }))}
+              customer={{
+                fullName:
+                  receiptModalOrder.shippingAddress?.name ||
+                  authProfile?.full_name ||
+                  profile.name ||
+                  "Customer",
+                phone:
+                  receiptModalOrder.shippingAddress?.phone ||
+                  profile.phone ||
+                  "",
+                address: receiptModalOrder.shippingAddress?.address || "",
+                city: receiptModalOrder.shippingAddress?.city || "",
+                postalCode:
+                  receiptModalOrder.shippingAddress?.postalCode || "",
+                country:
+                  receiptModalOrder.shippingAddress?.country || "United Kingdom",
+              }}
+              paymentMethod={
+                receiptModalOrder.paymentMethod || "card"
+              }
+            />
+          </div>
+        </Modal>
+      )}
       <Modal
         open={addressModalOpen}
         title={editingAddress === null ? "Add New Address" : "Edit Address"}

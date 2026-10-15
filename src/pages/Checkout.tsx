@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router"
-import { Check, ChevronDown, LockKeyhole, ShoppingBag, ArrowRight } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  LockKeyhole,
+  ShoppingBag,
+  ArrowRight,
+  Building2,
+  CreditCard,
+  Printer,
+  ShieldCheck,
+} from "lucide-react"
+import { Elements } from "@stripe/react-stripe-js"
 import { Breadcrumb, Button, Checkbox, Input, Select } from "../components/ui"
 import { CartItem, useStore } from "../context/StoreContext"
 import { useAuth } from "../context/AuthContext"
@@ -15,6 +26,12 @@ import {
   StoreSettings,
 } from "../services/checkout"
 import { PaymentMethod } from "../types/database"
+import { getStripe, isStripeConfigured } from "../lib/stripe"
+import {
+  EmbeddedStripeForm,
+  EmbeddedStripeFormRef,
+} from "../components/checkout/EmbeddedStripeForm"
+import { OrderReceipt } from "../components/checkout/OrderReceipt"
 
 export function CheckoutSummary({
   cart,
@@ -110,6 +127,12 @@ export default function Checkout() {
     cvv: "",
   })
 
+  // Stripe State
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null)
+  const [stripeLoading, setStripeLoading] = useState(false)
+  const stripeFormRef = useRef<EmbeddedStripeFormRef>(null)
+  const stripeConfigured = isStripeConfigured()
+
   useEffect(() => {
     getStoreSettings().then(setSettings)
     if (user) {
@@ -153,6 +176,57 @@ export default function Checkout() {
   const taxAmount = orderSubtotal * settings.taxRate
   const orderTotal = Math.max(0, orderSubtotal + shippingFee + taxAmount - couponDiscount)
 
+  // Initialize Stripe Payment Intent when on Payment step with card method
+  useEffect(() => {
+    let isMounted = true
+    async function initPaymentIntent() {
+      if (!stripeConfigured || paymentMethod !== "card" || orderTotal <= 0) return
+      if (stripeClientSecret) return
+
+      try {
+        setStripeLoading(true)
+        const res = await fetch("/api/create-payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: Math.round(orderTotal * 100),
+            currency: "gbp",
+            customerEmail: form.email,
+          }),
+        })
+
+        if (!res.ok) {
+          throw new Error(`API returned HTTP ${res.status}`)
+        }
+
+        const data = await res.json()
+        if (isMounted) {
+          if (data.clientSecret) {
+            setStripeClientSecret(data.clientSecret)
+          } else if (data.mockMode) {
+            console.info("Stripe backend in demo/mock mode:", data.message)
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.warn("Could not initialize Stripe PaymentIntent, using fallback:", err)
+        }
+      } finally {
+        if (isMounted) {
+          setStripeLoading(false)
+        }
+      }
+    }
+
+    if (step === 2) {
+      initPaymentIntent()
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [step, paymentMethod, orderTotal, stripeConfigured, form.email, stripeClientSecret])
+
   const setField = (name: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [name]: value }))
     setErrors((current) => {
@@ -184,6 +258,12 @@ export default function Checkout() {
       setErrors({})
       return true
     }
+    // If live Stripe is active, PaymentElement validates automatically on confirmation
+    if (stripeConfigured && stripeClientSecret) {
+      setErrors({})
+      return true
+    }
+    // Fallback/demo validation
     const next: Record<string, string> = {}
     if (form.cardNumber.replace(/\D/g, "").length < 15)
       next.cardNumber = "Enter a valid card number."
@@ -198,16 +278,36 @@ export default function Checkout() {
 
   const nextStep = () => {
     if (step === 1 && !validateShipping()) return
-    if (step === 2 && !validatePayment()) return
-    setStep((current) => Math.min(3, current + 1))
+    setStep((current) => Math.min(2, current + 1))
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return
+    if (!validatePayment()) return
+
     setSubmittingOrder(true)
     setOrderError(null)
 
+    // If live Stripe Card / Apple Pay / Google Pay is selected
+    if (paymentMethod === "card" && stripeConfigured && stripeClientSecret) {
+      if (!stripeFormRef.current) {
+        setSubmittingOrder(false)
+        setOrderError("Payment terminal is still initializing. Please wait a moment.")
+        return
+      }
+      const paymentResult = await stripeFormRef.current.submitPayment()
+      if (!paymentResult.success) {
+        setSubmittingOrder(false)
+        setOrderError(
+          paymentResult.error || "Payment was declined or cancelled. Please try again.",
+        )
+        notify(paymentResult.error || "Payment authorization failed")
+        return
+      }
+    }
+
+    // Atomically create the order in Supabase
     const res = await createOrderSecure({
       shippingName: form.fullName,
       shippingPhone: form.phone,
@@ -251,7 +351,11 @@ export default function Checkout() {
         })
       }
 
-      notify("Your order has been placed successfully")
+      notify(
+        paymentMethod === "bank_transfer"
+          ? "Order reserved! Please complete the bank transfer."
+          : "Your order has been placed successfully!",
+      )
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
     setSubmittingOrder(false)
@@ -280,65 +384,61 @@ export default function Checkout() {
     </div>
   )
 
-  if (complete) {
+  // Order Confirmation Screen with Official Printable Tax Invoice
+  if (complete && confirmedOrder) {
     return (
-      <div className="page shell confirmation-page">
-        <div className="success-card order-confirmation">
-          <span>
-            <Check />
-          </span>
-          <p className="eyebrow">Order confirmed</p>
-          <h1>Thank you, beautiful.</h1>
-          <p>
-            Your order has been placed and a confirmation is on its way to{" "}
+      <div className="page shell confirmation-page max-w-4xl mx-auto py-8">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-rose-100 text-rose-700 mb-3 shadow-sm">
+            <Check className="w-7 h-7" />
+          </div>
+          <p className="text-xs uppercase tracking-widest font-semibold text-rose-600 mb-1">
+            Order Confirmed
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground">
+            Thank you, beautiful.
+          </h1>
+          <p className="text-muted-foreground text-xs sm:text-sm max-w-md mx-auto mt-1">
+            Your order <strong>#{confirmedOrder.order_number}</strong> has been
+            placed. A full confirmation and receipt have been dispatched to{" "}
             <strong>{form.email}</strong>.
           </p>
-          <div className="confirmation-meta">
-            <div>
-              <span>Order number</span>
-              <strong>
-                {confirmedOrder?.order_number || "ABZ-CONFIRMED"}
-              </strong>
-            </div>
-            <div>
-              <span>Estimated delivery</span>
-              <strong>
-                {confirmedOrder?.estimated_delivery
-                  ? new Date(
-                      confirmedOrder.estimated_delivery,
-                    ).toLocaleDateString("en-GB", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "Within 5 business days"}
-              </strong>
-            </div>
-          </div>
-          <div className="confirmation-summary">
-            <h2>Order summary</h2>
-            {confirmedCart.map((item) => (
-              <div key={item.product.id}>
-                <img src={item.product.image} alt={item.product.name} />
-                <span>
-                  <strong>{item.product.name}</strong>
-                  <small>
-                    {item.option} · Qty {item.quantity}
-                  </small>
-                </span>
-                <b>{formatPrice(item.product.price * item.quantity)}</b>
-              </div>
-            ))}
-            <p>
-              Total{" "}
-              <strong>
-                {formatPrice(confirmedOrder?.total ?? orderTotal)}
-              </strong>
-            </p>
-          </div>
-          <Link to="/shop" className="btn btn-primary">
-            Continue Shopping <ArrowRight />
+        </div>
+
+        {/* Printable Official Receipt / Tax Invoice */}
+        <OrderReceipt
+          order={confirmedOrder}
+          items={confirmedCart.map((item) => ({
+            id: item.product.id,
+            name: item.product.name,
+            brand: item.product.brand,
+            option: item.option,
+            price: item.product.price,
+            quantity: item.quantity,
+          }))}
+          customer={{
+            fullName: form.fullName,
+            phone: form.phone,
+            address: form.address,
+            city: form.city,
+            postalCode: form.postalCode,
+            country: form.country,
+          }}
+          paymentMethod={paymentMethod}
+        />
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 print:hidden">
+          <Link to="/shop" className="btn btn-primary w-full sm:w-auto">
+            Continue Shopping <ArrowRight className="w-4 h-4 ml-1.5" />
           </Link>
+          {user && (
+            <Link
+              to="/account?tab=orders"
+              className="btn btn-outline w-full sm:w-auto"
+            >
+              View My Orders
+            </Link>
+          )}
         </div>
       </div>
     )
@@ -353,6 +453,7 @@ export default function Checkout() {
         <p className="eyebrow">Almost yours</p>
         <h1>Checkout</h1>
       </div>
+
       <Button
         variant="ghost"
         className="mobile-summary-toggle"
@@ -365,6 +466,7 @@ export default function Checkout() {
         <strong>{formatPrice(orderTotal)}</strong>
         <ChevronDown />
       </Button>
+
       {summaryOpen && (
         <div className="mobile-checkout-summary">
           <CheckoutSummary
@@ -374,25 +476,31 @@ export default function Checkout() {
           />
         </div>
       )}
+
       <div
         className="checkout-progress"
-        aria-label={`Checkout step ${step} of 3`}
+        aria-label={`Checkout step ${step} of 2`}
+        style={{ gridTemplateColumns: "repeat(2, 1fr)" }}
       >
-        {["Shipping", "Payment", "Review"].map((label, index) => (
-          <div className={step >= index + 1 ? "is-active" : ""} key={label}>
-            <span>{step > index + 1 ? <Check /> : index + 1}</span>
-            <strong>{label}</strong>
+        {[
+          { num: 1, label: "Shipping Information" },
+          { num: 2, label: "Payment & Confirmation" },
+        ].map((item) => (
+          <div className={step >= item.num ? "is-active" : ""} key={item.num}>
+            <span>{step > item.num ? <Check /> : item.num}</span>
+            <strong>{item.label}</strong>
           </div>
         ))}
       </div>
+
       <div className="checkout-layout">
         <div className="checkout-step-card">
           {step === 1 && (
             <>
               <div className="step-heading">
-                <p className="eyebrow">Step 1 of 3</p>
+                <p className="eyebrow">Step 1 of 2</p>
                 <h2>Shipping information</h2>
-                <p>Where should we send your beauty essentials?</p>
+                <p>Where should we deliver your luxury beauty essentials?</p>
               </div>
               <div className="form-grid checkout-fields">
                 {checkoutField("fullName", "Full name", {
@@ -408,7 +516,7 @@ export default function Checkout() {
                   placeholder: "+44 20 7946 0958",
                 })}
                 {checkoutField("address", "Street address", {
-                  placeholder: "123 Rose Street",
+                  placeholder: "123 Rose Street, Apt 4B",
                   className: "full",
                 })}
                 {checkoutField("city", "City", { placeholder: "London" })}
@@ -440,20 +548,46 @@ export default function Checkout() {
                 </div>
               </div>
               <Checkbox
-                label="Save this address for next time"
+                label="Save this delivery address for next time"
                 checked={saveAddress}
                 onChange={(event) => setSaveAddress(event.target.checked)}
               />
             </>
           )}
+
           {step === 2 && (
             <>
               <div className="step-heading">
-                <p className="eyebrow">Step 2 of 3</p>
-                <h2>Payment method</h2>
-                <p>Choose how you’d like to pay securely.</p>
+                <p className="eyebrow">Step 2 of 2</p>
+                <h2>Payment & Review</h2>
+                <p>Choose your payment method and confirm your order.</p>
               </div>
+
+              {/* Shipping Destination Summary Recap */}
+              <div className="p-3.5 mb-6 bg-rose-50/60 rounded-xl border border-rose-100 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block mb-0.5">
+                    Delivering To:
+                  </span>
+                  <strong className="text-foreground">{form.fullName}</strong>
+                  <div className="text-muted-foreground">
+                    {form.address}, {form.city}, {form.postalCode} ({form.country})
+                  </div>
+                  <div className="text-muted-foreground text-[11px] mt-0.5">
+                    {form.email} · {form.phone}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep(1)}
+                  className="text-xs py-1 px-2.5 text-rose-700 hover:text-rose-800"
+                >
+                  Change
+                </Button>
+              </div>
+
               <div className="payment-options">
+                {/* 1. Credit / Debit Card & Apple Pay / Google Pay via Stripe */}
                 <label className={paymentMethod === "card" ? "is-active" : ""}>
                   <input
                     type="radio"
@@ -461,29 +595,142 @@ export default function Checkout() {
                     checked={paymentMethod === "card"}
                     onChange={() => setPaymentMethod("card")}
                   />
-                  <span>
-                    <strong>Credit / Debit Card</strong>
-                    <small>Visa, Mastercard, American Express</small>
+                  <span className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <strong>Credit / Debit Card</strong>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-800">
+                        Apple Pay
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-800">
+                        Google Pay
+                      </span>
+                    </div>
+                    <small>
+                      Visa, Mastercard, Amex, Apple Pay & Google Pay via encrypted Stripe checkout
+                    </small>
                   </span>
                 </label>
+
                 {paymentMethod === "card" && (
-                  <div className="card-fields">
-                    {checkoutField("cardNumber", "Card number", {
-                      placeholder: "1234 5678 9012 3456",
-                      className: "full",
-                    })}
-                    {checkoutField("cardName", "Name on card", {
-                      placeholder: "Amara Williams",
-                      className: "full",
-                    })}
-                    {checkoutField("expiry", "Expiry", {
-                      placeholder: "MM / YY",
-                    })}
-                    {checkoutField("cvv", "CVV", {
-                      placeholder: "123",
-                    })}
+                  <div className="p-4 bg-white rounded-xl border border-border shadow-sm">
+                    {stripeConfigured && stripeClientSecret ? (
+                      <Elements
+                        stripe={getStripe()}
+                        options={{
+                          clientSecret: stripeClientSecret,
+                          appearance: {
+                            theme: "stripe",
+                            variables: {
+                              colorPrimary: "#b83b5e",
+                              colorBackground: "#ffffff",
+                              colorText: "#2b2024",
+                              colorDanger: "#d64545",
+                              fontFamily: "'Inter', sans-serif",
+                              borderRadius: "10px",
+                            },
+                          },
+                        }}
+                      >
+                        <EmbeddedStripeForm ref={stripeFormRef} />
+                      </Elements>
+                    ) : stripeConfigured && stripeLoading ? (
+                      <div className="py-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                        <span>Initializing secure payment terminal...</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="p-3 mb-3 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <span>
+                            <strong>Demo Mode:</strong> Live embedded Card & Apple/Google Pay will activate when Stripe API keys are configured in Vercel. You can test checkout with any sample card.
+                          </span>
+                        </div>
+                        <div className="card-fields">
+                          {checkoutField("cardNumber", "Card number", {
+                            placeholder: "1234 5678 9012 3456",
+                            className: "full",
+                          })}
+                          {checkoutField("cardName", "Name on card", {
+                            placeholder: "Amara Williams",
+                            className: "full",
+                          })}
+                          {checkoutField("expiry", "Expiry", {
+                            placeholder: "MM / YY",
+                          })}
+                          {checkoutField("cvv", "CVV", {
+                            placeholder: "123",
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* 2. Direct Bank Transfer (BACS / Faster Payments) */}
+                <label
+                  className={paymentMethod === "bank_transfer" ? "is-active" : ""}
+                >
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={paymentMethod === "bank_transfer"}
+                    onChange={() => setPaymentMethod("bank_transfer")}
+                  />
+                  <span className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <strong>Direct Bank Transfer</strong>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">
+                        BACS / Faster Payments
+                      </span>
+                    </div>
+                    <small>
+                      Transfer directly to our UK Barclays business bank account
+                    </small>
+                  </span>
+                </label>
+
+                {paymentMethod === "bank_transfer" && (
+                  <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs space-y-3">
+                    <div className="flex items-center gap-2 font-bold text-amber-950">
+                      <Building2 className="w-4 h-4 text-amber-700" />
+                      <span>Official UK Business Bank Details</span>
+                    </div>
+                    <p className="text-amber-900/90 leading-relaxed">
+                      Please send payment to our official Barclays business account. An official printable invoice with your order reference will be generated immediately upon confirming your order.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white p-3 rounded-lg border border-amber-200 text-xs font-mono">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          Bank
+                        </span>
+                        <strong className="text-foreground">Barclays UK</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          Sort Code
+                        </span>
+                        <strong className="text-foreground">20-00-00</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          Account No
+                        </span>
+                        <strong className="text-foreground">83920184</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          Account Name
+                        </span>
+                        <strong className="text-foreground font-sans">
+                          Abaz Mart Ltd
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Cash on Delivery */}
                 <label className={paymentMethod === "cod" ? "is-active" : ""}>
                   <input
                     type="radio"
@@ -491,89 +738,25 @@ export default function Checkout() {
                     checked={paymentMethod === "cod"}
                     onChange={() => setPaymentMethod("cod")}
                   />
-                  <span>
+                  <span className="flex-1">
                     <strong>Cash on Delivery</strong>
-                    <small>Pay when your order arrives</small>
+                    <small>Pay with cash or card upon delivery to your doorstep</small>
                   </span>
                 </label>
-                <label
-                  className={paymentMethod === "paypal" ? "is-active" : ""}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    checked={paymentMethod === "paypal"}
-                    onChange={() => setPaymentMethod("paypal")}
-                  />
-                  <span>
-                    <strong>PayPal</strong>
-                    <small>Continue securely with your PayPal account</small>
-                  </span>
-                </label>
+
+                {paymentMethod === "cod" && (
+                  <div className="p-4 bg-muted/30 border border-border rounded-xl text-xs text-muted-foreground">
+                    Pay when your parcel arrives. Our courier accepts exact cash or contactless debit/credit card.
+                  </div>
+                )}
               </div>
-              <p className="secure-note">
-                <LockKeyhole /> Payments are encrypted and securely processed.
+
+              <p className="secure-note mt-4">
+                <LockKeyhole /> 256-bit bank-grade encryption protects your payment information.
               </p>
             </>
           )}
-          {step === 3 && (
-            <>
-              <div className="step-heading">
-                <p className="eyebrow">Step 3 of 3</p>
-                <h2>Review your order</h2>
-                <p>Take one last look before placing your order.</p>
-              </div>
-              <div className="review-sections">
-                <section>
-                  <div>
-                    <h3>Shipping details</h3>
-                    <Button variant="ghost" onClick={() => setStep(1)}>
-                      Edit
-                    </Button>
-                  </div>
-                  <p>
-                    <strong>{form.fullName}</strong>
-                    <br />
-                    {form.address}, {form.city}, {form.postalCode}
-                    <br />
-                    {form.country}
-                    <br />
-                    {form.email} · {form.phone}
-                  </p>
-                </section>
-                <section>
-                  <div>
-                    <h3>Payment method</h3>
-                    <Button variant="ghost" onClick={() => setStep(2)}>
-                      Edit
-                    </Button>
-                  </div>
-                  <p>
-                    {paymentMethod === "card"
-                      ? `Credit / Debit Card ending in ${form.cardNumber.replace(/\s/g, "").slice(-4)}`
-                      : paymentMethod === "cod"
-                        ? "Cash on Delivery"
-                        : "PayPal"}
-                  </p>
-                </section>
-                <section className="review-order-items">
-                  <h3>Items</h3>
-                  {cart.map((item) => (
-                    <div key={item.product.id}>
-                      <img src={item.product.image} alt={item.product.name} />
-                      <span>
-                        <strong>{item.product.name}</strong>
-                        <small>
-                          {item.option} · Qty {item.quantity}
-                        </small>
-                      </span>
-                      <b>{formatPrice(item.product.price * item.quantity)}</b>
-                    </div>
-                  ))}
-                </section>
-              </div>
-            </>
-          )}
+
           <div className="checkout-actions">
             {step > 1 && (
               <Button
@@ -584,12 +767,19 @@ export default function Checkout() {
                 Back
               </Button>
             )}
-            {step < 3 ? (
+            {step === 1 ? (
               <Button onClick={nextStep}>
-                Continue to {step === 1 ? "Payment" : "Review"} <ArrowRight />
+                Continue to Payment <ArrowRight />
               </Button>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  width: "100%",
+                }}
+              >
                 {orderError && (
                   <div
                     style={{
@@ -607,15 +797,26 @@ export default function Checkout() {
                 )}
                 <Button
                   onClick={handlePlaceOrder}
-                  disabled={cart.length === 0 || submittingOrder}
+                  disabled={
+                    cart.length === 0 ||
+                    submittingOrder ||
+                    (stripeLoading && paymentMethod === "card")
+                  }
                 >
                   <LockKeyhole />{" "}
-                  {submittingOrder ? "Placing Order..." : "Place Order"}
+                  {submittingOrder
+                    ? "Securing Your Order..."
+                    : paymentMethod === "card"
+                      ? `Pay ${formatPrice(orderTotal)} Securely`
+                      : paymentMethod === "bank_transfer"
+                        ? `Place Order & View Bank Receipt (${formatPrice(orderTotal)})`
+                        : `Place Order (${formatPrice(orderTotal)})`}
                 </Button>
               </div>
             )}
           </div>
         </div>
+
         <aside className="checkout-summary">
           <h2>Order summary</h2>
           <CheckoutSummary

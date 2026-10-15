@@ -13,7 +13,7 @@ export type OrderStatus =
   | "Shipped"
   | "Delivered"
   | "Cancelled"
-export type PaymentMethod = "card" | "cod" | "paypal"
+export type PaymentMethod = "card" | "cod" | "paypal" | "bank_transfer"
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded"
 
 export interface Database {
