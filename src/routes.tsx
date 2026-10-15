@@ -15,7 +15,9 @@ import AdminDashboard from "./pages/admin/AdminDashboard"
 import AdminProducts from "./pages/admin/AdminProducts"
 import AdminProductForm from "./pages/admin/AdminProductForm"
 import AdminOrders from "./pages/admin/AdminOrders"
-import AdminPlaceholder from "./pages/admin/AdminPlaceholder"
+import AdminCategories from "./pages/admin/AdminCategories"
+import AdminCustomers from "./pages/admin/AdminCustomers"
+import AdminSettings from "./pages/admin/AdminSettings"
 
 export const router = createBrowserRouter([
   {
@@ -63,20 +65,10 @@ export const router = createBrowserRouter([
       { path: "products", Component: AdminProducts },
       { path: "products/new", Component: AdminProductForm },
       { path: "orders", Component: AdminOrders },
-      {
-        path: "categories",
-        Component: () => <AdminPlaceholder title="Categories" />,
-      },
-      {
-        path: "customers",
-        Component: () => <AdminPlaceholder title="Customers" />,
-      },
-      {
-        path: "settings",
-        Component: () => <AdminPlaceholder title="Settings" />,
-      },
+      { path: "categories", Component: AdminCategories },
+      { path: "customers", Component: AdminCustomers },
+      { path: "settings", Component: AdminSettings },
       { path: "*", Component: NotFound },
     ],
   },
 ])
-

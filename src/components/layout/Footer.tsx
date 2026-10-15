@@ -1,8 +1,29 @@
+import { useState } from "react"
 import { ArrowRight, Camera, UsersRound } from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "../ui"
+import { subscribeNewsletter } from "../../services/admin"
 
 export default function Footer({ notify }: { notify: (message: string) => void }) {
+  const [email, setEmail] = useState("")
+  const [subscribing, setSubscribing] = useState(false)
+
+  const handleSubscribe = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!email.trim() || subscribing) return
+
+    setSubscribing(true)
+    const { success, error } = await subscribeNewsletter(email.trim())
+    setSubscribing(false)
+
+    if (error) {
+      notify(error.message)
+    } else if (success) {
+      setEmail("")
+      notify("Welcome! You have been subscribed to the Abaz Mart newsletter.")
+    }
+  }
+
   return (
     <footer className="footer">
       <div className="shell footer-grid">
@@ -52,19 +73,16 @@ export default function Footer({ notify }: { notify: (message: string) => void }
         <div>
           <h3>A little beauty in your inbox</h3>
           <p>Receive new arrivals, rituals, and special offers.</p>
-          <form
-            className="newsletter"
-            onSubmit={(event) => {
-              event.preventDefault()
-              notify("Welcome to the Abaz Mart newsletter")
-            }}
-          >
+          <form className="newsletter" onSubmit={handleSubscribe}>
             <input
               type="email"
               placeholder="Email address"
               aria-label="Newsletter email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
-            <Button aria-label="Subscribe">
+            <Button aria-label="Subscribe" disabled={subscribing}>
               <ArrowRight />
             </Button>
           </form>
