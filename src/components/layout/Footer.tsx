@@ -63,9 +63,9 @@ export default function Footer({ notify }: { notify: (message: string) => void }
         </div>
         <div>
           <h3>Customer care</h3>
-          <a href="mailto:care@abazmart.com">Contact us</a>
+          <a href="mailto:care@abazmart.co.uk">Contact us</a>
           <Link to="/shop">Shipping & returns</Link>
-          <a href="mailto:care@abazmart.com?subject=Abaz%20Mart%20Question">
+          <a href="mailto:care@abazmart.co.uk?subject=Abaz%20Mart%20Question">
             FAQs
           </a>
           <Link to="/account">My account</Link>

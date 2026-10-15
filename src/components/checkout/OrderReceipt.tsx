@@ -149,7 +149,7 @@ export function OrderReceipt({
               Registered in England & Wales · Company No. 14920841
             </p>
             <p className="text-xs text-muted-foreground">
-              care@abazmart.com · +44 20 7946 0958
+              care@abazmart.co.uk · +44 20 7946 0958
             </p>
           </div>
 
@@ -299,7 +299,7 @@ export function OrderReceipt({
 
         {/* Footer Guarantee */}
         <div className="border-t border-border mt-8 pt-4 text-center text-[11px] text-muted-foreground">
-          Thank you for choosing Abaz Mart · 30-Day Happiness Guarantee · Questions? Email care@abazmart.com
+          Thank you for choosing Abaz Mart · 30-Day Happiness Guarantee · Questions? Email care@abazmart.co.uk
         </div>
       </div>
     </div>

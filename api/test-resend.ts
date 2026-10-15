@@ -1,12 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node"
-import { getResendClient, getSenderEmail } from "./lib/resend"
-import {
-  generateOrderConfirmationHtml,
-  generateOrderConfirmationText,
-} from "./templates/orderConfirmationTemplate"
+import { Resend } from "resend"
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS configuration
   res.setHeader("Access-Control-Allow-Credentials", "true")
   res.setHeader("Access-Control-Allow-Origin", "*")
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
@@ -20,18 +15,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const resend = getResendClient()
-  if (!resend) {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey || apiKey.trim() === "" || apiKey.includes("placeholder") || apiKey.includes("your_")) {
     res.status(200).json({
       success: false,
       configured: false,
       message:
-        "RESEND_API_KEY is missing or empty. Please set RESEND_API_KEY in your Vercel project environment variables.",
+        "RESEND_API_KEY is not configured yet in your Vercel project Environment Variables.",
     })
     return
   }
 
-  // Get recipient email from query or body
   let recipient = ""
   if (req.method === "GET") {
     recipient = (req.query.to as string) || (req.query.email as string) || ""
@@ -45,61 +39,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: false,
       configured: true,
       error:
-        "Please provide a valid recipient email address. (e.g. POST { 'to': 'your-email@example.com' } or GET ?to=your-email@example.com)",
+        "Please provide a recipient email. Example: /api/test-resend?to=your-email@example.com",
     })
     return
   }
 
   try {
-    const fromAddress = getSenderEmail()
-    const testOrderNumber = `ABZ-TEST-${Math.floor(100000 + Math.random() * 900000)}`
+    const resend = new Resend(apiKey.trim())
+    const fromAddress =
+      process.env.RESEND_FROM_EMAIL?.trim() || "Abaz Mart <orders@abazmart.co.uk>"
 
-    const sampleData = {
-      order: {
-        order_number: testOrderNumber,
-        subtotal: 62.0,
-        shipping: 0,
-        discount: 10.0,
-        total: 52.0,
-        estimated_delivery: "Within 2-3 business days",
-      },
-      customer: {
-        fullName: "Test Customer",
-        email: recipient.trim(),
-        phone: "+44 20 7946 0958",
-        address: "74 High Street",
-        city: "London",
-        postalCode: "W1D 3QU",
-        country: "United Kingdom",
-      },
-      items: [
-        {
-          name: "Hydrating Vitamin C Serum",
-          brand: "Luméra",
-          option: "30ml Full Size",
-          price: 38.0,
-          quantity: 1,
-        },
-        {
-          name: "Cloud Cream Gentle Cleanser",
-          brand: "Eira Skin",
-          option: "50ml",
-          price: 24.0,
-          quantity: 1,
-        },
-      ],
-      paymentMethod: "card" as const,
-    }
+    const testOrderNum = `ABZ-TEST-${Math.floor(100000 + Math.random() * 900000)}`
 
-    const html = generateOrderConfirmationHtml(sampleData)
-    const text = generateOrderConfirmationText(sampleData)
+    const html = `
+      <div style="font-family: Georgia, serif; max-width: 550px; margin: 0 auto; padding: 24px; border: 1px solid #eadfe2; border-radius: 12px; background: #fff;">
+        <div style="background: #4a1525; color: #fff; padding: 18px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0; font-size: 24px;">Abaz <i style="color: #f4b8c7;">Mart</i></h2>
+          <p style="margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px;">Test Receipt</p>
+        </div>
+        <div style="padding: 20px;">
+          <p style="font-size: 14px; color: #2b2024;">Hello,</p>
+          <p style="font-size: 13px; color: #6b5b61; line-height: 1.5;">
+            Your Resend API connection is successfully operational! This is a test receipt for order <strong>#${testOrderNum}</strong>.
+          </p>
+          <div style="margin: 20px 0; padding: 14px; background: #faf6f7; border-radius: 8px; font-size: 12px;">
+            <div><strong>From:</strong> ${fromAddress}</div>
+            <div style="margin-top: 4px;"><strong>To:</strong> ${recipient}</div>
+            <div style="margin-top: 4px;"><strong>Status:</strong> Connected &amp; Verified</div>
+          </div>
+          <p style="font-size: 12px; color: #7a686f;">
+            Thank you for configuring Abaz Mart · <a href="https://www.abazmart.co.uk" style="color: #b83b5e;">www.abazmart.co.uk</a>
+          </p>
+        </div>
+      </div>
+    `
 
     const { data, error } = await resend.emails.send({
       from: fromAddress,
       to: [recipient.trim()],
-      subject: `[Test] Official Receipt #${testOrderNumber} · Abaz Mart`,
+      subject: `[Test] Official Receipt #${testOrderNum} · Abaz Mart`,
       html,
-      text,
+      text: `Abaz Mart Test Receipt for order #${testOrderNum}. Resend API is active.`,
     })
 
     if (error) {
@@ -109,8 +89,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         from: fromAddress,
         to: recipient.trim(),
         error: error.message,
-        tip:
-          "If using the free sandbox 'onboarding@resend.dev', you can only send emails to the email address registered on your Resend account. To send to any customer email, verify your domain in resend.com/domains.",
       })
       return
     }
@@ -118,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({
       success: true,
       configured: true,
-      message: `Test order receipt sent successfully to ${recipient.trim()}!`,
+      message: `Test email sent to ${recipient.trim()}`,
       emailId: data?.id,
       from: fromAddress,
       to: recipient.trim(),

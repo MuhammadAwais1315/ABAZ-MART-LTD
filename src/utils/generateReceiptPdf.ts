@@ -62,7 +62,7 @@ export function downloadReceiptPdf({
   doc.setTextColor(...mutedColor)
   doc.text("Abaz Mart Ltd · Luxury Skincare & Beauty", 15, 26)
   doc.text("Registered in England & Wales · Company No. 14920841", 15, 30.5)
-  doc.text("care@abazmart.com · +44 20 7946 0958", 15, 35)
+  doc.text("care@abazmart.co.uk · +44 20 7946 0958", 15, 35)
 
   // 3. Header: Receipt Badge & Details (Right Aligned)
   doc.setFillColor(254, 242, 245)
@@ -281,7 +281,7 @@ export function downloadReceiptPdf({
     278,
     { align: "center" },
   )
-  doc.text("Questions regarding your order? Email care@abazmart.com", 105, 283, {
+  doc.text("Questions regarding your order? Email care@abazmart.co.uk", 105, 283, {
     align: "center",
   })
 
