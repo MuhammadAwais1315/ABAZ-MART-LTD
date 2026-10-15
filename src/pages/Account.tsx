@@ -17,45 +17,16 @@ import { useStore } from "../context/StoreContext"
 import { useAuth } from "../context/AuthContext"
 import { products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
-
-const accountOrders = [
-  {
-    number: "ABZ-10842",
-    date: "February 18, 2026",
-    total: 126.4,
-    status: "Delivered",
-    items: [products[0], products[4]],
-  },
-  {
-    number: "ABZ-10796",
-    date: "February 2, 2026",
-    total: 74,
-    status: "Shipped",
-    items: [products[15]],
-  },
-  {
-    number: "ABZ-10751",
-    date: "January 21, 2026",
-    total: 58.75,
-    status: "Pending",
-    items: [products[8], products[19]],
-  },
-  {
-    number: "ABZ-10688",
-    date: "December 28, 2025",
-    total: 39,
-    status: "Cancelled",
-    items: [products[21]],
-  },
-] as const
-
-type SavedAddress = {
-  id: number
-  label: string
-  name: string
-  line: string
-  city: string
-}
+import {
+  getCustomerOrders,
+  cancelOrder,
+  getCustomerAddresses,
+  addCustomerAddress,
+  updateCustomerAddress,
+  deleteCustomerAddress,
+  CustomerOrder,
+  AddressItem,
+} from "../services/account"
 
 export default function Account() {
   const { wishlist, toggleWishlist, addToCart, notify } = useStore()
@@ -73,8 +44,10 @@ export default function Account() {
   const [section, setSection] = useState(
     accountTab === "wishlist" ? "Wishlist" : "Profile",
   )
-  const [selectedOrder, setSelectedOrder] =
-    useState<typeof accountOrders[number] | null>(null)
+  const [orders, setOrders] = useState<CustomerOrder[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<CustomerOrder | null>(null)
   const [avatar, setAvatar] = useState(
     authProfile?.avatar_url ||
       (user?.user_metadata?.avatar_url as string) ||
@@ -121,30 +94,50 @@ export default function Account() {
       }
     }
   }, [authProfile, user])
-  const [addresses, setAddresses] = useState<SavedAddress[]>([
-    {
-      id: 1,
-      label: "Home",
-      name: "Amara Williams",
-      line: "123 Rose Street, Apt 4B",
-      city: "London, SW1A 1AA",
-    },
-    {
-      id: 2,
-      label: "Work",
-      name: "Amara Williams",
-      line: "88 Regent Street, Floor 4",
-      city: "London, W1B 5RS",
-    },
-  ])
+
+  const [addresses, setAddresses] = useState<AddressItem[]>([])
+  const [addressesLoading, setAddressesLoading] = useState(true)
   const [addressModalOpen, setAddressModalOpen] = useState(false)
   const [editingAddress, setEditingAddress] = useState<number | null>(null)
   const [addressForm, setAddressForm] = useState({
     label: "",
     name: "",
+    phone: "",
     line: "",
     city: "",
+    postalCode: "",
+    country: "United Kingdom",
   })
+
+  // Fetch orders and addresses for authenticated user
+  useEffect(() => {
+    let mounted = true
+    async function loadAccountData() {
+      if (!user?.id) {
+        setOrdersLoading(false)
+        setAddressesLoading(false)
+        return
+      }
+      setOrdersLoading(true)
+      setAddressesLoading(true)
+
+      const [ordersRes, addressesRes] = await Promise.all([
+        getCustomerOrders(user.id),
+        getCustomerAddresses(user.id),
+      ])
+
+      if (mounted) {
+        setOrders(ordersRes.data)
+        setOrdersLoading(false)
+        setAddresses(addressesRes.data)
+        setAddressesLoading(false)
+      }
+    }
+    loadAccountData()
+    return () => {
+      mounted = false
+    }
+  }, [user?.id])
 
   const wishlistProducts = products.filter((product) =>
     wishlist.includes(product.id),
@@ -161,32 +154,60 @@ export default function Account() {
     setSection(accountTab === "wishlist" ? "Wishlist" : "Profile")
   }, [accountTab])
 
-  const openAddressModal = (address?: SavedAddress) => {
+  const openAddressModal = (address?: AddressItem) => {
     if (address) {
       setEditingAddress(address.id)
       setAddressForm({
         label: address.label,
         name: address.name,
+        phone: address.phone || "",
         line: address.line,
         city: address.city,
+        postalCode: address.postalCode,
+        country: address.country || "United Kingdom",
       })
     } else {
       setEditingAddress(null)
-      setAddressForm({ label: "", name: "", line: "", city: "" })
+      setAddressForm({
+        label: "",
+        name: profile.name || "",
+        phone: profile.phone || "",
+        line: "",
+        city: "",
+        postalCode: "",
+        country: "United Kingdom",
+      })
     }
     setAddressModalOpen(true)
   }
 
-  const saveAddress = (event: FormEvent) => {
+  const saveAddress = async (event: FormEvent) => {
     event.preventDefault()
     if (
       !addressForm.label.trim() ||
       !addressForm.name.trim() ||
       !addressForm.line.trim() ||
-      !addressForm.city.trim()
-    )
+      !addressForm.city.trim() ||
+      !addressForm.postalCode.trim()
+    ) {
+      notify("Please fill in all required address fields")
       return
+    }
+
     if (editingAddress !== null) {
+      const { error } = await updateCustomerAddress(editingAddress, {
+        label: addressForm.label,
+        name: addressForm.name,
+        phone: addressForm.phone,
+        line: addressForm.line,
+        city: addressForm.city,
+        postalCode: addressForm.postalCode,
+        country: addressForm.country,
+      })
+      if (error) {
+        notify(error.message)
+        return
+      }
       setAddresses((current) =>
         current.map((address) =>
           address.id === editingAddress
@@ -194,18 +215,38 @@ export default function Account() {
             : address,
         ),
       )
-    } else {
-      setAddresses((current) => [
-        ...current,
-        { id: Date.now(), ...addressForm },
-      ])
+      notify("Address updated successfully")
+    } else if (user) {
+      const { data, error } = await addCustomerAddress(user.id, {
+        label: addressForm.label,
+        name: addressForm.name,
+        phone: addressForm.phone,
+        line: addressForm.line,
+        city: addressForm.city,
+        postalCode: addressForm.postalCode,
+        country: addressForm.country,
+        isDefault: addresses.length === 0,
+      })
+      if (error) {
+        notify(error.message)
+        return
+      }
+      if (data) {
+        setAddresses((current) => [...current, data])
+      }
+      notify("New address added successfully")
     }
     setAddressModalOpen(false)
-    notify(
-      editingAddress === null
-        ? "New address added successfully"
-        : "Address updated successfully",
-    )
+  }
+
+  const handleDeleteAddress = async (id: number) => {
+    const { error } = await deleteCustomerAddress(id)
+    if (error) {
+      notify(error.message)
+      return
+    }
+    setAddresses((current) => current.filter((item) => item.id !== id))
+    notify("Address removed")
   }
 
   return (
@@ -392,30 +433,43 @@ export default function Account() {
                   <span>Status</span>
                   <span />
                 </div>
-                {accountOrders.map((order) => (
-                  <article key={order.number}>
-                    <strong>{order.number}</strong>
-                    <span>{order.date}</span>
-                    <span>{formatPrice(order.total)}</span>
-                    <Badge
-                      tone={
-                        order.status === "Delivered"
-                          ? "green"
-                          : order.status === "Pending"
-                            ? "gold"
-                            : "rose"
-                      }
-                    >
-                      {order.status}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      View Details
-                    </Button>
-                  </article>
-                ))}
+                {ordersLoading ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    Loading your orders...
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p className="mb-3">You have not placed any orders yet.</p>
+                    <Link to="/shop" className="btn btn-outline btn-sm">
+                      Start Shopping
+                    </Link>
+                  </div>
+                ) : (
+                  orders.map((order) => (
+                    <article key={order.id}>
+                      <strong>{order.number}</strong>
+                      <span>{order.date}</span>
+                      <span>{formatPrice(order.total)}</span>
+                      <Badge
+                        tone={
+                          order.status === "Delivered"
+                            ? "green"
+                            : order.status === "Pending"
+                              ? "gold"
+                              : "rose"
+                        }
+                      >
+                        {order.status}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedOrder(order)}
+                      >
+                        View Details
+                      </Button>
+                    </article>
+                  ))
+                )}
               </div>
             </section>
           )}
@@ -432,43 +486,59 @@ export default function Account() {
                 </Button>
               </div>
               <div className="address-grid">
-                {addresses.map((address, index) => (
-                  <article key={address.id}>
-                    <div>
-                      <MapPin />
-                      <Badge tone={index === 0 ? "rose" : "gold"}>
-                        {index === 0 ? "Default" : address.label}
-                      </Badge>
-                    </div>
-                    <h3>{address.label}</h3>
-                    <p>
-                      <strong>{address.name}</strong>
-                      <br />
-                      {address.line}
-                      <br />
-                      {address.city}
-                    </p>
-                    <div>
-                      <Button
-                        variant="outline"
-                        onClick={() => openAddressModal(address)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setAddresses((current) =>
-                            current.filter((item) => item.id !== address.id),
-                          )
-                          notify("Address removed")
-                        }}
-                      >
-                        <Trash2 /> Delete
-                      </Button>
-                    </div>
-                  </article>
-                ))}
+                {addressesLoading ? (
+                  <div className="p-8 text-center text-muted-foreground col-span-full">
+                    Loading saved addresses...
+                  </div>
+                ) : addresses.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground col-span-full">
+                    <p className="mb-3">You have no saved addresses yet.</p>
+                    <Button onClick={() => openAddressModal()}>
+                      <Plus /> Add an address
+                    </Button>
+                  </div>
+                ) : (
+                  addresses.map((address, index) => (
+                    <article key={address.id}>
+                      <div>
+                        <MapPin />
+                        <Badge tone={index === 0 || address.isDefault ? "rose" : "gold"}>
+                          {address.isDefault || index === 0 ? "Default" : address.label}
+                        </Badge>
+                      </div>
+                      <h3>{address.label}</h3>
+                      <p>
+                        <strong>{address.name}</strong>
+                        {address.phone && (
+                          <>
+                            <br />
+                            <small className="text-muted-foreground">{address.phone}</small>
+                          </>
+                        )}
+                        <br />
+                        {address.line}
+                        <br />
+                        {address.city}, {address.postalCode}
+                        <br />
+                        <small className="text-muted-foreground">{address.country}</small>
+                      </p>
+                      <div>
+                        <Button
+                          variant="outline"
+                          onClick={() => openAddressModal(address)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleDeleteAddress(address.id)}
+                        >
+                          <Trash2 /> Delete
+                        </Button>
+                      </div>
+                    </article>
+                  ))
+                )}
               </div>
             </section>
           )}
@@ -544,17 +614,62 @@ export default function Account() {
               </Badge>
             </div>
             <div className="order-detail-items">
-              {selectedOrder.items.map((product) => (
-                <div key={product.id}>
-                  <img src={product.image} alt={product.name} />
+              {selectedOrder.items.map((item) => (
+                <div key={item.id}>
+                  <img src={item.image} alt={item.name} />
                   <span>
-                    <strong>{product.name}</strong>
-                    <small>{product.options[0]}</small>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {item.brand ? `${item.brand} • ` : ""}
+                      {item.option}
+                      {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+                    </small>
                   </span>
-                  <b>{formatPrice(product.price)}</b>
+                  <b>{formatPrice(item.lineTotal || item.unitPrice * item.quantity)}</b>
                 </div>
               ))}
             </div>
+
+            {/* Order financial breakdown */}
+            <div className="border-t border-border/40 pt-3 mt-3 text-sm space-y-1.5 text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>{formatPrice(selectedOrder.subtotal)}</span>
+              </div>
+              {selectedOrder.discount > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>Discount:</span>
+                  <span>-{formatPrice(selectedOrder.discount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Shipping:</span>
+                <span>{selectedOrder.shipping === 0 ? "Free" : formatPrice(selectedOrder.shipping)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-foreground pt-1.5 border-t border-border/30">
+                <span>Total:</span>
+                <span>{formatPrice(selectedOrder.total)}</span>
+              </div>
+            </div>
+
+            {/* Delivery address info */}
+            {selectedOrder.shippingAddress?.address && (
+              <div className="mt-3 p-3 bg-muted/40 rounded-lg text-xs space-y-0.5">
+                <span className="font-semibold block text-foreground mb-1">Delivery Address:</span>
+                <div>{selectedOrder.shippingAddress.name}</div>
+                <div>
+                  {selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}{" "}
+                  {selectedOrder.shippingAddress.postalCode}
+                </div>
+                {selectedOrder.shippingAddress.country && (
+                  <div>{selectedOrder.shippingAddress.country}</div>
+                )}
+                {selectedOrder.shippingAddress.phone && (
+                  <div className="text-muted-foreground">Phone: {selectedOrder.shippingAddress.phone}</div>
+                )}
+              </div>
+            )}
+
             <div className="tracking-timeline">
               {[
                 "Order placed",
@@ -581,6 +696,45 @@ export default function Account() {
                 )
               })}
             </div>
+
+            {/* Order cancellation action for Pending orders */}
+            {selectedOrder.status === "Pending" && (
+              <div className="mt-4 pt-3 border-t border-border/40 flex justify-end">
+                <Button
+                  variant="outline"
+                  className="text-rose-600 hover:text-rose-700 hover:border-rose-300"
+                  disabled={cancellingOrderId === selectedOrder.id}
+                  onClick={async () => {
+                    if (
+                      window.confirm(
+                        "Are you sure you want to cancel this pending order? This will safely restock the reserved inventory.",
+                      )
+                    ) {
+                      setCancellingOrderId(selectedOrder.id)
+                      const { success, error } = await cancelOrder(selectedOrder.id)
+                      setCancellingOrderId(null)
+                      if (error) {
+                        notify(error.message)
+                      } else if (success) {
+                        notify("Order cancelled successfully")
+                        setSelectedOrder({ ...selectedOrder, status: "Cancelled" })
+                        setOrders((current) =>
+                          current.map((o) =>
+                            o.id === selectedOrder.id
+                              ? { ...o, status: "Cancelled" }
+                              : o,
+                          ),
+                        )
+                      }
+                    }
+                  }}
+                >
+                  {cancellingOrderId === selectedOrder.id
+                    ? "Cancelling..."
+                    : "Cancel Order"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -591,12 +745,13 @@ export default function Account() {
       >
         <form className="address-form" onSubmit={saveAddress}>
           <Input
-            label="Label"
-            placeholder="Home, Work..."
+            label="Label (e.g. Home, Work)"
+            placeholder="Home"
             value={addressForm.label}
             onChange={(event) =>
               setAddressForm({ ...addressForm, label: event.target.value })
             }
+            required
           />
           <Input
             label="Full name"
@@ -604,20 +759,52 @@ export default function Account() {
             onChange={(event) =>
               setAddressForm({ ...addressForm, name: event.target.value })
             }
+            required
+          />
+          <Input
+            label="Phone number"
+            type="tel"
+            value={addressForm.phone}
+            onChange={(event) =>
+              setAddressForm({ ...addressForm, phone: event.target.value })
+            }
           />
           <Input
             label="Street address"
+            placeholder="123 Rose Street, Apt 4B"
             value={addressForm.line}
             onChange={(event) =>
               setAddressForm({ ...addressForm, line: event.target.value })
             }
+            required
           />
+          <div className="form-grid">
+            <Input
+              label="City"
+              placeholder="London"
+              value={addressForm.city}
+              onChange={(event) =>
+                setAddressForm({ ...addressForm, city: event.target.value })
+              }
+              required
+            />
+            <Input
+              label="Postal code"
+              placeholder="SW1A 1AA"
+              value={addressForm.postalCode}
+              onChange={(event) =>
+                setAddressForm({ ...addressForm, postalCode: event.target.value })
+              }
+              required
+            />
+          </div>
           <Input
-            label="City, state, and postal code"
-            value={addressForm.city}
+            label="Country"
+            value={addressForm.country}
             onChange={(event) =>
-              setAddressForm({ ...addressForm, city: event.target.value })
+              setAddressForm({ ...addressForm, country: event.target.value })
             }
+            required
           />
           <Button type="submit">
             {editingAddress === null ? "Add Address" : "Save Address"}

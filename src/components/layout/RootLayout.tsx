@@ -6,12 +6,18 @@ import Footer from "./Footer"
 import CartDrawer from "./CartDrawer"
 import SiteUtilities from "../SiteUtilities"
 import { Toast } from "../ui"
+import { useAuth } from "../../context/AuthContext"
 import { CartItem, StoreContext } from "../../context/StoreContext"
 import { Product, products } from "../../data/products"
 import { useScrollReveal } from "../../hooks/useScrollReveal"
+import {
+  getCustomerWishlist,
+  toggleCustomerWishlist,
+} from "../../services/account"
 
 export default function RootLayout() {
   useScrollReveal()
+  const { user } = useAuth()
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = window.localStorage.getItem("abaz-mart-cart")
@@ -37,11 +43,40 @@ export default function RootLayout() {
       return []
     }
   })
-  const [wishlist, setWishlist] = useState<number[]>([1, 5, 9])
+  const [wishlist, setWishlist] = useState<number[]>(() => {
+    try {
+      const saved = window.localStorage.getItem("abaz-mart-wishlist")
+      return saved ? JSON.parse(saved) : [1, 5, 9]
+    } catch {
+      return [1, 5, 9]
+    }
+  })
   const [cartOpen, setCartOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState("")
 
   const notify = (message: string) => setToastMessage(message)
+
+  // Sync wishlist from Supabase for authenticated customer
+  useEffect(() => {
+    let mounted = true
+    async function syncUserWishlist() {
+      if (user?.id) {
+        const liveWishlist = await getCustomerWishlist(user.id)
+        if (mounted && liveWishlist.length > 0) {
+          setWishlist(liveWishlist)
+        }
+      }
+    }
+    syncUserWishlist()
+    return () => {
+      mounted = false
+    }
+  }, [user?.id])
+
+  // Persist wishlist locally
+  useEffect(() => {
+    window.localStorage.setItem("abaz-mart-wishlist", JSON.stringify(wishlist))
+  }, [wishlist])
 
   const addToCart = (
     product: Product,
@@ -83,6 +118,9 @@ export default function RootLayout() {
         ? current.filter((id) => id !== product.id)
         : [...current, product.id],
     )
+    if (user?.id) {
+      toggleCustomerWishlist(user.id, product.id, isSaved)
+    }
     notify(
       isSaved
         ? `${product.name} removed from your wishlist`

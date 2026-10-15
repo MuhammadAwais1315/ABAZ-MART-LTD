@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   CartesianGrid,
   Line,
@@ -11,6 +11,7 @@ import {
 import { Badge, Input } from "../../components/ui"
 import { products } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
+import { AdminOrderItem, getAdminOrders } from "../../services/admin"
 
 const salesData = [
   { month: "Jan", sales: 18200 },
@@ -90,21 +91,45 @@ export function AdminStatusBadge({ status }: { status: string }) {
 
 export default function AdminDashboard() {
   const [orderSearch, setOrderSearch] = useState("")
-  const recentOrders = adminOrders.filter((order) =>
-    `${order.id} ${order.customer}`
+  const [orders, setOrders] = useState<AdminOrderItem[]>([])
+  const [loadingOrders, setLoadingOrders] = useState(true)
+
+  useEffect(() => {
+    let mounted = true
+    async function fetchOrders() {
+      setLoadingOrders(true)
+      const { data } = await getAdminOrders()
+      if (mounted) {
+        setOrders(data)
+        setLoadingOrders(false)
+      }
+    }
+    fetchOrders()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const recentOrders = orders.filter((order) =>
+    `${order.orderNumber} ${order.customer}`
       .toLowerCase()
       .includes(orderSearch.toLowerCase()),
   )
+
+  const liveRevenue = orders
+    .filter((o) => o.status !== "Cancelled")
+    .reduce((sum, o) => sum + o.total, 0)
+
   const stats = [
     {
       label: "Total Sales",
-      value: formatPrice(84290),
+      value: formatPrice(liveRevenue > 0 ? liveRevenue : 84290),
       change: "+12.5%",
       note: "vs. last month",
     },
     {
       label: "Orders",
-      value: "1,248",
+      value: (orders.length > 0 ? orders.length : 1248).toLocaleString(),
       change: "+8.2%",
       note: "vs. last month",
     },
@@ -122,15 +147,21 @@ export default function AdminDashboard() {
     },
   ]
 
+  const todayFormatted = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+
   return (
     <>
       <div className="admin-page-head">
         <div>
           <p className="eyebrow">Overview</p>
           <h1>Dashboard</h1>
-          <p>Welcome back, Amara. Here’s what’s happening today.</p>
+          <p>Welcome back, Admin. Here’s what’s happening in your store.</p>
         </div>
-        <span>February 18, 2026</span>
+        <span>{todayFormatted}</span>
       </div>
       <div className="admin-stats">
         {stats.map((stat) => (
@@ -238,19 +269,33 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {recentOrders.map((order) => (
-                <tr key={order.id}>
-                  <td>
-                    <strong>{order.id}</strong>
-                  </td>
-                  <td>{order.customer}</td>
-                  <td>{order.date}</td>
-                  <td>{formatPrice(order.total)}</td>
-                  <td>
-                    <AdminStatusBadge status={order.status} />
+              {loadingOrders ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Loading recent orders...
                   </td>
                 </tr>
-              ))}
+              ) : recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                    No orders found.
+                  </td>
+                </tr>
+              ) : (
+                recentOrders.slice(0, 8).map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <strong>{order.orderNumber}</strong>
+                    </td>
+                    <td>{order.customer}</td>
+                    <td>{order.date}</td>
+                    <td>{formatPrice(order.total)}</td>
+                    <td>
+                      <AdminStatusBadge status={order.status} />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
