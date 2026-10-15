@@ -18,6 +18,7 @@ import { Product, products as initialProducts } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
 import { useCategories } from "../../hooks/useProducts"
 import { getProducts } from "../../services/products"
+import { getStoreSettings } from "../../services/checkout"
 
 export default function Navbar({
   cartCount,
@@ -33,8 +34,22 @@ export default function Navbar({
   const [catalog, setCatalog] = useState<Product[]>(initialProducts)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const [query, setQuery] = useState("")
+  const [shippingThreshold, setShippingThreshold] = useState(50)
+  const [currencySymbol, setCurrencySymbol] = useState("£")
   const navigate = useNavigate()
+
+  useEffect(() => {
+    let mounted = true
+    getStoreSettings().then((settings) => {
+      if (mounted) {
+        setShippingThreshold(settings.freeShippingThreshold)
+        setCurrencySymbol(settings.currencySymbol)
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -69,7 +84,7 @@ export default function Navbar({
   return (
     <>
       <div className="announcement">
-        <Sparkles size={14} /> Free shipping on orders over £50{" "}
+        <Sparkles size={14} /> Free shipping on orders over {currencySymbol}{shippingThreshold}{" "}
         <span> · Easy 30-day returns</span>
       </div>
       <header className="navbar">
