@@ -31,11 +31,17 @@ export const EmbeddedStripeForm = forwardRef<
 
       const result = await stripe.confirmPayment({
         elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/checkout`,
+        },
         redirect: "if_required",
       })
 
       if (result.error) {
-        const msg = result.error.message || "Payment confirmation failed."
+        let msg = result.error.message || "Payment confirmation failed."
+        if (result.error.code === "processing_error") {
+          msg = "A processing error occurred. In Test Mode, please use the test card (4242 4242 4242 4242) with any future expiry and 123 CVC."
+        }
         setErrorMessage(msg)
         return { success: false, error: msg }
       }
