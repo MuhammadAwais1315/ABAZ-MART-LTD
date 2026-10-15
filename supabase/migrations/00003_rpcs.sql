@@ -84,6 +84,20 @@ BEGIN
     RAISE EXCEPTION 'Authentication required: You must be signed in to place an order';
   END IF;
 
+  -- Ensure profile row exists in public.profiles for foreign key integrity
+  INSERT INTO public.profiles (id, email, full_name, phone, role)
+  SELECT 
+    v_user_id, 
+    COALESCE(u.email, ''), 
+    COALESCE(NULLIF(trim(p_shipping_name), ''), u.raw_user_meta_data->>'full_name', 'Customer'),
+    trim(p_shipping_phone), 
+    'customer'::public.user_role
+  FROM auth.users u
+  WHERE u.id = v_user_id
+  ON CONFLICT (id) DO UPDATE SET
+    full_name = CASE WHEN public.profiles.full_name = '' THEN EXCLUDED.full_name ELSE public.profiles.full_name END,
+    phone = COALESCE(public.profiles.phone, EXCLUDED.phone);
+
   IF jsonb_array_length(p_items) = 0 THEN
     RAISE EXCEPTION 'Cart is empty';
   END IF;
