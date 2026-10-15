@@ -465,12 +465,22 @@ export default function Account() {
                       >
                         {order.status}
                       </Badge>
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        View Details
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          View Details
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="text-xs px-2.5 py-1 gap-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          onClick={() => setReceiptModalOrder(order)}
+                          title="Official Receipt"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Receipt
+                        </Button>
+                      </div>
                     </article>
                   ))
                 )}
@@ -597,25 +607,37 @@ export default function Account() {
       <Modal
         open={selectedOrder !== null}
         title={`Order ${selectedOrder?.number || ""}`}
+        size="md"
         onClose={() => setSelectedOrder(null)}
       >
         {selectedOrder && (
           <div className="order-detail">
             <div className="order-detail-meta">
-              <span>
-                Ordered <strong>{selectedOrder.date}</strong>
-              </span>
-              <Badge
-                tone={
-                  selectedOrder.status === "Delivered"
-                    ? "green"
-                    : selectedOrder.status === "Pending"
-                      ? "gold"
-                      : "rose"
-                }
-              >
-                {selectedOrder.status}
-              </Badge>
+              <div>
+                <span>
+                  Ordered on <strong>{selectedOrder.date}</strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge
+                  tone={
+                    selectedOrder.status === "Delivered"
+                      ? "green"
+                      : selectedOrder.status === "Pending"
+                        ? "gold"
+                        : "rose"
+                  }
+                >
+                  {selectedOrder.status}
+                </Badge>
+                <Button
+                  variant="outline"
+                  className="text-xs py-1 px-2.5 gap-1 text-rose-600 border-rose-200 hover:bg-rose-50"
+                  onClick={() => setReceiptModalOrder(selectedOrder)}
+                >
+                  <Download className="w-3.5 h-3.5" /> Official Receipt
+                </Button>
+              </div>
             </div>
             <div className="order-detail-items">
               {selectedOrder.items.map((item) => (
@@ -702,50 +724,60 @@ export default function Account() {
             </div>
 
             {/* Modal actions: Download Receipt & Cancel Order */}
-            <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between flex-wrap gap-2">
+            <div className="mt-5 pt-3 border-t border-border/40 flex items-center justify-between flex-wrap gap-2">
               <Button
                 variant="outline"
-                className="text-xs py-1 px-3 gap-1.5"
+                className="text-xs py-1.5 px-3 gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                 onClick={() => setReceiptModalOrder(selectedOrder)}
               >
-                <Download className="w-3.5 h-3.5" /> View / Download Receipt
+                <Download className="w-3.5 h-3.5" /> View / Download Official Receipt
               </Button>
 
-              {selectedOrder.status === "Pending" && (
-                <Button
-                  variant="outline"
-                  className="text-xs py-1 px-3 text-rose-600 hover:text-rose-700 hover:border-rose-300"
-                  disabled={cancellingOrderId === selectedOrder.id}
-                  onClick={async () => {
-                    if (
-                      window.confirm(
-                        "Are you sure you want to cancel this pending order? This will safely restock the reserved inventory.",
-                      )
-                    ) {
-                      setCancellingOrderId(selectedOrder.id)
-                      const { success, error } = await cancelOrder(selectedOrder.id)
-                      setCancellingOrderId(null)
-                      if (error) {
-                        notify(error.message)
-                      } else if (success) {
-                        notify("Order cancelled successfully")
-                        setSelectedOrder({ ...selectedOrder, status: "Cancelled" })
-                        setOrders((current) =>
-                          current.map((o) =>
-                            o.id === selectedOrder.id
-                              ? { ...o, status: "Cancelled" }
-                              : o,
-                          ),
+              <div className="flex items-center gap-2">
+                {selectedOrder.status === "Pending" && (
+                  <Button
+                    variant="outline"
+                    className="text-xs py-1.5 px-3 text-red-600 hover:text-red-700 hover:border-red-300"
+                    disabled={cancellingOrderId === selectedOrder.id}
+                    onClick={async () => {
+                      if (
+                        window.confirm(
+                          "Are you sure you want to cancel this pending order? This will safely restock the reserved inventory.",
                         )
+                      ) {
+                        setCancellingOrderId(selectedOrder.id)
+                        const { success, error } = await cancelOrder(selectedOrder.id)
+                        setCancellingOrderId(null)
+                        if (error) {
+                          notify(error.message)
+                        } else if (success) {
+                          notify("Order cancelled successfully")
+                          setSelectedOrder({ ...selectedOrder, status: "Cancelled" })
+                          setOrders((current) =>
+                            current.map((o) =>
+                              o.id === selectedOrder.id
+                                ? { ...o, status: "Cancelled" }
+                                : o,
+                            ),
+                          )
+                        }
                       }
-                    }
-                  }}
+                    }}
+                  >
+                    {cancellingOrderId === selectedOrder.id
+                      ? "Cancelling..."
+                      : "Cancel Order"}
+                  </Button>
+                )}
+
+                <Button
+                  variant="ghost"
+                  className="text-xs py-1.5 px-3"
+                  onClick={() => setSelectedOrder(null)}
                 >
-                  {cancellingOrderId === selectedOrder.id
-                    ? "Cancelling..."
-                    : "Cancel Order"}
+                  Close
                 </Button>
-              )}
+              </div>
             </div>
           </div>
         )}
@@ -755,7 +787,8 @@ export default function Account() {
       {receiptModalOrder && (
         <Modal
           open={Boolean(receiptModalOrder)}
-          title={`Order Receipt #${receiptModalOrder.number}`}
+          title={`Official Receipt #${receiptModalOrder.number}`}
+          size="lg"
           onClose={() => setReceiptModalOrder(null)}
         >
           <div className="max-h-[80vh] overflow-y-auto pr-1">

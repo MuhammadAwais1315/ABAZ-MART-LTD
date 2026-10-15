@@ -4,7 +4,7 @@ import {
   InputHTMLAttributes,
   ButtonHTMLAttributes,
 } from "react"
-import { Star } from "lucide-react"
+import { Star, X } from "lucide-react"
 
 export function Button({
   variant = "primary",
@@ -156,27 +156,38 @@ export function Modal({
   title,
   children,
   onClose,
+  size = "md",
+  className = "",
 }: {
   open: boolean
   title: string
   children: ReactNode
   onClose: () => void
+  size?: "sm" | "md" | "lg" | "xl"
+  className?: string
 }) {
   if (!open) return null
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <div
-        className="modal"
+        className={`modal modal-${size} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>{title}</h2>
-        {children}
-        <Button variant="outline" onClick={onClose}>
-          Close
-        </Button>
+        <div className="modal-header">
+          <h2>{title}</h2>
+          <button
+            type="button"
+            className="modal-close-icon"
+            onClick={onClose}
+            aria-label="Close modal"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="modal-body">{children}</div>
       </div>
     </div>
   )
