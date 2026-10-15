@@ -41,21 +41,17 @@ export function mapDbProductToProduct(row: ProductRow): Product {
     id: Number(row.id),
     name: row.name,
     brand: row.brand,
-    category: row.category_name,
+    category: row.category_name as Product["category"],
     price: Number(row.price),
     oldPrice: row.old_price !== null ? Number(row.old_price) : undefined,
     rating: Number(row.rating),
-    reviewsCount: row.review_count,
+    reviewCount: row.review_count,
     image: row.image,
     description: row.description,
-    ingredients: row.ingredients || undefined,
-    howToUse: row.how_to_use || undefined,
-    inStock: row.stock > 0,
     stock: row.stock,
     badge: row.badge || undefined,
     options:
       row.options && row.options.length > 0 ? row.options : ["Default"],
-    tags: row.skin_types || [],
   }
 }
 
@@ -213,7 +209,7 @@ export async function getProductById(
  */
 export async function getCategories(): Promise<string[]> {
   if (!isSupabaseConfigured()) {
-    return defaultCategories
+    return [...defaultCategories]
   }
 
   try {
@@ -223,12 +219,12 @@ export async function getCategories(): Promise<string[]> {
       .order("display_order", { ascending: true })
 
     if (error || !data || data.length === 0) {
-      return defaultCategories
+      return [...defaultCategories]
     }
 
-    return data.map((c) => c.name)
+    return data.map((c: { name: string }) => c.name)
   } catch {
-    return defaultCategories
+    return [...defaultCategories]
   }
 }
 

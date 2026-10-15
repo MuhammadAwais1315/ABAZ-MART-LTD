@@ -220,7 +220,7 @@ export default function ProductPage() {
           <div className="review-score">
             <strong>{product.rating}</strong>
             <RatingStars rating={product.rating} />
-            <span>Based on {product.reviewsCount ?? reviewsList.length} reviews</span>
+            <span>Based on {product.reviewCount ?? reviewsList.length} reviews</span>
             <Button onClick={handleOpenReview}>Write a review</Button>
           </div>
           <div className="rating-breakdown">

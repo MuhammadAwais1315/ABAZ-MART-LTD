@@ -34,6 +34,7 @@ export default function Navbar({
   const [catalog, setCatalog] = useState<Product[]>(initialProducts)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [query, setQuery] = useState("")
   const [shippingThreshold, setShippingThreshold] = useState(50)
   const [currencySymbol, setCurrencySymbol] = useState("£")
   const navigate = useNavigate()

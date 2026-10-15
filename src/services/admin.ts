@@ -123,27 +123,13 @@ export async function getAdminProducts(): Promise<{
       price: Number(item.price),
       oldPrice: item.old_price ? Number(item.old_price) : undefined,
       rating: Number(item.rating) || 5.0,
-      reviewsCount: item.review_count || 0,
+      reviewCount: item.review_count || 0,
       description: item.description,
       image: item.image,
-      images:
-        item.additional_images && item.additional_images.length > 0
-          ? [item.image, ...item.additional_images]
-          : [item.image],
       options:
         item.options && item.options.length > 0 ? item.options : ["Standard"],
       badge: item.badge || undefined,
       stock: item.stock,
-      skinType:
-        item.skin_types && item.skin_types.length > 0
-          ? item.skin_types
-          : ["All"],
-      ingredients: item.ingredients
-        ? [item.ingredients]
-        : ["Sustainably sourced botanical extracts"],
-      howToUse: item.how_to_use
-        ? [item.how_to_use]
-        : ["Apply to clean skin as needed."],
     }))
 
     return { data: mapped, error: null }
@@ -166,16 +152,12 @@ export async function createAdminProduct(
       price: payload.price,
       oldPrice: payload.oldPrice || undefined,
       rating: 5.0,
-      reviewsCount: 0,
+      reviewCount: 0,
       description: payload.description,
       image: payload.image,
-      images: [payload.image, ...(payload.additionalImages || [])],
       options: payload.options.length > 0 ? payload.options : ["Standard"],
       badge: payload.badge || undefined,
       stock: payload.stock,
-      skinType: payload.skinTypes || ["All"],
-      ingredients: ["Clean botanical ingredients"],
-      howToUse: ["Apply as directed"],
     }
     return { data: fakeProduct, error: null }
   }
@@ -224,16 +206,12 @@ export async function createAdminProduct(
       price: Number(data.price),
       oldPrice: data.old_price ? Number(data.old_price) : undefined,
       rating: Number(data.rating),
-      reviewsCount: data.review_count,
+      reviewCount: data.review_count,
       description: data.description,
       image: data.image,
-      images: [data.image, ...(data.additional_images || [])],
       options: data.options,
       badge: data.badge || undefined,
       stock: data.stock,
-      skinType: data.skin_types || ["All"],
-      ingredients: data.ingredients ? [data.ingredients] : [],
-      howToUse: data.how_to_use ? [data.how_to_use] : [],
     }
 
     return { data: created, error: null }
