@@ -1,8 +1,9 @@
-import { Printer, Download, Building2, CheckCircle2 } from "lucide-react"
+import { Download, Building2, CheckCircle2 } from "lucide-react"
 import { Button } from "../ui"
 import { formatPrice } from "../../utils/formatPrice"
 import { OrderResult } from "../../services/checkout"
 import { PaymentMethod } from "../../types/database"
+import { downloadReceiptPdf } from "../../utils/generateReceiptPdf"
 
 export interface OrderReceiptItem {
   id?: string | number
@@ -33,12 +34,11 @@ export function OrderReceipt({
   customer,
   paymentMethod,
 }: OrderReceiptProps) {
-  const handlePrint = () => {
-    window.print()
+  const handleDownloadPdf = () => {
+    downloadReceiptPdf({ order, items, customer, paymentMethod })
   }
 
   const isBankTransfer = paymentMethod === "bank_transfer"
-  const isCard = paymentMethod === "card"
 
   const paymentLabel = isBankTransfer
     ? "Direct Bank Transfer (BACS / Faster Payments)"
@@ -46,18 +46,18 @@ export function OrderReceipt({
 
   return (
     <div className="order-receipt-wrapper max-w-2xl mx-auto my-6">
-      {/* Action buttons (hidden in print) */}
-      <div className="print:hidden flex items-center justify-between gap-3 mb-6 p-4 bg-muted/40 rounded-xl border border-border/50">
+      {/* Action buttons */}
+      <div className="flex items-center justify-between gap-3 mb-6 p-4 bg-muted/40 rounded-xl border border-border/50">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>Official tax invoice generated. You can save or print it below.</span>
+          <span>Official order receipt generated. You can download your PDF receipt below.</span>
         </div>
-        <Button onClick={handlePrint} variant="outline" className="text-xs gap-2">
-          <Printer className="w-4 h-4" /> Print / Save PDF
+        <Button onClick={handleDownloadPdf} className="text-xs gap-2">
+          <Download className="w-4 h-4" /> Download PDF Receipt
         </Button>
       </div>
 
-      {/* The Printable Invoice Document */}
+      {/* The Order Receipt Document */}
       <div className="order-receipt-card bg-white p-8 rounded-2xl border border-border shadow-sm print:shadow-none print:border-none print:p-0">
         {/* Receipt Header */}
         <div className="flex justify-between items-start border-b border-border pb-6 mb-6">

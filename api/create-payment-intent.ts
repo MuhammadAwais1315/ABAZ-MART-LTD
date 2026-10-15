@@ -55,6 +55,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         orderNumber: String(orderNumber),
         customerEmail: String(customerEmail),
       },
+      ...(customerEmail && String(customerEmail).includes("@")
+        ? { receipt_email: String(customerEmail).trim() }
+        : {}),
     })
 
     res.status(200).json({

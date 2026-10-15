@@ -8,7 +8,6 @@ import {
   ArrowRight,
   Building2,
   CreditCard,
-  Printer,
   ShieldCheck,
 } from "lucide-react"
 import { Elements } from "@stripe/react-stripe-js"
@@ -339,6 +338,42 @@ export default function Checkout() {
       window.sessionStorage.removeItem("abaz_promo_code")
       window.sessionStorage.removeItem("abaz_promo_discount")
 
+      // Send branded order confirmation email in the background
+      const orderPayload = res.data
+      fetch("/api/send-order-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order: {
+            order_number: orderPayload.order_number,
+            subtotal: orderPayload.subtotal,
+            shipping: orderPayload.shipping,
+            discount: orderPayload.discount,
+            total: orderPayload.total,
+            estimated_delivery: orderPayload.estimated_delivery,
+          },
+          customer: {
+            fullName: form.fullName,
+            email: form.email,
+            phone: form.phone,
+            address: form.address,
+            city: form.city,
+            postalCode: form.postalCode,
+            country: form.country,
+          },
+          items: cart.map((item) => ({
+            name: item.product.name,
+            brand: item.product.brand,
+            option: item.option,
+            price: item.product.price,
+            quantity: item.quantity,
+          })),
+          paymentMethod,
+        }),
+      }).catch((err) => {
+        console.warn("Background order confirmation email error:", err)
+      })
+
       if (saveAddress && user) {
         saveAddressForUser({
           userId: user.id,
@@ -384,7 +419,7 @@ export default function Checkout() {
     </div>
   )
 
-  // Order Confirmation Screen with Official Printable Tax Invoice
+  // Order Confirmation Screen with Official Downloadable Receipt
   if (complete && confirmedOrder) {
     return (
       <div className="page shell confirmation-page max-w-4xl mx-auto py-8">
@@ -400,12 +435,15 @@ export default function Checkout() {
           </h1>
           <p className="text-muted-foreground text-xs sm:text-sm max-w-md mx-auto mt-1">
             Your order <strong>#{confirmedOrder.order_number}</strong> has been
-            placed. A full confirmation and receipt have been dispatched to{" "}
-            <strong>{form.email}</strong>.
+            placed.
+            {form.email ? (
+              <> A confirmation receipt has been dispatched to <strong>{form.email}</strong>.</>
+            ) : null}{" "}
+            You can download your official PDF receipt below.
           </p>
         </div>
 
-        {/* Printable Official Receipt / Tax Invoice */}
+        {/* Official Receipt */}
         <OrderReceipt
           order={confirmedOrder}
           items={confirmedCart.map((item) => ({
@@ -697,7 +735,7 @@ export default function Checkout() {
                       <span>Official UK Business Bank Details</span>
                     </div>
                     <p className="text-amber-900/90 leading-relaxed">
-                      Please send payment to our official Barclays business account. An official printable invoice with your order reference will be generated immediately upon confirming your order.
+                      Please send payment to our official Barclays business account. An official receipt with your order reference and transfer details will be generated immediately upon confirming your order.
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white p-3 rounded-lg border border-amber-200 text-xs font-mono">
                       <div>

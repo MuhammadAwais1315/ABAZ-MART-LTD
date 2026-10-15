@@ -8,7 +8,7 @@ import {
   MapPin,
   Package,
   Plus,
-  Printer,
+  Download,
   ShoppingBag,
   Trash2,
   Upload,
@@ -701,14 +701,14 @@ export default function Account() {
               })}
             </div>
 
-            {/* Modal actions: Print Receipt & Cancel Order */}
+            {/* Modal actions: Download Receipt & Cancel Order */}
             <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between flex-wrap gap-2">
               <Button
                 variant="outline"
                 className="text-xs py-1 px-3 gap-1.5"
                 onClick={() => setReceiptModalOrder(selectedOrder)}
               >
-                <Printer className="w-3.5 h-3.5" /> Print Tax Receipt / Invoice
+                <Download className="w-3.5 h-3.5" /> View / Download Receipt
               </Button>
 
               {selectedOrder.status === "Pending" && (
@@ -751,11 +751,11 @@ export default function Account() {
         )}
       </Modal>
 
-      {/* Printable Receipt / Tax Invoice Modal */}
+      {/* Official Receipt Modal */}
       {receiptModalOrder && (
         <Modal
           open={Boolean(receiptModalOrder)}
-          title={`Tax Invoice #${receiptModalOrder.number}`}
+          title={`Order Receipt #${receiptModalOrder.number}`}
           onClose={() => setReceiptModalOrder(null)}
         >
           <div className="max-h-[80vh] overflow-y-auto pr-1">
