@@ -53,7 +53,7 @@ CREATE OR REPLACE FUNCTION public.create_order_secure(
   p_shipping_city text,
   p_shipping_postal_code text,
   p_shipping_country text,
-  p_payment_method public.payment_method,
+  p_payment_method text,
   p_items jsonb, -- Array of { product_id, quantity, option }
   p_coupon_code text DEFAULT NULL
 )
@@ -176,7 +176,7 @@ BEGIN
     v_discount,
     v_total,
     v_coupon_id,
-    p_payment_method,
+    p_payment_method::public.payment_method,
     'pending',
     trim(p_shipping_name),
     trim(p_shipping_phone),
@@ -233,6 +233,9 @@ BEGIN
   );
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.create_order_secure TO authenticated, anon, service_role;
+NOTIFY pgrst, 'reload schema';
 
 -- RPC 3: Cancel Order Secure (Restocks inventory if order is pending)
 CREATE OR REPLACE FUNCTION public.cancel_order_secure(
