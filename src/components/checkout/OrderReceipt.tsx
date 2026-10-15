@@ -1,4 +1,5 @@
-import { Download, Building2, CheckCircle2 } from "lucide-react"
+import { useState } from "react"
+import { Download, Building2, CheckCircle2, Mail, Loader2, Check } from "lucide-react"
 import { Button } from "../ui"
 import { formatPrice } from "../../utils/formatPrice"
 import { OrderResult } from "../../services/checkout"
@@ -24,6 +25,7 @@ export interface OrderReceiptProps {
     city: string
     postalCode: string
     country: string
+    email?: string
   }
   paymentMethod: PaymentMethod
 }
@@ -34,8 +36,62 @@ export function OrderReceipt({
   customer,
   paymentMethod,
 }: OrderReceiptProps) {
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<{ sent: boolean; message: string } | null>(null)
+
   const handleDownloadPdf = () => {
     downloadReceiptPdf({ order, items, customer, paymentMethod })
+  }
+
+  const handleSendEmail = async () => {
+    if (!customer.email) {
+      setEmailStatus({ sent: false, message: "No email address found for this order." })
+      return
+    }
+
+    setSendingEmail(true)
+    setEmailStatus(null)
+
+    try {
+      const res = await fetch("/api/send-order-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order: {
+            order_number: order.order_number,
+            subtotal: order.subtotal,
+            shipping: order.shipping,
+            discount: order.discount,
+            total: order.total,
+            estimated_delivery: order.estimated_delivery,
+          },
+          customer: {
+            fullName: customer.fullName,
+            email: customer.email,
+            phone: customer.phone,
+            address: customer.address,
+            city: customer.city,
+            postalCode: customer.postalCode,
+            country: customer.country,
+          },
+          items,
+          paymentMethod,
+        }),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        setEmailStatus({ sent: true, message: `Receipt emailed to ${customer.email}` })
+      } else if (data.configured === false) {
+        setEmailStatus({ sent: false, message: "Resend not yet configured. Please download PDF." })
+      } else {
+        setEmailStatus({ sent: false, message: data.error || "Could not dispatch email." })
+      }
+    } catch {
+      setEmailStatus({ sent: false, message: "Failed to connect to email service." })
+    } finally {
+      setSendingEmail(false)
+    }
   }
 
   const isBankTransfer = paymentMethod === "bank_transfer"
@@ -47,14 +103,35 @@ export function OrderReceipt({
   return (
     <div className="order-receipt-wrapper max-w-2xl mx-auto my-6">
       {/* Action buttons */}
-      <div className="flex items-center justify-between gap-3 mb-6 p-4 bg-muted/40 rounded-xl border border-border/50">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 p-4 bg-muted/40 rounded-xl border border-border/50">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>Official order receipt generated. You can download your PDF receipt below.</span>
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>
+            {emailStatus?.message || "Official order receipt generated. You can download or email your receipt."}
+          </span>
         </div>
-        <Button onClick={handleDownloadPdf} className="text-xs gap-2">
-          <Download className="w-4 h-4" /> Download PDF Receipt
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {customer.email && (
+            <Button
+              variant="outline"
+              onClick={handleSendEmail}
+              disabled={sendingEmail}
+              className="text-xs gap-1.5"
+            >
+              {sendingEmail ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : emailStatus?.sent ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+              ) : (
+                <Mail className="w-3.5 h-3.5 text-rose-600" />
+              )}
+              {sendingEmail ? "Sending..." : emailStatus?.sent ? "Emailed" : "Email Receipt"}
+            </Button>
+          )}
+          <Button onClick={handleDownloadPdf} className="text-xs gap-2">
+            <Download className="w-4 h-4" /> Download PDF
+          </Button>
+        </div>
       </div>
 
       {/* The Order Receipt Document */}

@@ -456,6 +456,7 @@ export default function Checkout() {
           }))}
           customer={{
             fullName: form.fullName,
+            email: form.email,
             phone: form.phone,
             address: form.address,
             city: form.city,

@@ -797,6 +797,11 @@ export default function Account() {
                   receiptModalOrder.shippingAddress?.postalCode || "",
                 country:
                   receiptModalOrder.shippingAddress?.country || "United Kingdom",
+                email:
+                  authProfile?.email ||
+                  profile.email ||
+                  user?.email ||
+                  "",
               }}
               paymentMethod={
                 receiptModalOrder.paymentMethod || "card"
