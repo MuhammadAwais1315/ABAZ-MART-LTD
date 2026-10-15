@@ -729,26 +729,6 @@ export default function Checkout() {
                     </div>
                   </div>
                 )}
-
-                {/* 3. Cash on Delivery */}
-                <label className={paymentMethod === "cod" ? "is-active" : ""}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    checked={paymentMethod === "cod"}
-                    onChange={() => setPaymentMethod("cod")}
-                  />
-                  <span className="flex-1">
-                    <strong>Cash on Delivery</strong>
-                    <small>Pay with cash or card upon delivery to your doorstep</small>
-                  </span>
-                </label>
-
-                {paymentMethod === "cod" && (
-                  <div className="p-4 bg-muted/30 border border-border rounded-xl text-xs text-muted-foreground">
-                    Pay when your parcel arrives. Our courier accepts exact cash or contactless debit/credit card.
-                  </div>
-                )}
               </div>
 
               <p className="secure-note mt-4">
@@ -806,11 +786,9 @@ export default function Checkout() {
                   <LockKeyhole />{" "}
                   {submittingOrder
                     ? "Securing Your Order..."
-                    : paymentMethod === "card"
-                      ? `Pay ${formatPrice(orderTotal)} Securely`
-                      : paymentMethod === "bank_transfer"
-                        ? `Place Order & View Bank Receipt (${formatPrice(orderTotal)})`
-                        : `Place Order (${formatPrice(orderTotal)})`}
+                    : paymentMethod === "bank_transfer"
+                      ? `Place Order & View Bank Receipt (${formatPrice(orderTotal)})`
+                      : `Pay ${formatPrice(orderTotal)} Securely`}
                 </Button>
               </div>
             )}

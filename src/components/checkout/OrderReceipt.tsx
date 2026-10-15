@@ -42,9 +42,7 @@ export function OrderReceipt({
 
   const paymentLabel = isBankTransfer
     ? "Direct Bank Transfer (BACS / Faster Payments)"
-    : isCard
-      ? "Credit / Debit Card (Processed via Stripe)"
-      : "Cash on Delivery"
+    : "Credit / Debit Card / Digital Wallet (Stripe)"
 
   return (
     <div className="order-receipt-wrapper max-w-2xl mx-auto my-6">
