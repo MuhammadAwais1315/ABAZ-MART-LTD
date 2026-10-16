@@ -149,7 +149,7 @@ export function OrderReceipt({
               Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW
             </p>
             <p className="text-xs text-muted-foreground">
-              Registered in England &amp; Wales · Company No. 14920841
+              Registered in England &amp; Wales · Company No. 17094173
             </p>
             <p className="text-xs text-muted-foreground">
               care@abazmart.co.uk · +44 20 7946 0958

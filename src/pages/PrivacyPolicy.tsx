@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
             <br />
             Office 951, 60 Tottenham Court Road, Fitzrovia, London, W1T 2EW, United Kingdom
             <br />
-            Registered in England &amp; Wales (Company No. 14920841)
+            Registered in England &amp; Wales (Company No. 17094173)
             <br />
             Email: <a href="mailto:care@abazmart.co.uk" className="text-rose-600 hover:underline">care@abazmart.co.uk</a>
           </p>

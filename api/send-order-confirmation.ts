@@ -297,8 +297,8 @@ function buildHtmlReceipt(data: OrderConfirmationPayload): string {
         Questions or need support? Simply reply to this email or reach us at <a href="mailto:care@abazmart.co.uk" style="color: #b83b5e; text-decoration: underline;">care@abazmart.co.uk</a> · +44 20 7946 0958
       </p>
       <div style="border-top: 1px solid #efe4e7; margin-top: 12px; padding-top: 12px; font-size: 10.5px; color: #9c8a91;">
-        Abaz Mart Ltd · Registered in England &amp; Wales · Company No. 14920841<br/>
-        London, United Kingdom
+        Abaz Mart Ltd · Registered in England &amp; Wales · Company No. 17094173<br/>
+        Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW, United Kingdom
       </div>
     </div>
   </div>
@@ -368,7 +368,7 @@ function buildTextReceipt(data: OrderConfirmationPayload): string {
   lines.push(
     ``,
     `Thank you for choosing Abaz Mart!`,
-    `Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company No. 14920841 · care@abazmart.co.uk`,
+    `Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company No. 17094173 · care@abazmart.co.uk`,
   )
 
   return lines.filter(Boolean).join("\n")

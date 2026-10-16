@@ -21,7 +21,7 @@ export default function TermsOfService() {
             1. Company Information &amp; Scope
           </h2>
           <p className="text-muted-foreground">
-            These terms and conditions govern your use of the <strong>Abaz Mart</strong> website (<a href="https://www.abazmart.co.uk" className="text-rose-600 hover:underline">abazmart.co.uk</a>) and any purchase of goods from <strong>Abaz Mart Ltd</strong> ("we", "us", or "our"), a company incorporated in England and Wales under Company Registration Number <strong>14920841</strong>, with registered office at <strong>Office 951, 60 Tottenham Court Road, Fitzrovia, London, W1T 2EW, United Kingdom</strong>.
+            These terms and conditions govern your use of the <strong>Abaz Mart</strong> website (<a href="https://www.abazmart.co.uk" className="text-rose-600 hover:underline">abazmart.co.uk</a>) and any purchase of goods from <strong>Abaz Mart Ltd</strong> ("we", "us", or "our"), a company incorporated in England and Wales under Company Registration Number <strong>17094173</strong>, with registered office at <strong>Office 951, 60 Tottenham Court Road, Fitzrovia, London, W1T 2EW, United Kingdom</strong>.
           </p>
           <p className="text-muted-foreground">
             By browsing our website, creating an account, or placing an order, you agree to be bound by these Terms, our Privacy Policy, and our Returns Policy.
