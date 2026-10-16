@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useNavigate, useParams } from "react-router"
+import { Link, useNavigate, useParams } from "react-router"
 import {
   Heart,
   Minus,
@@ -26,17 +26,22 @@ import { useAuth } from "../context/AuthContext"
 import { Product, products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 import {
+  getEffectiveProducts,
   getProductById,
   getProductReviews,
+  isProductDeleted,
   ReviewItem,
   submitProductReview,
 } from "../services/products"
 
 export default function ProductPage() {
   const { id } = useParams()
+  const effectiveCatalog = getEffectiveProducts(products)
+  const isDeleted = id ? isProductDeleted(id) : false
   const initialProduct =
-    products.find((item) => item.id === Number(id)) || products[0]
+    effectiveCatalog.find((item) => item.id === Number(id)) || effectiveCatalog[0]
   const [product, setProduct] = useState<Product>(initialProduct)
+  const [notFound, setNotFound] = useState(isDeleted)
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -59,7 +64,7 @@ export default function ProductPage() {
 
   const productImages = [
     product.image,
-    ...products
+    ...effectiveCatalog
       .filter(
         (item) => item.category === product.category && item.id !== product.id,
       )
@@ -68,10 +73,10 @@ export default function ProductPage() {
   ]
 
   const relatedProducts = [
-    ...products.filter(
+    ...effectiveCatalog.filter(
       (item) => item.category === product.category && item.id !== product.id,
     ),
-    ...products.filter(
+    ...effectiveCatalog.filter(
       (item) => item.category !== product.category && item.id !== product.id,
     ),
   ].slice(0, 4)
@@ -86,9 +91,19 @@ export default function ProductPage() {
   useEffect(() => {
     let mounted = true
     if (id) {
+      if (isProductDeleted(id)) {
+        setNotFound(true)
+        setProductLoading(false)
+        return
+      }
       getProductById(id).then((res) => {
-        if (mounted && res.data) {
-          setProduct(res.data)
+        if (mounted) {
+          if (res.data) {
+            setProduct(res.data)
+            setNotFound(false)
+          } else {
+            setNotFound(true)
+          }
         }
       })
     }
@@ -263,6 +278,20 @@ export default function ProductPage() {
         </div>
       </div>
     )
+
+  if (notFound) {
+    return (
+      <div className="page shell text-center py-24 space-y-4">
+        <h2 className="text-2xl font-serif">Product Not Found</h2>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          This product is no longer available in our boutique catalog.
+        </p>
+        <Link to="/shop" className="btn btn-primary inline-flex">
+          Return to Shop
+        </Link>
+      </div>
+    )
+  }
 
   if (productLoading) {
     return (

@@ -27,7 +27,7 @@ import { useStore } from "../context/StoreContext"
 import { Product, products as initialProducts } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 import { useBrands, useCategories } from "../hooks/useProducts"
-import { getProducts } from "../services/products"
+import { getEffectiveProducts, getProducts } from "../services/products"
 
 export default function Shop() {
   const { addToCart, wishlist, toggleWishlist } = useStore()
@@ -37,7 +37,7 @@ export default function Shop() {
   const query = (params.get("q") || "").toLowerCase()
   const [sort, setSort] = useState(sortParam || "featured")
   const [view, setView] = useState<"grid" | "list">("grid")
-  const [catalog, setCatalog] = useState<Product[]>(initialProducts)
+  const [catalog, setCatalog] = useState<Product[]>(() => getEffectiveProducts(initialProducts))
   const { categories } = useCategories()
   const { brands: fetchedBrands } = useBrands()
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
@@ -53,17 +53,30 @@ export default function Shop() {
 
   useEffect(() => {
     let mounted = true
-    getProducts({ limit: 100 })
-      .then((res) => {
-        if (mounted && res.data && res.data.length > 0) {
-          setCatalog(res.data)
-        }
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
+    const loadProducts = () => {
+      getProducts({ limit: 100 })
+        .then((res) => {
+          if (mounted && res.data) {
+            setCatalog(res.data)
+          }
+        })
+        .finally(() => {
+          if (mounted) setLoading(false)
+        })
+    }
+
+    loadProducts()
+
+    const handleCatalogUpdate = () => {
+      loadProducts()
+    }
+    window.addEventListener("abaz_catalog_updated", handleCatalogUpdate)
+    window.addEventListener("storage", handleCatalogUpdate)
+
     return () => {
       mounted = false
+      window.removeEventListener("abaz_catalog_updated", handleCatalogUpdate)
+      window.removeEventListener("storage", handleCatalogUpdate)
     }
   }, [])
 

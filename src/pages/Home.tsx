@@ -13,7 +13,7 @@ import { Button, Input, RatingStars } from "../components/ui"
 import { useStore } from "../context/StoreContext"
 import { Product, products as initialProducts } from "../data/products"
 import { useCategories } from "../hooks/useProducts"
-import { getProducts } from "../services/products"
+import { getEffectiveProducts, getProducts } from "../services/products"
 
 function Hero() {
   return (
@@ -83,18 +83,31 @@ const testimonials = [
 
 export default function Home() {
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
-  const [catalog, setCatalog] = useState<Product[]>(initialProducts)
+  const [catalog, setCatalog] = useState<Product[]>(() => getEffectiveProducts(initialProducts))
   const { categories } = useCategories()
 
   useEffect(() => {
     let mounted = true
-    getProducts({ limit: 16 }).then((res) => {
-      if (mounted && res.data && res.data.length > 0) {
-        setCatalog(res.data)
-      }
-    })
+    const loadProducts = () => {
+      getProducts({ limit: 16 }).then((res) => {
+        if (mounted && res.data) {
+          setCatalog(res.data)
+        }
+      })
+    }
+
+    loadProducts()
+
+    const handleCatalogUpdate = () => {
+      loadProducts()
+    }
+    window.addEventListener("abaz_catalog_updated", handleCatalogUpdate)
+    window.addEventListener("storage", handleCatalogUpdate)
+
     return () => {
       mounted = false
+      window.removeEventListener("abaz_catalog_updated", handleCatalogUpdate)
+      window.removeEventListener("storage", handleCatalogUpdate)
     }
   }, [])
 

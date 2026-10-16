@@ -56,6 +56,107 @@ export function mapDbProductToProduct(row: ProductRow): Product {
 }
 
 /**
+ * Check whether a product ID or slug is marked as deleted in the store.
+ */
+export function isProductDeleted(idOrSlug: number | string): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    const rawDeleted = localStorage.getItem("abaz_deleted_product_ids")
+    if (rawDeleted) {
+      const parsed = JSON.parse(rawDeleted)
+      if (Array.isArray(parsed)) {
+        const numId = Number(idOrSlug)
+        if (!isNaN(numId) && parsed.includes(numId)) {
+          return true
+        }
+        // Also check if any deleted product id corresponds to this slug in defaultProducts
+        const matched = defaultProducts.find(
+          (p) =>
+            p.id === numId ||
+            p.name.toLowerCase().replace(/\s+/g, "-") === String(idOrSlug).toLowerCase(),
+        )
+        if (matched && parsed.includes(matched.id)) {
+          return true
+        }
+      }
+    }
+  } catch {}
+  return false
+}
+
+/**
+ * Synchronously filter deleted products and merge custom edits/created items from localStorage.
+ * Used across the entire customer storefront and fallback mocks.
+ */
+export function getEffectiveProducts(list: Product[] = defaultProducts): Product[] {
+  if (typeof window === "undefined") {
+    return list
+  }
+
+  const deletedIds = new Set<number>()
+  let storedEdits: Record<string, Partial<Product>> = {}
+  let customCreated: Product[] = []
+
+  try {
+    const rawDeleted = localStorage.getItem("abaz_deleted_product_ids")
+    if (rawDeleted) {
+      const parsed = JSON.parse(rawDeleted)
+      if (Array.isArray(parsed)) {
+        parsed.forEach((id: number) => deletedIds.add(Number(id)))
+      }
+    }
+
+    const rawEdits = localStorage.getItem("abaz_custom_product_edits")
+    if (rawEdits) {
+      storedEdits = JSON.parse(rawEdits)
+    }
+
+    const rawCreated = localStorage.getItem("abaz_custom_created_products")
+    if (rawCreated) {
+      const parsed = JSON.parse(rawCreated)
+      if (Array.isArray(parsed)) {
+        customCreated = parsed
+      }
+    }
+  } catch (err) {
+    console.warn("Could not read local product overrides:", err)
+  }
+
+  // Combine custom created items (not already in list) with list
+  const existingIds = new Set(list.map((p) => p.id))
+  const newItems = customCreated.filter((p) => !existingIds.has(p.id))
+  const combined = [...newItems, ...list]
+
+  return combined
+    .filter((p) => !deletedIds.has(p.id))
+    .map((p) => {
+      const edit = storedEdits[p.id.toString()]
+      if (!edit) return p
+      return {
+        ...p,
+        name: edit.name ?? p.name,
+        brand: edit.brand ?? p.brand,
+        category: edit.category ?? p.category,
+        price: edit.price !== undefined ? Number(edit.price) : p.price,
+        oldPrice:
+          edit.oldPrice !== undefined
+            ? edit.oldPrice === null
+              ? undefined
+              : Number(edit.oldPrice)
+            : p.oldPrice,
+        stock: edit.stock !== undefined ? Number(edit.stock) : p.stock,
+        badge:
+          edit.badge !== undefined
+            ? edit.badge
+              ? String(edit.badge)
+              : undefined
+            : p.badge,
+        description: edit.description ?? p.description,
+      }
+    })
+}
+
+/**
  * Fetch products from Supabase with full filtering, sorting, and pagination.
  * Gracefully falls back to defaultProducts if Supabase is offline or unconfigured.
  */
@@ -154,7 +255,8 @@ export async function getProducts(
     }
 
     const mapped = (data || []).map(mapDbProductToProduct)
-    return { data: mapped, total: count ?? mapped.length, error: null }
+    const effective = getEffectiveProducts(mapped)
+    return { data: effective, total: effective.length, error: null }
   } catch (err) {
     console.warn("Error fetching products from Supabase, using fallback:", err)
     return filterDefaultProducts(params)
@@ -167,11 +269,21 @@ export async function getProducts(
 export async function getProductById(
   idOrSlug: number | string,
 ): Promise<{ data: Product | null; error: Error | null }> {
+  if (isProductDeleted(idOrSlug)) {
+    return { data: null, error: new Error("Product no longer available") }
+  }
+
+  const effectiveFallback = getEffectiveProducts(defaultProducts)
+  const findInFallback = () =>
+    effectiveFallback.find(
+      (p) =>
+        p.id === Number(idOrSlug) ||
+        p.name.toLowerCase().replace(/\s+/g, "-") === String(idOrSlug).toLowerCase(),
+    ) || null
+
   if (!isSupabaseConfigured()) {
-    const found = defaultProducts.find(
-      (p) => p.id === Number(idOrSlug) || p.name.toLowerCase().replace(/\s+/g, "-") === String(idOrSlug),
-    )
-    return { data: found || null, error: null }
+    const found = findInFallback()
+    return { data: found, error: null }
   }
 
   try {
@@ -188,19 +300,16 @@ export async function getProductById(
     const { data, error } = await finalQuery.maybeSingle()
 
     if (error || !data) {
-      // Fallback to local data
-      const fallback = defaultProducts.find(
-        (p) => p.id === Number(idOrSlug) || p.name.toLowerCase().replace(/\s+/g, "-") === String(idOrSlug),
-      )
-      return { data: fallback || null, error: null }
+      const fallback = findInFallback()
+      return { data: fallback, error: null }
     }
 
-    return { data: mapDbProductToProduct(data), error: null }
+    const mapped = mapDbProductToProduct(data)
+    const [effective] = getEffectiveProducts([mapped])
+    return { data: effective || null, error: null }
   } catch (err) {
-    const fallback = defaultProducts.find(
-      (p) => p.id === Number(idOrSlug) || p.name.toLowerCase().replace(/\s+/g, "-") === String(idOrSlug),
-    )
-    return { data: fallback || null, error: null }
+    const fallback = findInFallback()
+    return { data: fallback, error: null }
   }
 }
 
@@ -208,8 +317,9 @@ export async function getProductById(
  * Fetch all categories from Supabase (or fallback).
  */
 export async function getCategories(): Promise<string[]> {
+  const fallback = Array.from(new Set(getEffectiveProducts(defaultProducts).map((p) => p.category)))
   if (!isSupabaseConfigured()) {
-    return [...defaultCategories]
+    return fallback.length > 0 ? fallback : [...defaultCategories]
   }
 
   try {
@@ -219,12 +329,12 @@ export async function getCategories(): Promise<string[]> {
       .order("display_order", { ascending: true })
 
     if (error || !data || data.length === 0) {
-      return [...defaultCategories]
+      return fallback.length > 0 ? fallback : [...defaultCategories]
     }
 
     return data.map((c: { name: string }) => c.name)
   } catch {
-    return [...defaultCategories]
+    return fallback.length > 0 ? fallback : [...defaultCategories]
   }
 }
 
@@ -232,8 +342,9 @@ export async function getCategories(): Promise<string[]> {
  * Fetch all unique brands from Supabase (or fallback).
  */
 export async function getBrands(): Promise<string[]> {
+  const fallback = Array.from(new Set(getEffectiveProducts(defaultProducts).map((p) => p.brand))).sort()
   if (!isSupabaseConfigured()) {
-    return Array.from(new Set(defaultProducts.map((p) => p.brand))).sort()
+    return fallback
   }
 
   try {
@@ -243,12 +354,12 @@ export async function getBrands(): Promise<string[]> {
       .order("name", { ascending: true })
 
     if (error || !data || data.length === 0) {
-      return Array.from(new Set(defaultProducts.map((p) => p.brand))).sort()
+      return fallback
     }
 
     return data.map((b) => b.name)
   } catch {
-    return Array.from(new Set(defaultProducts.map((p) => p.brand))).sort()
+    return fallback
   }
 }
 
@@ -339,7 +450,7 @@ export async function submitProductReview(
 
 // Fallback filtering helper for mock data
 function filterDefaultProducts(params: ProductQueryParams) {
-  let list = [...defaultProducts]
+  let list = getEffectiveProducts(defaultProducts)
 
   if (params.category && params.category !== "All") {
     list = list.filter((p) => p.category === params.category)

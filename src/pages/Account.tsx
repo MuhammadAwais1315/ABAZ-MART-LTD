@@ -19,7 +19,8 @@ import { useAuth } from "../context/AuthContext"
 import { products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 import { OrderReceipt } from "../components/checkout/OrderReceipt"
-import { PaymentMethod } from "../types/database"
+import { OrderStatus, PaymentMethod } from "../types/database"
+import { getEffectiveProducts } from "../services/products"
 import {
   getCustomerOrders,
   cancelOrder,
@@ -143,7 +144,53 @@ export default function Account() {
     }
   }, [user?.id])
 
-  const wishlistProducts = products.filter((product) =>
+  // Listen for order status changes across the system
+  useEffect(() => {
+    const handleStatusSync = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      if (detail?.orderId && detail?.status) {
+        setOrders((current) =>
+          current.map((o) =>
+            o.id === detail.orderId ? { ...o, status: detail.status as OrderStatus } : o,
+          ),
+        )
+        setSelectedOrder((prev) =>
+          prev && prev.id === detail.orderId ? { ...prev, status: detail.status as OrderStatus } : prev,
+        )
+      }
+    }
+    window.addEventListener("abaz_order_status_changed", handleStatusSync)
+    return () => {
+      window.removeEventListener("abaz_order_status_changed", handleStatusSync)
+    }
+  }, [])
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (
+      window.confirm(
+        "Are you sure you want to cancel this order? This will cancel shipment and restock reserved items.",
+      )
+    ) {
+      setCancellingOrderId(orderId)
+      const { success, error } = await cancelOrder(orderId)
+      setCancellingOrderId(null)
+      if (error) {
+        notify(error.message)
+      } else if (success) {
+        notify("Order has been cancelled successfully")
+        setOrders((current) =>
+          current.map((o) =>
+            o.id === orderId ? { ...o, status: "Cancelled" as OrderStatus } : o,
+          ),
+        )
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, status: "Cancelled" as OrderStatus })
+        }
+      }
+    }
+  }
+
+  const wishlistProducts = getEffectiveProducts(products).filter((product) =>
     wishlist.includes(product.id),
   )
 
@@ -480,6 +527,17 @@ export default function Account() {
                         >
                           <Download className="w-3.5 h-3.5" /> Receipt
                         </Button>
+                        {(order.status === "Pending" || order.status === "Processing") && (
+                          <Button
+                            variant="outline"
+                            className="text-xs px-2.5 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            disabled={cancellingOrderId === order.id}
+                            onClick={() => handleCancelOrder(order.id)}
+                            title="Cancel Order"
+                          >
+                            {cancellingOrderId === order.id ? "Cancelling..." : "Cancel"}
+                          </Button>
+                        )}
                       </div>
                     </article>
                   ))
@@ -734,35 +792,12 @@ export default function Account() {
               </Button>
 
               <div className="flex items-center gap-2">
-                {selectedOrder.status === "Pending" && (
+                {(selectedOrder.status === "Pending" || selectedOrder.status === "Processing") && (
                   <Button
                     variant="outline"
                     className="text-xs py-1.5 px-3 text-red-600 hover:text-red-700 hover:border-red-300"
                     disabled={cancellingOrderId === selectedOrder.id}
-                    onClick={async () => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to cancel this pending order? This will safely restock the reserved inventory.",
-                        )
-                      ) {
-                        setCancellingOrderId(selectedOrder.id)
-                        const { success, error } = await cancelOrder(selectedOrder.id)
-                        setCancellingOrderId(null)
-                        if (error) {
-                          notify(error.message)
-                        } else if (success) {
-                          notify("Order cancelled successfully")
-                          setSelectedOrder({ ...selectedOrder, status: "Cancelled" })
-                          setOrders((current) =>
-                            current.map((o) =>
-                              o.id === selectedOrder.id
-                                ? { ...o, status: "Cancelled" }
-                                : o,
-                            ),
-                          )
-                        }
-                      }
-                    }}
+                    onClick={() => handleCancelOrder(selectedOrder.id)}
                   >
                     {cancellingOrderId === selectedOrder.id
                       ? "Cancelling..."

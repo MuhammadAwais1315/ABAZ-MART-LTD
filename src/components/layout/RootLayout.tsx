@@ -15,6 +15,7 @@ import {
   getCustomerWishlist,
   toggleCustomerWishlist,
 } from "../../services/account"
+import { getEffectiveProducts, isProductDeleted } from "../../services/products"
 
 export default function RootLayout() {
   useScrollReveal()
@@ -28,8 +29,10 @@ export default function RootLayout() {
         quantity: number
         option?: string
       }[]
+      const effectiveList = getEffectiveProducts(products)
       return entries.flatMap((entry) => {
-        const product = products.find((item) => item.id === entry.id)
+        if (isProductDeleted(entry.id)) return []
+        const product = effectiveList.find((item) => item.id === entry.id)
         return product
           ? [
               {
@@ -47,7 +50,8 @@ export default function RootLayout() {
   const [wishlist, setWishlist] = useState<number[]>(() => {
     try {
       const saved = window.localStorage.getItem("abaz-mart-wishlist")
-      return saved ? JSON.parse(saved) : [1, 5, 9]
+      const list = saved ? (JSON.parse(saved) as number[]) : [1, 5, 9]
+      return Array.isArray(list) ? list.filter((id) => !isProductDeleted(id)) : [1, 5, 9]
     } catch {
       return [1, 5, 9]
     }
@@ -56,6 +60,20 @@ export default function RootLayout() {
   const [toastMessage, setToastMessage] = useState("")
 
   const notify = (message: string) => setToastMessage(message)
+
+  // Sync when catalog updates (e.g. admin deletes or updates a product)
+  useEffect(() => {
+    const handleCatalogUpdate = () => {
+      setCart((current) => current.filter((item) => !isProductDeleted(item.product.id)))
+      setWishlist((current) => current.filter((id) => !isProductDeleted(id)))
+    }
+    window.addEventListener("abaz_catalog_updated", handleCatalogUpdate)
+    window.addEventListener("storage", handleCatalogUpdate)
+    return () => {
+      window.removeEventListener("abaz_catalog_updated", handleCatalogUpdate)
+      window.removeEventListener("storage", handleCatalogUpdate)
+    }
+  }, [])
 
   // Sync wishlist from Supabase for authenticated customer
   useEffect(() => {
