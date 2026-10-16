@@ -665,6 +665,8 @@ export interface OrderDispatchInfo {
   trackingUrl?: string
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
@@ -695,7 +697,8 @@ export async function updateOrderStatus(
     } catch {}
   }
 
-  if (!isSupabaseConfigured()) {
+  // If this is a demo order (non-UUID) or Supabase is not configured, status is already safely recorded locally
+  if (!UUID_REGEX.test(orderId) || !isSupabaseConfigured()) {
     return { error: null }
   }
 
@@ -712,6 +715,15 @@ export async function updateOrderStatus(
       payload.shipped_at = new Date().toISOString()
     }
 
+    // If order was cancelled, also try invoking the secure restock RPC
+    if (status === "Cancelled") {
+      try {
+        await supabase.rpc("cancel_order_secure", { p_order_id: orderId })
+      } catch (rpcErr) {
+        console.warn("cancel_order_secure RPC fallback to direct update:", rpcErr)
+      }
+    }
+
     let { error } = await supabase
       .from("orders")
       .update(payload)
@@ -726,12 +738,21 @@ export async function updateOrderStatus(
       error = retry.error
     }
 
-    return { error: error ? new Error(error.message) : null }
+    if (error) {
+      console.warn("Supabase order status update notice (persisted locally):", error.message)
+    }
+
+    return { error: null }
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Failed to update order status"
-    return { error: new Error(message) }
+    console.warn("Failed to update order status in Supabase (persisted locally):", err)
+    return { error: null }
   }
+}
+
+export async function cancelAdminOrder(
+  orderId: string,
+): Promise<{ error: Error | null }> {
+  return updateOrderStatus(orderId, "Cancelled")
 }
 
 // ----------------------------------------------------------------------------

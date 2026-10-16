@@ -106,8 +106,24 @@ export default function AdminDashboard() {
       }
     }
     fetchOrders()
+
+    const handleStatusSync = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      if (detail?.orderId && detail?.status) {
+        setOrders((current) =>
+          current.map((o) =>
+            o.id === detail.orderId ? { ...o, status: detail.status } : o,
+          ),
+        )
+      }
+    }
+    window.addEventListener("abaz_order_status_changed", handleStatusSync)
+    window.addEventListener("storage", handleStatusSync)
+
     return () => {
       mounted = false
+      window.removeEventListener("abaz_order_status_changed", handleStatusSync)
+      window.removeEventListener("storage", handleStatusSync)
     }
   }, [])
 

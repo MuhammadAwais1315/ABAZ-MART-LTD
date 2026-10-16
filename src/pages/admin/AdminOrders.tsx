@@ -74,6 +74,29 @@ export default function AdminOrders() {
     fetchOrders()
   }, [])
 
+  // Listen for real-time order status updates (e.g. cancelled from customer side or another window)
+  useEffect(() => {
+    const handleStatusSync = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail
+      if (detail?.orderId && detail?.status) {
+        setOrders((current) =>
+          current.map((item) =>
+            item.id === detail.orderId ? { ...item, status: detail.status as OrderStatus } : item,
+          ),
+        )
+        setSelectedOrder((prev) =>
+          prev && prev.id === detail.orderId ? { ...prev, status: detail.status as OrderStatus } : prev,
+        )
+      }
+    }
+    window.addEventListener("abaz_order_status_changed", handleStatusSync)
+    window.addEventListener("storage", handleStatusSync)
+    return () => {
+      window.removeEventListener("abaz_order_status_changed", handleStatusSync)
+      window.removeEventListener("storage", handleStatusSync)
+    }
+  }, [])
+
   const openDispatchModal = (order: AdminOrderItem) => {
     setDispatchModalOrder(order)
     const isKnownCarrier = CARRIER_OPTIONS.some((c) => c.name === order.carrier)
@@ -114,6 +137,16 @@ export default function AdminOrders() {
         setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
       }
       showToast(`Order status updated to "${newStatus}"`)
+    }
+  }
+
+  const handleCancelOrder = async (order: AdminOrderItem) => {
+    if (
+      window.confirm(
+        `Are you sure you want to cancel Order ${order.orderNumber}? This will mark the order as Cancelled, release reserved inventory, and sync customer invoice status.`,
+      )
+    ) {
+      await handleStatusChange(order.id, "Cancelled")
     }
   }
 
@@ -495,17 +528,30 @@ export default function AdminOrders() {
 
                     {/* Actions */}
                     <td className="text-right">
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          setSelectedOrder(order)
-                          setActiveModalTab("details")
-                        }}
-                        className="inline-flex items-center gap-1.5 text-xs py-1.5 px-3"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Inspect & Receipt</span>
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        {order.status !== "Cancelled" && (
+                          <Button
+                            variant="outline"
+                            className="text-xs py-1.5 px-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            disabled={updatingId === order.id}
+                            onClick={() => handleCancelOrder(order)}
+                            title="Cancel this order"
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setSelectedOrder(order)
+                            setActiveModalTab("details")
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs py-1.5 px-3"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Inspect & Receipt</span>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -558,6 +604,17 @@ export default function AdminOrders() {
                 <option value="Delivered">Delivered</option>
                 <option value="Cancelled">Cancelled</option>
               </Select>
+              {selectedOrder.status !== "Cancelled" && (
+                <Button
+                  variant="outline"
+                  className="text-xs py-1.5 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 flex items-center gap-1.5"
+                  disabled={updatingId === selectedOrder.id}
+                  onClick={() => handleCancelOrder(selectedOrder)}
+                >
+                  <XCircle className="w-3.5 h-3.5 text-red-600" />
+                  <span>Cancel Order</span>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -821,14 +878,27 @@ export default function AdminOrders() {
 
               {/* Modal Actions */}
               <div className="flex justify-between items-center pt-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setActiveModalTab("receipt")}
-                  className="flex items-center gap-2 text-xs"
-                >
-                  <FileText className="w-4 h-4 text-rose" />
-                  <span>View Official PDF Invoice</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setActiveModalTab("receipt")}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <FileText className="w-4 h-4 text-rose" />
+                    <span>View Official PDF Invoice</span>
+                  </Button>
+                  {selectedOrder.status !== "Cancelled" && (
+                    <Button
+                      variant="outline"
+                      className="text-xs py-1.5 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 flex items-center gap-1.5"
+                      disabled={updatingId === selectedOrder.id}
+                      onClick={() => handleCancelOrder(selectedOrder)}
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-red-600" />
+                      <span>Cancel This Order</span>
+                    </Button>
+                  )}
+                </div>
                 <Button variant="primary" onClick={() => setSelectedOrder(null)}>
                   Close
                 </Button>
