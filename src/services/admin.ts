@@ -1,20 +1,44 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Product, products } from "../data/products"
-import { Database, OrderStatus, UserRole } from "../types/database"
+import { Database, OrderStatus, PaymentMethod, PaymentStatus, UserRole } from "../types/database"
 
 export type ProductRow = Database["public"]["Tables"]["products"]["Row"]
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"]
+
+export interface AdminOrderLineItem {
+  id: number | string
+  productId: number | null
+  productName: string
+  productBrand: string
+  productImage: string
+  selectedOption: string
+  unitPrice: number
+  quantity: number
+  lineTotal: number
+}
 
 export interface AdminOrderItem {
   id: string
   orderNumber: string
   customer: string
   email?: string
+  phone?: string
+  shippingAddress: string
+  shippingCity: string
+  shippingPostalCode: string
+  shippingCountry: string
+  paymentMethod: PaymentMethod
+  paymentStatus: PaymentStatus
   date: string
+  subtotal: number
+  shipping: number
+  tax: number
+  discount: number
   total: number
   status: OrderStatus
   itemsCount: number
   rawCreatedAt: string
+  items: AdminOrderLineItem[]
 }
 
 export interface AdminProductPayload {
@@ -332,7 +356,7 @@ export async function getAdminOrders(): Promise<{
   try {
     const { data, error } = await supabase
       .from("orders")
-      .select("*, order_items(id)")
+      .select("*, order_items(*)")
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -344,6 +368,25 @@ export async function getAdminOrders(): Promise<{
       return { data: getFallbackAdminOrders(), error: null }
     }
 
+    // Try to get profile emails if possible
+    const userIds = Array.from(new Set(data.map((o) => o.user_id).filter(Boolean)))
+    const profileMap = new Map<string, { email: string; phone?: string | null }>()
+    if (userIds.length > 0) {
+      try {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, email, phone")
+          .in("id", userIds)
+        if (profs) {
+          for (const p of profs) {
+            profileMap.set(p.id, { email: p.email, phone: p.phone })
+          }
+        }
+      } catch {
+        // Fallback silently if profiles query fails
+      }
+    }
+
     const mapped: AdminOrderItem[] = data.map((o) => {
       const createdDate = new Date(o.created_at)
       const formattedDate = createdDate.toLocaleDateString("en-GB", {
@@ -352,17 +395,58 @@ export async function getAdminOrders(): Promise<{
         year: "numeric",
       })
 
-      const itemsCount = Array.isArray(o.order_items) ? o.order_items.length : 1
+      const prof = profileMap.get(o.user_id)
+      const customerEmail = prof?.email || (o.shipping_name ? `${o.shipping_name.toLowerCase().replace(/\s+/g, ".")}@example.com` : "customer@example.com")
+      const customerPhone = o.shipping_phone || prof?.phone || "+44 20 7946 0912"
+
+      const items: AdminOrderLineItem[] = Array.isArray(o.order_items) && o.order_items.length > 0
+        ? o.order_items.map((item: any) => ({
+            id: item.id,
+            productId: item.product_id,
+            productName: item.product_name || "Luxury Beauty Item",
+            productBrand: item.product_brand || "ABAZ MART",
+            productImage: item.product_image || "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
+            selectedOption: item.selected_option || "Standard",
+            unitPrice: Number(item.unit_price) || 0,
+            quantity: Number(item.quantity) || 1,
+            lineTotal: Number(item.line_total) || (Number(item.unit_price) || 0) * (item.quantity || 1),
+          }))
+        : [
+            {
+              id: 1,
+              productId: null,
+              productName: "Signature Skincare Order",
+              productBrand: "ABAZ MART",
+              productImage: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
+              selectedOption: "Standard",
+              unitPrice: Number(o.total),
+              quantity: 1,
+              lineTotal: Number(o.total),
+            },
+          ]
 
       return {
         id: o.id,
         orderNumber: o.order_number,
         customer: o.shipping_name || "Customer",
+        email: customerEmail,
+        phone: customerPhone,
+        shippingAddress: o.shipping_address || "14 Berkeley Square",
+        shippingCity: o.shipping_city || "London",
+        shippingPostalCode: o.shipping_postal_code || "W1J 5AE",
+        shippingCountry: o.shipping_country || "United Kingdom",
+        paymentMethod: (o.payment_method as PaymentMethod) || "card",
+        paymentStatus: (o.payment_status as PaymentStatus) || "paid",
         date: formattedDate,
+        subtotal: Number(o.subtotal) || Number(o.total),
+        shipping: Number(o.shipping) || 0,
+        tax: Number(o.tax) || 0,
+        discount: Number(o.discount) || 0,
         total: Number(o.total),
         status: o.status,
-        itemsCount,
+        itemsCount: items.length,
         rawCreatedAt: o.created_at,
+        items,
       }
     })
 
@@ -882,61 +966,255 @@ function getFallbackAdminOrders(): AdminOrderItem[] {
       id: "demo-1",
       orderNumber: "ABZ-10842",
       customer: "Amara Williams",
+      email: "amara.williams@gmail.com",
+      phone: "+44 7700 900142",
+      shippingAddress: "42 Kensington High Street",
+      shippingCity: "London",
+      shippingPostalCode: "W8 4PT",
+      shippingCountry: "United Kingdom",
+      paymentMethod: "card",
+      paymentStatus: "paid",
       date: "18 Feb 2026",
+      subtotal: 126.4,
+      shipping: 0.0,
+      tax: 0.0,
+      discount: 0.0,
       total: 126.4,
       status: "Delivered",
       itemsCount: 2,
       rawCreatedAt: "2026-02-18T10:00:00Z",
+      items: [
+        {
+          id: 101,
+          productId: 1,
+          productName: "Luminous Glow Hydrating Serum",
+          productBrand: "Aura Radiance",
+          productImage: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "30ml",
+          unitPrice: 68.0,
+          quantity: 1,
+          lineTotal: 68.0,
+        },
+        {
+          id: 102,
+          productId: 2,
+          productName: "Velvet Botanical Cleansing Balm",
+          productBrand: "Botanica Organics",
+          productImage: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "100ml",
+          unitPrice: 58.4,
+          quantity: 1,
+          lineTotal: 58.4,
+        },
+      ],
     },
     {
       id: "demo-2",
       orderNumber: "ABZ-10839",
       customer: "Nadia Brooks",
+      email: "nadia.brooks@outlook.com",
+      phone: "+44 7700 900881",
+      shippingAddress: "18 George Street",
+      shippingCity: "Edinburgh",
+      shippingPostalCode: "EH2 2PF",
+      shippingCountry: "United Kingdom",
+      paymentMethod: "bank_transfer",
+      paymentStatus: "paid",
       date: "18 Feb 2026",
+      subtotal: 84.0,
+      shipping: 0.0,
+      tax: 0.0,
+      discount: 0.0,
       total: 84.0,
       status: "Shipped",
       itemsCount: 1,
       rawCreatedAt: "2026-02-18T09:30:00Z",
+      items: [
+        {
+          id: 103,
+          productId: 4,
+          productName: "Silk Peptide Restorative Night Cream",
+          productBrand: "Cellular Glow",
+          productImage: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "50ml",
+          unitPrice: 84.0,
+          quantity: 1,
+          lineTotal: 84.0,
+        },
+      ],
     },
     {
       id: "demo-3",
       orderNumber: "ABZ-10835",
       customer: "Sofia Chen",
+      email: "sofia.chen@icloud.com",
+      phone: "+44 7700 900329",
+      shippingAddress: "9 Deansgate",
+      shippingCity: "Manchester",
+      shippingPostalCode: "M3 2AY",
+      shippingCountry: "United Kingdom",
+      paymentMethod: "paypal",
+      paymentStatus: "paid",
       date: "17 Feb 2026",
+      subtotal: 152.25,
+      shipping: 0.0,
+      tax: 0.0,
+      discount: 0.0,
       total: 152.25,
       status: "Processing",
-      itemsCount: 3,
+      itemsCount: 2,
       rawCreatedAt: "2026-02-17T14:15:00Z",
+      items: [
+        {
+          id: 104,
+          productId: 5,
+          productName: "Rose Water Balancing Facial Mist",
+          productBrand: "Rose Atelier",
+          productImage: "https://images.unsplash.com/photo-1608248597359-548d7936a287?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "150ml",
+          unitPrice: 42.0,
+          quantity: 1,
+          lineTotal: 42.0,
+        },
+        {
+          id: 105,
+          productId: 6,
+          productName: "Cellular Renewal Youth Elixir",
+          productBrand: "Aura Radiance",
+          productImage: "https://images.unsplash.com/photo-1601049541289-9b1b7bbbfe19?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "30ml",
+          unitPrice: 110.25,
+          quantity: 1,
+          lineTotal: 110.25,
+        },
+      ],
     },
     {
       id: "demo-4",
       orderNumber: "ABZ-10831",
       customer: "Leila Morgan",
+      email: "leila.morgan@gmail.com",
+      phone: "+44 7700 900512",
+      shippingAddress: "27 Queen Square",
+      shippingCity: "Bath",
+      shippingPostalCode: "BA1 2HX",
+      shippingCountry: "United Kingdom",
+      paymentMethod: "card",
+      paymentStatus: "pending",
       date: "17 Feb 2026",
+      subtotal: 61.5,
+      shipping: 6.0,
+      tax: 0.0,
+      discount: 0.0,
       total: 67.5,
       status: "Pending",
       itemsCount: 1,
       rawCreatedAt: "2026-02-17T11:00:00Z",
+      items: [
+        {
+          id: 106,
+          productId: 3,
+          productName: "Golden Marula Nourishing Face Oil",
+          productBrand: "Botanica Organics",
+          productImage: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "30ml",
+          unitPrice: 61.5,
+          quantity: 1,
+          lineTotal: 61.5,
+        },
+      ],
     },
     {
       id: "demo-5",
       orderNumber: "ABZ-10828",
       customer: "Maya Roberts",
+      email: "maya.roberts@gmail.com",
+      phone: "+44 7700 900741",
+      shippingAddress: "15 Park Row",
+      shippingCity: "Leeds",
+      shippingPostalCode: "LS1 5HD",
+      shippingCountry: "United Kingdom",
+      paymentMethod: "card",
+      paymentStatus: "refunded",
       date: "16 Feb 2026",
+      subtotal: 91.0,
+      shipping: 0.0,
+      tax: 0.0,
+      discount: 0.0,
       total: 91.0,
       status: "Cancelled",
-      itemsCount: 2,
+      itemsCount: 1,
       rawCreatedAt: "2026-02-16T16:45:00Z",
+      items: [
+        {
+          id: 107,
+          productId: 7,
+          productName: "Diamond Infused Brightening Cream",
+          productBrand: "Cellular Glow",
+          productImage: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "50ml",
+          unitPrice: 91.0,
+          quantity: 1,
+          lineTotal: 91.0,
+        },
+      ],
     },
     {
       id: "demo-6",
       orderNumber: "ABZ-10824",
       customer: "Olivia Kim",
+      email: "olivia.kim@yahoo.co.uk",
+      phone: "+44 7700 900693",
+      shippingAddress: "73 King Street",
+      shippingCity: "Bristol",
+      shippingPostalCode: "BS1 4LE",
+      shippingCountry: "United Kingdom",
+      paymentMethod: "card",
+      paymentStatus: "paid",
       date: "16 Feb 2026",
+      subtotal: 220.8,
+      shipping: 0.0,
+      tax: 0.0,
+      discount: 15.0,
       total: 205.8,
       status: "Delivered",
-      itemsCount: 4,
+      itemsCount: 3,
       rawCreatedAt: "2026-02-16T08:20:00Z",
+      items: [
+        {
+          id: 108,
+          productId: 1,
+          productName: "Luminous Glow Hydrating Serum",
+          productBrand: "Aura Radiance",
+          productImage: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "30ml",
+          unitPrice: 68.0,
+          quantity: 1,
+          lineTotal: 68.0,
+        },
+        {
+          id: 109,
+          productId: 2,
+          productName: "Velvet Botanical Cleansing Balm",
+          productBrand: "Botanica Organics",
+          productImage: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "100ml",
+          unitPrice: 58.4,
+          quantity: 1,
+          lineTotal: 58.4,
+        },
+        {
+          id: 110,
+          productId: 8,
+          productName: "Pure Moroccan Argan Hair Elixir",
+          productBrand: "Rose Atelier",
+          productImage: "https://images.unsplash.com/photo-1608248597359-548d7936a287?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "100ml",
+          unitPrice: 94.4,
+          quantity: 1,
+          lineTotal: 94.4,
+        },
+      ],
     },
   ]
 }

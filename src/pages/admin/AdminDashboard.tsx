@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router"
 import {
   CartesianGrid,
   Line,
@@ -251,11 +252,19 @@ export default function AdminDashboard() {
             <h2>Recent orders</h2>
             <p>Latest customer purchases</p>
           </div>
-          <Input
-            placeholder="Search orders..."
-            value={orderSearch}
-            onChange={(event) => setOrderSearch(event.target.value)}
-          />
+          <div className="flex items-center gap-3">
+            <Input
+              placeholder="Search orders..."
+              value={orderSearch}
+              onChange={(event) => setOrderSearch(event.target.value)}
+            />
+            <Link
+              to="/admin/orders"
+              className="text-xs font-semibold text-rose hover:text-rose-700 whitespace-nowrap px-3 py-2 rounded-lg bg-light border border-border"
+            >
+              View All Orders →
+            </Link>
+          </div>
         </div>
         <div className="table-scroll">
           <table className="admin-table-element">
