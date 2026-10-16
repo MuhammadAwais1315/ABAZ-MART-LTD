@@ -62,13 +62,13 @@ export default function Footer({ notify }: { notify: (message: string) => void }
           <Link to="/shop">Gift cards</Link>
         </div>
         <div>
-          <h3>Customer care</h3>
-          <a href="mailto:care@abazmart.co.uk">Contact us</a>
-          <Link to="/shop">Shipping & returns</Link>
-          <a href="mailto:care@abazmart.co.uk?subject=Abaz%20Mart%20Question">
-            FAQs
-          </a>
-          <Link to="/account">My account</Link>
+          <h3>Customer Care</h3>
+          <a href="mailto:care@abazmart.co.uk">Contact Us</a>
+          <Link to="/shipping">Shipping Policy</Link>
+          <Link to="/returns">Refunds &amp; Returns</Link>
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Terms &amp; Conditions</Link>
+          <Link to="/account">My Account</Link>
         </div>
         <div>
           <h3>A little beauty in your inbox</h3>
@@ -89,7 +89,12 @@ export default function Footer({ notify }: { notify: (message: string) => void }
         </div>
       </div>
       <div className="shell footer-bottom">
-        <span>© 2026 Abaz Mart. All rights reserved.</span>
+        <div className="space-y-1 text-xs">
+          <div>© 2026 Abaz Mart Ltd. All rights reserved.</div>
+          <div className="text-[11px] text-muted-foreground">
+            Registered in England &amp; Wales · Co. No. 14920841 · <Link to="/privacy" className="hover:underline">Privacy</Link> · <Link to="/terms" className="hover:underline">Terms</Link> · <Link to="/shipping" className="hover:underline">Shipping</Link> · <Link to="/returns" className="hover:underline">Returns</Link>
+          </div>
+        </div>
         <div className="payments">
           <b>VISA</b>
           <b>MC</b>

@@ -4,6 +4,7 @@ import { Check } from "lucide-react"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
 import CartDrawer from "./CartDrawer"
+import CookieBanner from "../common/CookieBanner"
 import SiteUtilities from "../SiteUtilities"
 import { Toast } from "../ui"
 import { useAuth } from "../../context/AuthContext"
@@ -181,6 +182,7 @@ export default function RootLayout() {
         removeFromCart={removeFromCart}
       />
       <SiteUtilities />
+      <CookieBanner />
       {toastMessage && (
         <Toast>
           <Check /> {toastMessage}

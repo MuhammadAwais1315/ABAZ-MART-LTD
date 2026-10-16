@@ -10,6 +10,10 @@ import Checkout from "./pages/Checkout"
 import AuthPage from "./pages/AuthPage"
 import Account from "./pages/Account"
 import NotFound from "./pages/NotFound"
+import PrivacyPolicy from "./pages/PrivacyPolicy"
+import TermsOfService from "./pages/TermsOfService"
+import ShippingPolicy from "./pages/ShippingPolicy"
+import ReturnsPolicy from "./pages/ReturnsPolicy"
 import AdminLayout from "./pages/admin/AdminLayout"
 import AdminDashboard from "./pages/admin/AdminDashboard"
 import AdminProducts from "./pages/admin/AdminProducts"
@@ -50,6 +54,10 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      { path: "privacy", Component: PrivacyPolicy },
+      { path: "terms", Component: TermsOfService },
+      { path: "shipping", Component: ShippingPolicy },
+      { path: "returns", Component: ReturnsPolicy },
       { path: "*", Component: NotFound },
     ],
   },
