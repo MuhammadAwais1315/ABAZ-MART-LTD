@@ -720,11 +720,11 @@ export default function Checkout() {
                     <div className="flex items-center gap-2">
                       <strong>Direct Bank Transfer</strong>
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">
-                        BACS / Faster Payments
+                        BACS / Faster Payments / IBAN
                       </span>
                     </div>
                     <small>
-                      Transfer directly to our UK Barclays business bank account
+                      Transfer directly to our official UK Wise business account (Sort Code, Account No &amp; IBAN)
                     </small>
                   </span>
                 </label>
@@ -733,29 +733,17 @@ export default function Checkout() {
                   <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs space-y-3">
                     <div className="flex items-center gap-2 font-bold text-amber-950">
                       <Building2 className="w-4 h-4 text-amber-700" />
-                      <span>Official UK Business Bank Details</span>
+                      <span>Official UK Wise Business Account Details</span>
                     </div>
                     <p className="text-amber-900/90 leading-relaxed">
-                      Please send payment to our official Barclays business account. An official receipt with your order reference and transfer details will be generated immediately upon confirming your order.
+                      Please send payment to our official <strong>Wise</strong> business account using Faster Payments or BACS. An official receipt with your unique order reference will be generated immediately upon confirmation.
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white p-3 rounded-lg border border-amber-200 text-xs font-mono">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-white p-3.5 rounded-lg border border-amber-200 text-xs font-mono">
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
                           Bank
                         </span>
-                        <strong className="text-foreground">Barclays UK</strong>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
-                          Sort Code
-                        </span>
-                        <strong className="text-foreground">20-00-00</strong>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
-                          Account No
-                        </span>
-                        <strong className="text-foreground">83920184</strong>
+                        <strong className="text-foreground font-sans">Wise</strong>
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
@@ -765,7 +753,34 @@ export default function Checkout() {
                           Abaz Mart Ltd
                         </strong>
                       </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          Sort Code
+                        </span>
+                        <strong className="text-foreground font-bold text-rose-700">60-84-64</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          Account Number
+                        </span>
+                        <strong className="text-foreground font-bold text-rose-700">60869680</strong>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          IBAN
+                        </span>
+                        <strong className="text-foreground break-all">GB71 TRWI 6084 6460 8696 80</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block font-sans uppercase">
+                          SWIFT / BIC
+                        </span>
+                        <strong className="text-foreground">TRWIGB2LXXX</strong>
+                      </div>
                     </div>
+                    <p className="text-[11px] text-amber-800">
+                      * Office 951 60 Tottenham Court Road, Fitzrovia, London W1T 2EW, UK
+                    </p>
                   </div>
                 )}
               </div>

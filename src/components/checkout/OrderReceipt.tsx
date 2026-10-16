@@ -146,7 +146,10 @@ export function OrderReceipt({
               Abaz Mart Ltd · Luxury Skincare & Beauty
             </p>
             <p className="text-xs text-muted-foreground">
-              Registered in England & Wales · Company No. 14920841
+              Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Registered in England &amp; Wales · Company No. 14920841
             </p>
             <p className="text-xs text-muted-foreground">
               care@abazmart.co.uk · +44 20 7946 0958
@@ -212,28 +215,40 @@ export function OrderReceipt({
               <span>Please Complete Your Bank Transfer:</span>
             </div>
             <p className="mb-3 text-amber-900/90 leading-relaxed">
-              To complete your order, please transfer <strong>{formatPrice(order.total)}</strong> to our official business account using the reference code below:
+              To complete your order, please transfer <strong>{formatPrice(order.total)}</strong> to our official Wise business account using your order reference code below:
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-3 rounded-lg border border-amber-200/80 font-mono text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white p-3.5 rounded-lg border border-amber-200/80 font-mono text-xs">
               <div>
                 <span className="text-[10px] text-muted-foreground block uppercase font-sans">Bank</span>
-                <strong className="text-foreground">Barclays UK</strong>
+                <strong className="text-foreground font-sans">Wise</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">Account Holder</span>
+                <strong className="text-foreground font-sans">Abaz Mart Ltd</strong>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block uppercase font-sans">Sort Code</span>
-                <strong className="text-foreground">20-00-00</strong>
+                <strong className="text-foreground font-bold text-rose-700">60-84-64</strong>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block uppercase font-sans">Account No</span>
-                <strong className="text-foreground">83920184</strong>
+                <strong className="text-foreground font-bold text-rose-700">60869680</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">SWIFT / BIC</span>
+                <strong className="text-foreground">TRWIGB2LXXX</strong>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block uppercase font-sans">Reference</span>
-                <strong className="text-rose-700 bg-rose-50 px-1 rounded">{order.order_number}</strong>
+                <strong className="text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-bold">{order.order_number}</strong>
+              </div>
+              <div className="col-span-2 sm:col-span-3 border-t border-amber-100 pt-2 mt-1">
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">IBAN</span>
+                <strong className="text-foreground text-[11px] break-all">GB71 TRWI 6084 6460 8696 80</strong>
               </div>
             </div>
             <p className="mt-2 text-[11px] text-amber-800">
-              * Your order will be dispatched as soon as the transfer clears into our bank account.
+              * Office 951 60 Tottenham Court Road, Fitzrovia, London W1T 2EW · Dispatched upon clearance.
             </p>
           </div>
         )}

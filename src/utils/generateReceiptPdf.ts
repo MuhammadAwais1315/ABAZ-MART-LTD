@@ -60,9 +60,10 @@ export function downloadReceiptPdf({
   doc.setFont("helvetica", "normal")
   doc.setFontSize(8.5)
   doc.setTextColor(...mutedColor)
-  doc.text("Abaz Mart Ltd · Luxury Skincare & Beauty", 15, 26)
-  doc.text("Registered in England & Wales · Company No. 14920841", 15, 30.5)
-  doc.text("care@abazmart.co.uk · +44 20 7946 0958", 15, 35)
+  doc.text("Abaz Mart Ltd · Luxury Skincare & Beauty", 15, 25.5)
+  doc.text("Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW", 15, 29.5)
+  doc.text("Registered in England & Wales · Company No. 14920841", 15, 33.5)
+  doc.text("care@abazmart.co.uk · +44 20 7946 0958", 15, 37.5)
 
   // 3. Header: Receipt Badge & Details (Right Aligned)
   doc.setFillColor(254, 242, 245)
@@ -150,24 +151,29 @@ export function downloadReceiptPdf({
   if (isBankTransfer) {
     doc.setFillColor(254, 243, 199) // Amber light
     doc.setDrawColor(245, 158, 11) // Amber border
-    doc.roundedRect(15, currentY, 180, 24, 2, 2, "FD")
+    doc.roundedRect(15, currentY, 180, 28, 2, 2, "FD")
 
     doc.setFont("helvetica", "bold")
     doc.setFontSize(8.5)
     doc.setTextColor(120, 53, 15)
-    doc.text("Please Complete Your Bank Transfer (BACS / Faster Payments):", 20, currentY + 6)
+    doc.text("Please Complete Your Bank Transfer (BACS / Faster Payments / IBAN):", 20, currentY + 6)
 
     doc.setFont("helvetica", "normal")
-    doc.setFontSize(8)
+    doc.setFontSize(7.5)
     doc.text(
-      `Bank: Barclays UK   |   Sort Code: 20-00-00   |   Account No: 83920184   |   Account Name: Abaz Mart Ltd`,
+      `Bank: Wise   |   Account Name: Abaz Mart Ltd   |   Sort Code: 60-84-64   |   Account No: 60869680`,
       20,
-      currentY + 12,
+      currentY + 11.5,
+    )
+    doc.text(
+      `IBAN: GB71 TRWI 6084 6460 8696 80   |   SWIFT/BIC: TRWIGB2LXXX`,
+      20,
+      currentY + 16.5,
     )
     doc.setFont("helvetica", "bold")
-    doc.text(`Payment Reference: ${order.order_number}`, 20, currentY + 18)
+    doc.text(`Payment Reference: ${order.order_number}`, 20, currentY + 22.5)
 
-    currentY += 29
+    currentY += 33
   } else {
     currentY += 4
   }

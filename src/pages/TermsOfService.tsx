@@ -21,7 +21,7 @@ export default function TermsOfService() {
             1. Company Information &amp; Scope
           </h2>
           <p className="text-muted-foreground">
-            These terms and conditions govern your use of the <strong>Abaz Mart</strong> website (<a href="https://www.abazmart.co.uk" className="text-rose-600 hover:underline">abazmart.co.uk</a>) and any purchase of goods from <strong>Abaz Mart Ltd</strong> ("we", "us", or "our"), a company incorporated in England and Wales under Company Registration Number <strong>14920841</strong>.
+            These terms and conditions govern your use of the <strong>Abaz Mart</strong> website (<a href="https://www.abazmart.co.uk" className="text-rose-600 hover:underline">abazmart.co.uk</a>) and any purchase of goods from <strong>Abaz Mart Ltd</strong> ("we", "us", or "our"), a company incorporated in England and Wales under Company Registration Number <strong>14920841</strong>, with registered office at <strong>Office 951, 60 Tottenham Court Road, Fitzrovia, London, W1T 2EW, United Kingdom</strong>.
           </p>
           <p className="text-muted-foreground">
             By browsing our website, creating an account, or placing an order, you agree to be bound by these Terms, our Privacy Policy, and our Returns Policy.
@@ -54,7 +54,7 @@ export default function TermsOfService() {
             4. Payment Methods &amp; Security
           </h2>
           <p className="text-muted-foreground">
-            We accept major credit and debit cards (Visa, Mastercard, American Express), Apple Pay, Google Pay, and direct BACS bank transfer. All digital card payments are processed securely via Stripe with 256-bit encryption. For bank transfers, orders are dispatched once funds have cleared in our Barclays UK business account.
+            We accept major credit and debit cards (Visa, Mastercard, American Express), Apple Pay, Google Pay, and direct BACS / Faster Payments bank transfer. All digital card payments are processed securely via Stripe with 256-bit encryption. For bank transfers, orders are dispatched once funds have cleared in our official Wise business account.
           </p>
         </section>
 

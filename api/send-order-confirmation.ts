@@ -99,7 +99,7 @@ function buildHtmlReceipt(data: OrderConfirmationPayload): string {
           Bank Transfer Payment Instructions
         </h3>
         <p style="margin: 0 0 14px 0; font-size: 12.5px; color: #78350f; line-height: 1.5;">
-          Please send a bank transfer of <strong>${formatGbp(order.total)}</strong> to our official Barclays business account using your order reference:
+          Please send a bank transfer of <strong>${formatGbp(order.total)}</strong> to our official <strong>Wise</strong> business account using your order reference:
         </p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border: 1px solid #fef3c7; border-radius: 8px; font-size: 12px; color: #451a03; border-collapse: collapse;">
           <tr>
@@ -109,28 +109,38 @@ function buildHtmlReceipt(data: OrderConfirmationPayload): string {
             </td>
             <td style="padding: 10px 14px; border-bottom: 1px solid #fef3c7; width: 50%;">
               <span style="display: block; font-size: 10px; text-transform: uppercase; color: #92400e;">Bank</span>
-              <strong>Barclays UK</strong>
+              <strong>Wise</strong>
             </td>
           </tr>
           <tr>
-            <td style="padding: 10px 14px; width: 50%;">
+            <td style="padding: 10px 14px; border-bottom: 1px solid #fef3c7; width: 50%;">
               <span style="display: block; font-size: 10px; text-transform: uppercase; color: #92400e;">Sort Code</span>
-              <strong style="font-family: monospace; font-size: 13px;">20-00-00</strong>
+              <strong style="font-family: monospace; font-size: 13px; color: #b83b5e;">60-84-64</strong>
             </td>
-            <td style="padding: 10px 14px; width: 50%;">
+            <td style="padding: 10px 14px; border-bottom: 1px solid #fef3c7; width: 50%;">
               <span style="display: block; font-size: 10px; text-transform: uppercase; color: #92400e;">Account Number</span>
-              <strong style="font-family: monospace; font-size: 13px;">83920184</strong>
+              <strong style="font-family: monospace; font-size: 13px; color: #b83b5e;">60869680</strong>
             </td>
           </tr>
           <tr>
-            <td colspan="2" style="padding: 10px 14px; border-top: 1px solid #fef3c7; background-color: #fffbeb;">
+            <td style="padding: 10px 14px; border-bottom: 1px solid #fef3c7; width: 50%;">
+              <span style="display: block; font-size: 10px; text-transform: uppercase; color: #92400e;">SWIFT / BIC</span>
+              <strong style="font-family: monospace; font-size: 12px;">TRWIGB2LXXX</strong>
+            </td>
+            <td style="padding: 10px 14px; border-bottom: 1px solid #fef3c7; width: 50%;">
+              <span style="display: block; font-size: 10px; text-transform: uppercase; color: #92400e;">IBAN</span>
+              <strong style="font-family: monospace; font-size: 11px;">GB71 TRWI 6084 6460 8696 80</strong>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding: 10px 14px; background-color: #fffbeb;">
               <span style="display: block; font-size: 10px; text-transform: uppercase; color: #92400e;">Payment Reference (Important)</span>
               <strong style="font-family: monospace; font-size: 14px; color: #b83b5e;">${order.order_number}</strong>
             </td>
           </tr>
         </table>
         <p style="margin: 10px 0 0 0; font-size: 11px; color: #92400e;">
-          * Your order will be dispatched as soon as the transfer clears into our bank account.
+          * Office 951 60 Tottenham Court Road, Fitzrovia, London W1T 2EW · Dispatched upon clearance.
         </p>
       </div>
     `
@@ -343,18 +353,22 @@ function buildTextReceipt(data: OrderConfirmationPayload): string {
   if (isBankTransfer) {
     lines.push(
       ``,
-      `BANK TRANSFER DETAILS:`,
-      `Bank: Barclays UK`,
-      `Sort Code: 20-00-00`,
-      `Account Number: 83920184`,
+      `OFFICIAL UK BANK TRANSFER DETAILS:`,
+      `Bank: Wise`,
+      `Account Name: Abaz Mart Ltd`,
+      `Sort Code: 60-84-64`,
+      `Account Number: 60869680`,
+      `IBAN: GB71 TRWI 6084 6460 8696 80`,
+      `SWIFT / BIC: TRWIGB2LXXX`,
       `Payment Reference: ${order.order_number}`,
+      `Registered Address: Office 951 60 Tottenham Court Road, Fitzrovia, London W1T 2EW, UK`,
     )
   }
 
   lines.push(
     ``,
     `Thank you for choosing Abaz Mart!`,
-    `Abaz Mart Ltd · Company No. 14920841 · care@abazmart.co.uk · +44 20 7946 0958`,
+    `Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company No. 14920841 · care@abazmart.co.uk`,
   )
 
   return lines.filter(Boolean).join("\n")
