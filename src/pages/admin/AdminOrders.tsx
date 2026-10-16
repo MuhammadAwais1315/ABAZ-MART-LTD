@@ -17,12 +17,15 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  ExternalLink,
 } from "lucide-react"
 import { Badge, Button, Input, Modal, Select, Toast } from "../../components/ui"
 import { formatPrice } from "../../utils/formatPrice"
 import {
   AdminOrderItem,
+  CARRIER_OPTIONS,
   getAdminOrders,
+  getCarrierTrackingUrl,
   updateOrderStatus,
 } from "../../services/admin"
 import { OrderStatus, PaymentMethod } from "../../types/database"
@@ -46,6 +49,15 @@ export default function AdminOrders() {
   const [toastMessage, setToastMessage] = useState("")
   const [copiedAddress, setCopiedAddress] = useState(false)
 
+  // Dispatch Tracking Modal State
+  const [dispatchModalOrder, setDispatchModalOrder] = useState<AdminOrderItem | null>(null)
+  const [selectedCarrier, setSelectedCarrier] = useState<string>("Royal Mail")
+  const [customCarrier, setCustomCarrier] = useState<string>("")
+  const [trackingNumberInput, setTrackingNumberInput] = useState<string>("")
+  const [notifyCustomer, setNotifyCustomer] = useState<boolean>(true)
+  const [dispatchError, setDispatchError] = useState<string>("")
+  const [submittingDispatch, setSubmittingDispatch] = useState<boolean>(false)
+
   const showToast = (message: string) => {
     setToastMessage(message)
     window.setTimeout(() => setToastMessage(""), 3500)
@@ -62,7 +74,30 @@ export default function AdminOrders() {
     fetchOrders()
   }, [])
 
+  const openDispatchModal = (order: AdminOrderItem) => {
+    setDispatchModalOrder(order)
+    const isKnownCarrier = CARRIER_OPTIONS.some((c) => c.name === order.carrier)
+    setSelectedCarrier(
+      order.carrier ? (isKnownCarrier ? order.carrier : "Other / Custom Carrier") : "Royal Mail",
+    )
+    setCustomCarrier(order.carrier && !isKnownCarrier ? order.carrier : "")
+    setTrackingNumberInput(order.trackingNumber || "")
+    setNotifyCustomer(true)
+    setDispatchError("")
+  }
+
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    // Intercept "Shipped" status update to require tracking number & carrier
+    if (newStatus === "Shipped") {
+      const target =
+        orders.find((o) => o.id === orderId) ||
+        (selectedOrder && selectedOrder.id === orderId ? selectedOrder : null)
+      if (target) {
+        openDispatchModal(target)
+        return
+      }
+    }
+
     setUpdatingId(orderId)
     const { error } = await updateOrderStatus(orderId, newStatus)
     setUpdatingId(null)
@@ -80,6 +115,59 @@ export default function AdminOrders() {
       }
       showToast(`Order status updated to "${newStatus}"`)
     }
+  }
+
+  const handleConfirmDispatch = async () => {
+    if (!dispatchModalOrder) return
+    const effectiveCarrier =
+      selectedCarrier === "Other / Custom Carrier"
+        ? customCarrier.trim() || "Custom Courier"
+        : selectedCarrier
+    const trimmedTracking = trackingNumberInput.trim()
+
+    if (!trimmedTracking) {
+      setDispatchError("Tracking number is required to mark an order as Shipped.")
+      return
+    }
+
+    setSubmittingDispatch(true)
+    setDispatchError("")
+
+    const trackingUrl = getCarrierTrackingUrl(effectiveCarrier, trimmedTracking)
+    const { error } = await updateOrderStatus(dispatchModalOrder.id, "Shipped", {
+      carrier: effectiveCarrier,
+      trackingNumber: trimmedTracking,
+      trackingUrl,
+    })
+
+    setSubmittingDispatch(false)
+
+    if (error) {
+      setDispatchError(`Failed to dispatch order: ${error.message}`)
+      return
+    }
+
+    const updatedOrder: Partial<AdminOrderItem> = {
+      status: "Shipped",
+      carrier: effectiveCarrier,
+      trackingNumber: trimmedTracking,
+      trackingUrl,
+      shippedAt: new Date().toISOString(),
+    }
+
+    setOrders((current) =>
+      current.map((o) =>
+        o.id === dispatchModalOrder.id ? { ...o, ...updatedOrder } : o,
+      ),
+    )
+    if (selectedOrder && selectedOrder.id === dispatchModalOrder.id) {
+      setSelectedOrder((prev) => (prev ? { ...prev, ...updatedOrder } : null))
+    }
+
+    showToast(
+      `Order #${dispatchModalOrder.orderNumber} dispatched via ${effectiveCarrier} (${trimmedTracking})`,
+    )
+    setDispatchModalOrder(null)
   }
 
   const handleCopyAddress = (order: AdminOrderItem) => {
@@ -359,6 +447,50 @@ export default function AdminOrders() {
                         <option value="Delivered">Delivered</option>
                         <option value="Cancelled">Cancelled</option>
                       </Select>
+
+                      {/* Courier Tracking Pill */}
+                      {order.carrier && order.trackingNumber && (
+                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-ink bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded-md">
+                            <Truck className="w-3 h-3 text-rose" />
+                            <span>{order.carrier}:</span>
+                            <code className="text-foreground font-mono font-semibold">
+                              {order.trackingNumber}
+                            </code>
+                          </span>
+                          {order.trackingUrl && (
+                            <a
+                              href={order.trackingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] text-rose-700 hover:text-rose-900 font-semibold underline inline-flex items-center gap-0.5"
+                              title="Open live carrier tracking page"
+                            >
+                              <span>Track</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(order.trackingNumber!)
+                              showToast(`Tracking code ${order.trackingNumber} copied!`)
+                            }}
+                            className="text-muted hover:text-ink cursor-pointer p-0.5"
+                            title="Copy tracking code"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDispatchModal(order)}
+                            className="text-[10px] text-muted-foreground hover:text-rose-700 underline cursor-pointer ml-1"
+                            title="Edit tracking info"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
                     </td>
 
                     {/* Actions */}
@@ -460,6 +592,70 @@ export default function AdminOrders() {
           {/* Tab 1: Fulfillment & Customer Items */}
           {activeModalTab === "details" && (
             <div className="space-y-6">
+              {/* Courier & Parcel Tracking Card */}
+              {selectedOrder.carrier && selectedOrder.trackingNumber ? (
+                <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                      <Truck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs uppercase tracking-wider font-bold text-emerald-800">
+                          Dispatched via {selectedOrder.carrier}
+                        </span>
+                        <Badge tone="green">In Transit</Badge>
+                      </div>
+                      <p className="text-sm font-mono font-bold text-ink mt-0.5">
+                        {selectedOrder.trackingNumber}
+                      </p>
+                      {selectedOrder.shippedAt && (
+                        <p className="text-[11px] text-muted mt-0.5">
+                          Dispatched on {new Date(selectedOrder.shippedAt).toLocaleString("en-GB")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedOrder.trackingUrl && (
+                      <a
+                        href={selectedOrder.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                      >
+                        <span>Live Courier Track</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    <Button
+                      variant="secondary"
+                      onClick={() => openDispatchModal(selectedOrder)}
+                      className="text-xs py-1.5 px-3"
+                    >
+                      Update Tracking
+                    </Button>
+                  </div>
+                </div>
+              ) : selectedOrder.status === "Processing" || selectedOrder.status === "Pending" ? (
+                <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-amber-900">
+                    <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      Order is <strong>{selectedOrder.status}</strong> and ready for packing.
+                    </span>
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => openDispatchModal(selectedOrder)}
+                    className="text-xs py-1 px-3 flex items-center gap-1.5"
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>Dispatch & Add Tracking</span>
+                  </Button>
+                </div>
+              ) : null}
+
               {/* Customer & Shipping Summary Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Customer Contact */}
@@ -685,6 +881,159 @@ export default function AdminOrders() {
               />
             </div>
           )}
+        </Modal>
+      )}
+
+      {/* Dispatch Order Modal - Requiring Carrier & Tracking Details */}
+      {dispatchModalOrder && (
+        <Modal
+          open={Boolean(dispatchModalOrder)}
+          size="md"
+          title={`Dispatch Order #${dispatchModalOrder.orderNumber}`}
+          onClose={() => setDispatchModalOrder(null)}
+        >
+          <div className="space-y-5">
+            <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-start gap-3">
+              <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-blue-950">Courier Tracking Required</p>
+                <p className="mt-0.5 text-blue-800 leading-relaxed">
+                  Moving this order to <strong>Shipped</strong> requires an active parcel tracking number and carrier name so the customer can track delivery in real time.
+                </p>
+                <div className="mt-2 pt-2 border-t border-blue-200/60 text-[11px] text-blue-800">
+                  <span>Destination: </span>
+                  <strong>{dispatchModalOrder.customer}</strong> · {dispatchModalOrder.shippingCity}, {dispatchModalOrder.shippingPostalCode} ({dispatchModalOrder.shippingCountry})
+                </div>
+              </div>
+            </div>
+
+            {dispatchError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium">
+                {dispatchError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">
+                  Shipping Courier / Carrier *
+                </label>
+                <Select
+                  value={selectedCarrier}
+                  onChange={(e) => setSelectedCarrier(e.target.value)}
+                >
+                  {CARRIER_OPTIONS.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              {selectedCarrier === "Other / Custom Carrier" && (
+                <div>
+                  <label className="block text-xs font-semibold text-ink mb-1.5">
+                    Custom Carrier Name *
+                  </label>
+                  <Input
+                    placeholder="e.g. Yodel, Whistl, DX Express"
+                    value={customCarrier}
+                    onChange={(e) => setCustomCarrier(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-ink">
+                    Tracking Number / Consignment Reference *
+                  </label>
+                  <span className="text-[11px] text-muted">
+                    Format: {CARRIER_OPTIONS.find((c) => c.name === selectedCarrier)?.example || "Carrier code"}
+                  </span>
+                </div>
+                <Input
+                  placeholder="e.g. GB928471928RM"
+                  value={trackingNumberInput}
+                  onChange={(e) => {
+                    setTrackingNumberInput(e.target.value)
+                    if (dispatchError) setDispatchError("")
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              {/* Live Tracking URL Preview */}
+              {trackingNumberInput.trim() && (
+                <div className="p-3 bg-light/70 rounded-xl border border-border text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-ink flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Live Tracking Link Preview
+                    </span>
+                    <a
+                      href={getCarrierTrackingUrl(
+                        selectedCarrier === "Other / Custom Carrier"
+                          ? customCarrier || "Courier"
+                          : selectedCarrier,
+                        trackingNumberInput.trim(),
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-rose font-semibold hover:underline inline-flex items-center gap-1 text-[11px]"
+                    >
+                      <span>Test Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <p className="text-[11px] font-mono text-muted truncate mt-1">
+                    {getCarrierTrackingUrl(
+                      selectedCarrier === "Other / Custom Carrier"
+                        ? customCarrier || "Courier"
+                        : selectedCarrier,
+                      trackingNumberInput.trim(),
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-1">
+                <label className="flex items-start gap-2.5 cursor-pointer text-xs text-ink">
+                  <input
+                    type="checkbox"
+                    checked={notifyCustomer}
+                    onChange={(e) => setNotifyCustomer(e.target.checked)}
+                    className="mt-0.5 accent-rose-600 rounded"
+                  />
+                  <span>
+                    Send shipment dispatch email with tracking details to{" "}
+                    <strong>{dispatchModalOrder.email || "customer"}</strong>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+              <Button
+                variant="secondary"
+                onClick={() => setDispatchModalOrder(null)}
+                disabled={submittingDispatch}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleConfirmDispatch}
+                disabled={submittingDispatch || !trackingNumberInput.trim()}
+                className="flex items-center gap-2"
+              >
+                <Truck className="w-4 h-4" />
+                <span>
+                  {submittingDispatch ? "Updating..." : "Confirm & Mark as Shipped"}
+                </span>
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
 

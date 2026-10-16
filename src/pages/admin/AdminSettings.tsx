@@ -24,6 +24,7 @@ export default function AdminSettings() {
     currency: "GBP",
     currencySymbol: "£",
     shippingFee: 6.0,
+    expeditedShippingFee: 8.5,
     freeShippingThreshold: 50.0,
     taxRate: 0.0,
     defaultCountry: "United Kingdom",
@@ -91,6 +92,7 @@ export default function AdminSettings() {
       currency: settings.currency,
       currencySymbol: settings.currencySymbol,
       shippingFee: Number(settings.shippingFee),
+      expeditedShippingFee: Number(settings.expeditedShippingFee),
       freeShippingThreshold: Number(settings.freeShippingThreshold),
       taxRate: Number(settings.taxRate),
       defaultCountry: settings.defaultCountry,
@@ -99,7 +101,7 @@ export default function AdminSettings() {
     if (error) {
       notify(`Error: ${error.message}`)
     } else {
-      notify("Store settings updated successfully!")
+      notify("Store settings & expedited delivery rate updated successfully!")
     }
   }
 
@@ -202,6 +204,19 @@ export default function AdminSettings() {
                   value={settings.shippingFee.toString()}
                   onChange={(e) =>
                     setSettings({ ...settings, shippingFee: parseFloat(e.target.value) || 0 })
+                  }
+                  required
+                />
+                <Input
+                  label="Expedited / Next-Day Delivery Rate (£)"
+                  type="number"
+                  step="0.01"
+                  value={settings.expeditedShippingFee.toString()}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      expeditedShippingFee: parseFloat(e.target.value) || 0,
+                    })
                   }
                   required
                 />

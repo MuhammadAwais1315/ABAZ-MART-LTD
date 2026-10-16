@@ -17,6 +17,44 @@ export interface AdminOrderLineItem {
   lineTotal: number
 }
 
+export const CARRIER_OPTIONS = [
+  { id: "royal-mail", name: "Royal Mail", example: "GB123456789RM" },
+  { id: "dpd", name: "DPD UK", example: "15501234567890" },
+  { id: "evri", name: "Evri", example: "16-digit tracking code" },
+  { id: "ups", name: "UPS", example: "1Z9999999999999999" },
+  { id: "parcelforce", name: "Parcelforce", example: "PB1234567890" },
+  { id: "dhl", name: "DHL Express", example: "10-digit waybill number" },
+  { id: "fedex", name: "FedEx", example: "12-digit tracking number" },
+  { id: "other", name: "Other / Custom Carrier", example: "Tracking reference" },
+] as const
+
+export function getCarrierTrackingUrl(carrier: string, trackingNumber: string): string {
+  const code = encodeURIComponent(trackingNumber.trim())
+  const c = carrier.toLowerCase()
+  if (c.includes("royal mail")) {
+    return `https://www.royalmail.com/track-your-item#/tracking-results/${code}`
+  }
+  if (c.includes("dpd")) {
+    return `https://www.dpd.co.uk/tracking/${code}`
+  }
+  if (c.includes("evri") || c.includes("hermes")) {
+    return `https://www.evri.com/track/parcel/${code}/details`
+  }
+  if (c.includes("ups")) {
+    return `https://www.ups.com/track?tracknum=${code}`
+  }
+  if (c.includes("parcelforce") || c.includes("parcel force")) {
+    return `https://www.parcelforce.com/track-trace?trackNumber=${code}`
+  }
+  if (c.includes("dhl")) {
+    return `https://www.dhl.com/gb-en/home/tracking/tracking-express.html?submit=1&tracking-id=${code}`
+  }
+  if (c.includes("fedex")) {
+    return `https://www.fedex.com/fedextrack/?trknbr=${code}`
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(`${carrier} tracking ${trackingNumber.trim()}`)}`
+}
+
 export interface AdminOrderItem {
   id: string
   orderNumber: string
@@ -36,6 +74,10 @@ export interface AdminOrderItem {
   discount: number
   total: number
   status: OrderStatus
+  carrier?: string
+  trackingNumber?: string
+  trackingUrl?: string
+  shippedAt?: string
   itemsCount: number
   rawCreatedAt: string
   items: AdminOrderLineItem[]
@@ -82,6 +124,7 @@ export interface AdminStoreSettings {
   currency: string
   currencySymbol: string
   shippingFee: number
+  expeditedShippingFee: number
   freeShippingThreshold: number
   taxRate: number
   defaultCountry: string
@@ -120,23 +163,53 @@ export async function getAdminProducts(): Promise<{
   data: Product[]
   error: Error | null
 }> {
+  const deletedIds = new Set<number>()
+  let storedEdits: Record<string, Partial<AdminProductPayload>> = {}
+  if (typeof window !== "undefined") {
+    try {
+      const ids = JSON.parse(localStorage.getItem("abaz_deleted_product_ids") || "[]")
+      if (Array.isArray(ids)) ids.forEach((id: number) => deletedIds.add(id))
+      storedEdits = JSON.parse(localStorage.getItem("abaz_custom_product_edits") || "{}")
+    } catch {}
+  }
+
+  const applyEditsAndFilter = (list: Product[]): Product[] => {
+    return list
+      .filter((p) => !deletedIds.has(p.id))
+      .map((p) => {
+        const edit = storedEdits[p.id.toString()]
+        if (!edit) return p
+        return {
+          ...p,
+          name: edit.name ?? p.name,
+          brand: edit.brand ?? p.brand,
+          category: edit.category ?? p.category,
+          price: edit.price ?? p.price,
+          oldPrice: edit.oldPrice !== undefined ? (edit.oldPrice ?? undefined) : p.oldPrice,
+          stock: edit.stock ?? p.stock,
+          badge: edit.badge !== undefined ? (edit.badge ?? undefined) : p.badge,
+        }
+      })
+  }
+
   if (!isSupabaseConfigured()) {
-    return { data: products, error: null }
+    return { data: applyEditsAndFilter(products), error: null }
   }
 
   try {
     const { data, error } = await supabase
       .from("products")
       .select("*")
+      .eq("is_active", true)
       .order("id", { ascending: true })
 
     if (error) {
       console.warn("Failed to load admin products from Supabase:", error.message)
-      return { data: products, error: null }
+      return { data: applyEditsAndFilter(products), error: null }
     }
 
     if (!data || data.length === 0) {
-      return { data: products, error: null }
+      return { data: applyEditsAndFilter(products), error: null }
     }
 
     const mapped: Product[] = data.map((item) => ({
@@ -156,11 +229,11 @@ export async function getAdminProducts(): Promise<{
       stock: item.stock,
     }))
 
-    return { data: mapped, error: null }
+    return { data: applyEditsAndFilter(mapped), error: null }
   } catch (err: unknown) {
     const message =
       err instanceof Error ? err.message : "Failed to load products"
-    return { data: products, error: new Error(message) }
+    return { data: applyEditsAndFilter(products), error: new Error(message) }
   }
 }
 
@@ -250,6 +323,15 @@ export async function updateAdminProduct(
   id: number,
   payload: Partial<AdminProductPayload>,
 ): Promise<{ error: Error | null }> {
+  // Always cache locally so edits persist immediately
+  if (typeof window !== "undefined") {
+    try {
+      const stored = JSON.parse(localStorage.getItem("abaz_custom_product_edits") || "{}")
+      stored[id.toString()] = { ...(stored[id.toString()] || {}), ...payload }
+      localStorage.setItem("abaz_custom_product_edits", JSON.stringify(stored))
+    } catch {}
+  }
+
   if (!isSupabaseConfigured()) {
     return { error: null }
   }
@@ -289,14 +371,64 @@ export async function updateAdminProduct(
 
 export async function deleteAdminProduct(
   id: number,
-): Promise<{ error: Error | null }> {
+): Promise<{ error: Error | null; archived?: boolean }> {
+  const registerLocalDelete = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const deleted = JSON.parse(localStorage.getItem("abaz_deleted_product_ids") || "[]")
+        if (!deleted.includes(id)) {
+          deleted.push(id)
+          localStorage.setItem("abaz_deleted_product_ids", JSON.stringify(deleted))
+        }
+      } catch {}
+    }
+  }
+
   if (!isSupabaseConfigured()) {
+    registerLocalDelete()
     return { error: null }
   }
 
   try {
+    // 1. Try to clean up transient references in cart and wishlist first
+    try {
+      await supabase.from("cart_items").delete().eq("product_id", id)
+    } catch {}
+    try {
+      await supabase.from("wishlist_items").delete().eq("product_id", id)
+    } catch {}
+
+    // 2. Attempt hard delete from products table
     const { error } = await supabase.from("products").delete().eq("id", id)
-    return { error: error ? new Error(error.message) : null }
+
+    if (error) {
+      // If foreign key constraint violation (e.g. historical customer order_items exist)
+      const isConstraintError =
+        error.code === "23503" ||
+        error.message?.toLowerCase().includes("foreign key") ||
+        error.message?.toLowerCase().includes("violates") ||
+        error.message?.toLowerCase().includes("order_items")
+
+      if (isConstraintError) {
+        // Soft delete: deactivate and mark 0 stock so product is removed from store without breaking past customer invoices
+        const { error: softErr } = await supabase
+          .from("products")
+          .update({ is_active: false, stock: 0 })
+          .eq("id", id)
+
+        registerLocalDelete()
+
+        if (softErr) {
+          return { error: new Error(softErr.message) }
+        }
+        return { error: null, archived: true }
+      }
+
+      return { error: new Error(error.message) }
+    }
+
+    registerLocalDelete()
+    return { error: null }
   } catch (err: unknown) {
     const message =
       err instanceof Error ? err.message : "Failed to delete product"
@@ -425,6 +557,29 @@ export async function getAdminOrders(): Promise<{
             },
           ]
 
+      // Check for carrier / tracking info
+      let carrier = (o as any).carrier
+      let trackingNumber = (o as any).tracking_number
+      let trackingUrl = (o as any).tracking_url
+      let shippedAt = (o as any).shipped_at
+
+      if (typeof window !== "undefined") {
+        try {
+          const stored = localStorage.getItem(`abaz_order_tracking_${o.id}`)
+          if (stored) {
+            const parsed = JSON.parse(stored)
+            carrier = carrier || parsed.carrier
+            trackingNumber = trackingNumber || parsed.trackingNumber
+            trackingUrl = trackingUrl || parsed.trackingUrl
+            shippedAt = shippedAt || parsed.shippedAt
+          }
+        } catch {}
+      }
+
+      if (carrier && trackingNumber && !trackingUrl) {
+        trackingUrl = getCarrierTrackingUrl(carrier, trackingNumber)
+      }
+
       return {
         id: o.id,
         orderNumber: o.order_number,
@@ -444,6 +599,10 @@ export async function getAdminOrders(): Promise<{
         discount: Number(o.discount) || 0,
         total: Number(o.total),
         status: o.status,
+        carrier: carrier || undefined,
+        trackingNumber: trackingNumber || undefined,
+        trackingUrl: trackingUrl || undefined,
+        shippedAt: shippedAt || undefined,
         itemsCount: items.length,
         rawCreatedAt: o.created_at,
         items,
@@ -458,19 +617,66 @@ export async function getAdminOrders(): Promise<{
   }
 }
 
+export interface OrderDispatchInfo {
+  carrier?: string
+  trackingNumber?: string
+  trackingUrl?: string
+}
+
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
+  dispatchInfo?: OrderDispatchInfo,
 ): Promise<{ error: Error | null }> {
+  // Always persist tracking to localStorage for 100% resilient survival
+  if (typeof window !== "undefined" && dispatchInfo) {
+    try {
+      localStorage.setItem(
+        `abaz_order_tracking_${orderId}`,
+        JSON.stringify({
+          carrier: dispatchInfo.carrier,
+          trackingNumber: dispatchInfo.trackingNumber,
+          trackingUrl:
+            dispatchInfo.trackingUrl ||
+            (dispatchInfo.carrier && dispatchInfo.trackingNumber
+              ? getCarrierTrackingUrl(dispatchInfo.carrier, dispatchInfo.trackingNumber)
+              : undefined),
+          shippedAt: new Date().toISOString(),
+        }),
+      )
+    } catch {}
+  }
+
   if (!isSupabaseConfigured()) {
     return { error: null }
   }
 
   try {
-    const { error } = await supabase
+    const payload: Record<string, unknown> = { status }
+    if (dispatchInfo?.carrier) payload.carrier = dispatchInfo.carrier
+    if (dispatchInfo?.trackingNumber) payload.tracking_number = dispatchInfo.trackingNumber
+    if (dispatchInfo?.trackingUrl) {
+      payload.tracking_url = dispatchInfo.trackingUrl
+    } else if (dispatchInfo?.carrier && dispatchInfo?.trackingNumber) {
+      payload.tracking_url = getCarrierTrackingUrl(dispatchInfo.carrier, dispatchInfo.trackingNumber)
+    }
+    if (status === "Shipped") {
+      payload.shipped_at = new Date().toISOString()
+    }
+
+    let { error } = await supabase
       .from("orders")
-      .update({ status })
+      .update(payload)
       .eq("id", orderId)
+
+    // If update failed due to unknown columns carrier/tracking_number/tracking_url, fallback to status only
+    if (error && (error.message?.includes("carrier") || error.message?.includes("tracking"))) {
+      const retry = await supabase
+        .from("orders")
+        .update({ status })
+        .eq("id", orderId)
+      error = retry.error
+    }
 
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
@@ -684,11 +890,18 @@ export async function getAdminStoreSettings(): Promise<{
   data: AdminStoreSettings
   error: Error | null
 }> {
+  const localExpedited =
+    typeof window !== "undefined"
+      ? localStorage.getItem("abaz_expedited_shipping_fee")
+      : null
+  const defaultExpedited = localExpedited ? parseFloat(localExpedited) : 8.5
+
   const fallback: AdminStoreSettings = {
     id: 1,
     currency: "GBP",
     currencySymbol: "£",
     shippingFee: 6.0,
+    expeditedShippingFee: defaultExpedited,
     freeShippingThreshold: 50.0,
     taxRate: 0.0,
     defaultCountry: "United Kingdom",
@@ -709,12 +922,18 @@ export async function getAdminStoreSettings(): Promise<{
       return { data: fallback, error: null }
     }
 
+    const fetchedExpedited = (data as any).expedited_shipping_fee
+
     return {
       data: {
         id: data.id,
         currency: data.currency,
         currencySymbol: data.currency_symbol,
         shippingFee: Number(data.shipping_fee),
+        expeditedShippingFee:
+          fetchedExpedited !== undefined && fetchedExpedited !== null
+            ? Number(fetchedExpedited)
+            : defaultExpedited,
         freeShippingThreshold: Number(data.free_shipping_threshold),
         taxRate: Number(data.tax_rate),
         defaultCountry: data.default_country,
@@ -729,6 +948,15 @@ export async function getAdminStoreSettings(): Promise<{
 export async function updateAdminStoreSettings(
   settings: Partial<Omit<AdminStoreSettings, "id">>,
 ): Promise<{ error: Error | null }> {
+  if (typeof window !== "undefined" && settings.expeditedShippingFee !== undefined) {
+    try {
+      localStorage.setItem(
+        "abaz_expedited_shipping_fee",
+        settings.expeditedShippingFee.toString(),
+      )
+    } catch {}
+  }
+
   if (!isSupabaseConfigured()) return { error: null }
 
   try {
@@ -736,15 +964,27 @@ export async function updateAdminStoreSettings(
     if (settings.currencySymbol !== undefined) updates.currency_symbol = settings.currencySymbol
     if (settings.currency !== undefined) updates.currency = settings.currency
     if (settings.shippingFee !== undefined) updates.shipping_fee = settings.shippingFee
+    if (settings.expeditedShippingFee !== undefined)
+      updates.expedited_shipping_fee = settings.expeditedShippingFee
     if (settings.freeShippingThreshold !== undefined)
       updates.free_shipping_threshold = settings.freeShippingThreshold
     if (settings.taxRate !== undefined) updates.tax_rate = settings.taxRate
     if (settings.defaultCountry !== undefined) updates.default_country = settings.defaultCountry
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from("store_settings")
       .update(updates)
       .eq("id", 1)
+
+    // Fallback if column expedited_shipping_fee is not yet in Supabase table schema
+    if (error && error.message?.includes("expedited_shipping_fee")) {
+      delete updates.expedited_shipping_fee
+      const retry = await supabase
+        .from("store_settings")
+        .update(updates)
+        .eq("id", 1)
+      error = retry.error
+    }
 
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
@@ -1027,6 +1267,10 @@ function getFallbackAdminOrders(): AdminOrderItem[] {
       discount: 0.0,
       total: 84.0,
       status: "Shipped",
+      carrier: "Royal Mail",
+      trackingNumber: "GB928471928RM",
+      trackingUrl: "https://www.royalmail.com/track-your-item#/tracking-results/GB928471928RM",
+      shippedAt: "2026-02-18T11:45:00Z",
       itemsCount: 1,
       rawCreatedAt: "2026-02-18T09:30:00Z",
       items: [

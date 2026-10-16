@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router"
-import { Plus, Trash2 } from "lucide-react"
-import { Badge, Button, Input, Select } from "../../components/ui"
+import {
+  Plus,
+  Trash2,
+  Edit3,
+  ExternalLink,
+  Check,
+  Package,
+  Sparkles,
+} from "lucide-react"
+import { Badge, Button, Input, Modal, Select, Toast } from "../../components/ui"
 import { categories, Product, products } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
-import { deleteAdminProduct, getAdminProducts } from "../../services/admin"
+import {
+  deleteAdminProduct,
+  getAdminProducts,
+  updateAdminProduct,
+} from "../../services/admin"
 
 export default function AdminProducts() {
   const [catalog, setCatalog] = useState<Product[]>(products)
@@ -12,6 +24,25 @@ export default function AdminProducts() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("All")
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [toastMessage, setToastMessage] = useState("")
+
+  // Quick Edit State
+  const [quickEditProduct, setQuickEditProduct] = useState<Product | null>(null)
+  const [editForm, setEditForm] = useState({
+    name: "",
+    brand: "",
+    category: "Skincare" as Product["category"],
+    price: "",
+    oldPrice: "",
+    stock: "",
+    badge: "",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg)
+    window.setTimeout(() => setToastMessage(""), 3500)
+  }
 
   useEffect(() => {
     let mounted = true
@@ -29,15 +60,87 @@ export default function AdminProducts() {
     }
   }, [])
 
+  const openQuickEdit = (p: Product) => {
+    setQuickEditProduct(p)
+    setEditForm({
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      price: p.price.toString(),
+      oldPrice: p.oldPrice ? p.oldPrice.toString() : "",
+      stock: p.stock.toString(),
+      badge: p.badge || "",
+    })
+  }
+
+  const handleSaveQuickEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!quickEditProduct) return
+
+    const priceNum = parseFloat(editForm.price)
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert("Please provide a valid price")
+      return
+    }
+
+    setSavingEdit(true)
+    const payload = {
+      name: editForm.name.trim(),
+      brand: editForm.brand.trim(),
+      category: editForm.category,
+      price: priceNum,
+      oldPrice: editForm.oldPrice ? parseFloat(editForm.oldPrice) : null,
+      stock: parseInt(editForm.stock, 10) || 0,
+      badge: editForm.badge.trim() || null,
+    }
+
+    const { error } = await updateAdminProduct(quickEditProduct.id, payload)
+    setSavingEdit(false)
+
+    if (error) {
+      alert(`Failed to update product: ${error.message}`)
+      return
+    }
+
+    setCatalog((current) =>
+      current.map((item) =>
+        item.id === quickEditProduct.id
+          ? {
+              ...item,
+              name: payload.name,
+              brand: payload.brand,
+              category: payload.category,
+              price: payload.price,
+              oldPrice: payload.oldPrice ?? undefined,
+              stock: payload.stock,
+              badge: payload.badge ?? undefined,
+            }
+          : item,
+      ),
+    )
+
+    showToast(`"${payload.name}" updated successfully!`)
+    setQuickEditProduct(null)
+  }
+
   const handleDelete = async (productId: number, productName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${productName}" from the catalog?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${productName}" from the catalog?`,
+      )
+    ) {
       setDeletingId(productId)
-      const { error } = await deleteAdminProduct(productId)
+      const { error, archived } = await deleteAdminProduct(productId)
       setDeletingId(null)
       if (error) {
         alert(`Failed to delete product: ${error.message}`)
       } else {
         setCatalog((current) => current.filter((item) => item.id !== productId))
+        showToast(
+          archived
+            ? `"${productName}" archived from store (historical customer invoices preserved).`
+            : `"${productName}" successfully deleted from catalog.`,
+        )
       }
     }
   }
@@ -56,16 +159,16 @@ export default function AdminProducts() {
         <div>
           <p className="eyebrow">Catalog</p>
           <h1>Products</h1>
-          <p>Manage your beauty catalog and inventory.</p>
+          <p>Manage your beauty catalog, instant pricing, and inventory.</p>
         </div>
         <Link className="btn btn-primary" to="/admin/products/new">
-          <Plus /> Add Product
+          <Plus className="w-4 h-4" /> Add Product
         </Link>
       </div>
       <section className="admin-panel admin-data-table">
         <div className="admin-table-toolbar">
           <Input
-            placeholder="Search products..."
+            placeholder="Search products by title or brand..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -97,13 +200,19 @@ export default function AdminProducts() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <td
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     Loading catalog products...
                   </td>
                 </tr>
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <td
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No products found matching your search.
                   </td>
                 </tr>
@@ -115,31 +224,78 @@ export default function AdminProducts() {
                       <span>
                         <strong>{product.name}</strong>
                         <small>{product.brand}</small>
+                        {product.badge && (
+                          <span className="inline-block mt-0.5 text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">
+                            {product.badge}
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td>{product.category}</td>
-                    <td>{formatPrice(product.price)}</td>
-                    <td>{product.stock}</td>
                     <td>
-                      <Badge tone={product.stock < 10 ? "gold" : "green"}>
-                        {product.stock < 10 ? "Low stock" : "Active"}
+                      <div>
+                        <strong>{formatPrice(product.price)}</strong>
+                        {product.oldPrice && (
+                          <span className="text-xs text-muted-foreground line-through block">
+                            {formatPrice(product.oldPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          product.stock < 10
+                            ? "font-bold text-amber-700"
+                            : "text-foreground"
+                        }
+                      >
+                        {product.stock} units
+                      </span>
+                    </td>
+                    <td>
+                      <Badge
+                        tone={
+                          product.stock <= 0
+                            ? "rose"
+                            : product.stock < 10
+                              ? "gold"
+                              : "green"
+                        }
+                      >
+                        {product.stock <= 0
+                          ? "Out of stock"
+                          : product.stock < 10
+                            ? "Low stock"
+                            : "Active"}
                       </Badge>
                     </td>
                     <td>
                       <div className="table-actions">
+                        <Button
+                          variant="ghost"
+                          onClick={() => openQuickEdit(product)}
+                          className="text-xs flex items-center gap-1"
+                          title="Quick edit price & stock"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Quick Edit</span>
+                        </Button>
                         <Link
                           to={`/admin/products/new?edit=${product.id}`}
-                          className="btn btn-ghost"
+                          className="btn btn-ghost text-xs"
+                          title="Full product editor"
                         >
-                          Edit
+                          Full
                         </Link>
                         <Button
                           variant="ghost"
                           disabled={deletingId === product.id}
                           onClick={() => handleDelete(product.id, product.name)}
                           aria-label={`Delete ${product.name}`}
+                          className="text-rose-600 hover:text-rose-800"
                         >
-                          <Trash2 />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -150,6 +306,153 @@ export default function AdminProducts() {
           </table>
         </div>
       </section>
+
+      {/* Quick Edit Modal */}
+      {quickEditProduct && (
+        <Modal
+          open={Boolean(quickEditProduct)}
+          size="md"
+          title={`Quick Edit: ${quickEditProduct.name}`}
+          onClose={() => setQuickEditProduct(null)}
+        >
+          <form onSubmit={handleSaveQuickEdit} className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-light/70 rounded-xl border border-border">
+              <img
+                src={quickEditProduct.image}
+                alt={quickEditProduct.name}
+                className="w-12 h-14 object-cover rounded-lg border border-border"
+              />
+              <div className="text-xs">
+                <p className="font-semibold text-ink">{quickEditProduct.name}</p>
+                <p className="text-muted">{quickEditProduct.brand}</p>
+                <Link
+                  to={`/admin/products/new?edit=${quickEditProduct.id}`}
+                  className="text-rose hover:underline inline-flex items-center gap-1 mt-1 font-medium"
+                >
+                  <span>Open Full Editor (Images, Description, Options)</span>
+                  <ExternalLink className="w-3 h-3" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="sm:col-span-2">
+                <Input
+                  label="Product Title"
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <Input
+                  label="Brand Name"
+                  value={editForm.brand}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, brand: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1.5">
+                  Category
+                </label>
+                <Select
+                  value={editForm.category}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      category: e.target.value as Product["category"],
+                    })
+                  }
+                >
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Input
+                  label="Selling Price (£)"
+                  type="number"
+                  step="0.01"
+                  value={editForm.price}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, price: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <Input
+                  label="Original / Was Price (£)"
+                  type="number"
+                  step="0.01"
+                  placeholder="Optional strike-through"
+                  value={editForm.oldPrice}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, oldPrice: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Input
+                  label="Stock Inventory (units)"
+                  type="number"
+                  step="1"
+                  value={editForm.stock}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, stock: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <Input
+                  label="Badge Tag (e.g. Bestseller, New)"
+                  placeholder="Leave empty for none"
+                  value={editForm.badge}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, badge: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => setQuickEditProduct(null)}
+                disabled={savingEdit}
+              >
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" disabled={savingEdit}>
+                {savingEdit ? "Saving Changes..." : "Save Product"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {toastMessage && (
+        <Toast>
+          <Check className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
+        </Toast>
+      )}
     </>
   )
 }

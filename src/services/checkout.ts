@@ -3,6 +3,7 @@ import { Database, PaymentMethod } from "../types/database"
 
 export interface StoreSettings {
   shippingFee: number
+  expeditedShippingFee: number
   freeShippingThreshold: number
   taxRate: number
   currency: string
@@ -12,6 +13,7 @@ export interface StoreSettings {
 
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   shippingFee: 6.0,
+  expeditedShippingFee: 8.5,
   freeShippingThreshold: 50.0,
   taxRate: 0.0,
   currency: "GBP",
@@ -33,6 +35,8 @@ export interface CreateOrderParams {
     option: string
   }[]
   couponCode?: string | null
+  shippingMethod?: "standard" | "expedited"
+  shippingFee?: number
 }
 
 export interface OrderResult {
@@ -50,8 +54,19 @@ export interface OrderResult {
  * Fetch store settings (shipping rates, tax rates, free shipping threshold).
  */
 export async function getStoreSettings(): Promise<StoreSettings> {
+  const localExpedited =
+    typeof window !== "undefined"
+      ? localStorage.getItem("abaz_expedited_shipping_fee")
+      : null
+  const defaultExpedited = localExpedited
+    ? parseFloat(localExpedited)
+    : DEFAULT_STORE_SETTINGS.expeditedShippingFee
+
   if (!isSupabaseConfigured()) {
-    return DEFAULT_STORE_SETTINGS
+    return {
+      ...DEFAULT_STORE_SETTINGS,
+      expeditedShippingFee: defaultExpedited,
+    }
   }
 
   try {
@@ -62,19 +77,35 @@ export async function getStoreSettings(): Promise<StoreSettings> {
       .maybeSingle()
 
     if (error || !data) {
-      return DEFAULT_STORE_SETTINGS
+      return {
+        ...DEFAULT_STORE_SETTINGS,
+        expeditedShippingFee: defaultExpedited,
+      }
     }
 
+    const fetchedExpedited = (data as any).expedited_shipping_fee
+
     return {
-      shippingFee: Number(data.shipping_fee),
-      freeShippingThreshold: Number(data.free_shipping_threshold),
-      taxRate: Number(data.tax_rate),
-      currency: data.currency,
-      currencySymbol: data.currency_symbol,
-      defaultCountry: data.default_country,
+      shippingFee: Number(data.shipping_fee) || DEFAULT_STORE_SETTINGS.shippingFee,
+      expeditedShippingFee:
+        fetchedExpedited !== undefined && fetchedExpedited !== null
+          ? Number(fetchedExpedited)
+          : defaultExpedited,
+      freeShippingThreshold:
+        Number(data.free_shipping_threshold) ||
+        DEFAULT_STORE_SETTINGS.freeShippingThreshold,
+      taxRate: Number(data.tax_rate) || DEFAULT_STORE_SETTINGS.taxRate,
+      currency: data.currency || DEFAULT_STORE_SETTINGS.currency,
+      currencySymbol:
+        data.currency_symbol || DEFAULT_STORE_SETTINGS.currencySymbol,
+      defaultCountry:
+        data.default_country || DEFAULT_STORE_SETTINGS.defaultCountry,
     }
   } catch {
-    return DEFAULT_STORE_SETTINGS
+    return {
+      ...DEFAULT_STORE_SETTINGS,
+      expeditedShippingFee: defaultExpedited,
+    }
   }
 }
 
@@ -139,11 +170,21 @@ export async function createOrderSecure(
   if (!isSupabaseConfigured()) {
     // Demo fallback order creation
     const subtotal = params.items.reduce((sum, item) => sum + item.quantity * 25, 0)
-    const shipping = subtotal >= DEFAULT_STORE_SETTINGS.freeShippingThreshold ? 0 : DEFAULT_STORE_SETTINGS.shippingFee
+    let shipping =
+      subtotal >= DEFAULT_STORE_SETTINGS.freeShippingThreshold
+        ? 0
+        : DEFAULT_STORE_SETTINGS.shippingFee
+    if (params.shippingFee !== undefined) {
+      shipping = params.shippingFee
+    } else if (params.shippingMethod === "expedited") {
+      shipping = DEFAULT_STORE_SETTINGS.expeditedShippingFee
+    }
     const discount = params.couponCode ? 10 : 0
     const total = subtotal + shipping - discount
     const deliveryDate = new Date()
-    deliveryDate.setDate(deliveryDate.getDate() + 5)
+    deliveryDate.setDate(
+      deliveryDate.getDate() + (params.shippingMethod === "expedited" ? 2 : 4),
+    )
 
     return {
       data: {
@@ -177,7 +218,24 @@ export async function createOrderSecure(
       return { data: null, error: new Error(error.message) }
     }
 
-    return { data: data as OrderResult, error: null }
+    const orderResult = data as OrderResult
+    // If expedited shipping was chosen or custom shipping fee provided, adjust shipping & total
+    if (orderResult && params.shippingFee !== undefined && params.shippingFee !== orderResult.shipping) {
+      const diff = params.shippingFee - orderResult.shipping
+      const newTotal = Math.max(0, orderResult.total + diff)
+      orderResult.shipping = params.shippingFee
+      orderResult.total = newTotal
+      try {
+        await supabase
+          .from("orders")
+          .update({ shipping: params.shippingFee, total: newTotal })
+          .eq("id", orderResult.order_id)
+      } catch (patchErr) {
+        console.warn("Could not sync expedited shipping to orders row:", patchErr)
+      }
+    }
+
+    return { data: orderResult, error: null }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to create order"
     return { data: null, error: new Error(message) }

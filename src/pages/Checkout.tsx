@@ -9,6 +9,7 @@ import {
   Building2,
   CreditCard,
   ShieldCheck,
+  Truck,
 } from "lucide-react"
 import { Elements } from "@stripe/react-stripe-js"
 import { Breadcrumb, Button, Checkbox, Input, Select } from "../components/ui"
@@ -36,17 +37,23 @@ export function CheckoutSummary({
   cart,
   discount = 0,
   settings = DEFAULT_STORE_SETTINGS,
+  deliveryOption = "standard",
 }: {
   cart: CartItem[]
   discount?: number
   settings?: StoreSettings
+  deliveryOption?: "standard" | "expedited"
 }) {
   const subtotal = cart.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   )
   const shipping =
-    subtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee
+    deliveryOption === "expedited"
+      ? settings.expeditedShippingFee
+      : subtotal >= settings.freeShippingThreshold
+        ? 0
+        : settings.shippingFee
   const tax = subtotal * settings.taxRate
   const total = Math.max(0, subtotal + shipping + tax - discount)
 
@@ -104,6 +111,7 @@ export default function Checkout() {
   const [orderError, setOrderError] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card")
   const [saveAddress, setSaveAddress] = useState(false)
+  const [deliveryOption, setDeliveryOption] = useState<"standard" | "expedited">("standard")
   const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
   const [couponCode, setCouponCode] = useState(() => {
     return window.sessionStorage.getItem("abaz_promo_code") || ""
@@ -170,8 +178,12 @@ export default function Checkout() {
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   )
-  const shippingFee =
+  const standardShippingFee =
     orderSubtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee
+  const shippingFee =
+    deliveryOption === "expedited"
+      ? settings.expeditedShippingFee
+      : standardShippingFee
   const taxAmount = orderSubtotal * settings.taxRate
   const orderTotal = Math.max(0, orderSubtotal + shippingFee + taxAmount - couponDiscount)
 
@@ -321,6 +333,8 @@ export default function Checkout() {
         option: item.option,
       })),
       couponCode: couponCode || undefined,
+      shippingMethod: deliveryOption,
+      shippingFee,
     })
 
     if (res.error) {
@@ -512,6 +526,7 @@ export default function Checkout() {
             cart={activeCart}
             discount={couponDiscount}
             settings={settings}
+            deliveryOption={deliveryOption}
           />
         </div>
       )}
@@ -591,6 +606,78 @@ export default function Checkout() {
                 checked={saveAddress}
                 onChange={(event) => setSaveAddress(event.target.checked)}
               />
+
+              {/* Delivery Speed Options */}
+              <div className="mt-6 border-t border-border pt-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Truck className="w-4 h-4 text-rose" />
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Choose Delivery Option
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                      deliveryOption === "standard"
+                        ? "border-rose-600 bg-rose-50/50 ring-1 ring-rose-600 shadow-xs"
+                        : "border-border bg-white hover:bg-neutral-50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="deliveryOption"
+                          checked={deliveryOption === "standard"}
+                          onChange={() => setDeliveryOption("standard")}
+                          className="accent-rose-600"
+                        />
+                        <span className="font-semibold text-xs text-foreground">
+                          Standard Tracked
+                        </span>
+                      </div>
+                      <span className="font-bold text-xs text-rose-700">
+                        {standardShippingFee === 0 ? "FREE" : formatPrice(settings.shippingFee)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      2–4 business days via Royal Mail Tracked 48 / Evri
+                    </p>
+                  </label>
+
+                  <label
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                      deliveryOption === "expedited"
+                        ? "border-rose-600 bg-rose-50/50 ring-1 ring-rose-600 shadow-xs"
+                        : "border-border bg-white hover:bg-neutral-50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="deliveryOption"
+                          checked={deliveryOption === "expedited"}
+                          onChange={() => setDeliveryOption("expedited")}
+                          className="accent-rose-600"
+                        />
+                        <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                          Expedited Next-Day
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800">
+                            EXPRESS
+                          </span>
+                        </span>
+                      </div>
+                      <span className="font-bold text-xs text-rose-700">
+                        {formatPrice(settings.expeditedShippingFee)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      1–2 business days priority dispatch via DPD / Royal Mail Special
+                    </p>
+                  </label>
+                </div>
+              </div>
             </>
           )}
 
@@ -614,6 +701,14 @@ export default function Checkout() {
                   </div>
                   <div className="text-muted-foreground text-[11px] mt-0.5">
                     {form.email} · {form.phone}
+                  </div>
+                  <div className="text-rose-700 font-medium text-[11px] mt-1 flex items-center gap-1">
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>
+                      {deliveryOption === "expedited"
+                        ? `Expedited Next-Day Delivery (${formatPrice(settings.expeditedShippingFee)})`
+                        : `Standard Tracked Delivery (${standardShippingFee === 0 ? "Free" : formatPrice(settings.shippingFee)})`}
+                    </span>
                   </div>
                 </div>
                 <Button
@@ -855,6 +950,7 @@ export default function Checkout() {
             cart={activeCart}
             discount={couponDiscount}
             settings={settings}
+            deliveryOption={deliveryOption}
           />
           <p className="secure-note">
             <LockKeyhole /> Secure checkout powered by encrypted payments.

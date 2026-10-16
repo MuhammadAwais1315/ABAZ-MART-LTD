@@ -57,6 +57,7 @@ export interface Database {
           currency: string
           currency_symbol: string
           shipping_fee: number
+          expedited_shipping_fee?: number
           free_shipping_threshold: number
           tax_rate: number
           default_country: string
@@ -67,6 +68,7 @@ export interface Database {
           currency?: string
           currency_symbol?: string
           shipping_fee?: number
+          expedited_shipping_fee?: number
           free_shipping_threshold?: number
           tax_rate?: number
           default_country?: string
@@ -77,6 +79,7 @@ export interface Database {
           currency?: string
           currency_symbol?: string
           shipping_fee?: number
+          expedited_shipping_fee?: number
           free_shipping_threshold?: number
           tax_rate?: number
           default_country?: string
@@ -373,6 +376,10 @@ export interface Database {
           shipping_postal_code: string
           shipping_country: string
           estimated_delivery_date: string | null
+          carrier?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          shipped_at?: string | null
           created_at: string
           updated_at: string
         }
@@ -396,6 +403,10 @@ export interface Database {
           shipping_postal_code: string
           shipping_country?: string
           estimated_delivery_date?: string | null
+          carrier?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          shipped_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -419,6 +430,10 @@ export interface Database {
           shipping_postal_code?: string
           shipping_country?: string
           estimated_delivery_date?: string | null
+          carrier?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          shipped_at?: string | null
           created_at?: string
           updated_at?: string
         }
