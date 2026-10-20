@@ -2,6 +2,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Database, PaymentMethod } from "../types/database"
 import { products as defaultProducts } from "../data/products"
 import { getEffectiveProducts } from "./products"
+import { formatUKPostcode, isValidUKPostcode } from "../utils/ukPostcode"
 
 export interface StoreSettings {
   shippingFee: number
@@ -296,14 +297,24 @@ export async function createOrderSecure(
     }
   }
 
+  const formattedPostcode = formatUKPostcode(params.shippingPostalCode)
+  if (!isValidUKPostcode(formattedPostcode)) {
+    return {
+      data: null,
+      error: new Error(
+        `"${params.shippingPostalCode}" is not a valid UK postal code. We currently only ship within the United Kingdom.`,
+      ),
+    }
+  }
+
   try {
     const { data, error } = await supabase.rpc("create_order_secure", {
       p_shipping_name: params.shippingName.trim(),
       p_shipping_phone: params.shippingPhone.trim(),
       p_shipping_address: params.shippingAddress.trim(),
       p_shipping_city: params.shippingCity.trim(),
-      p_shipping_postal_code: params.shippingPostalCode.trim(),
-      p_shipping_country: params.shippingCountry.trim(),
+      p_shipping_postal_code: formattedPostcode,
+      p_shipping_country: "United Kingdom",
       p_payment_method: params.paymentMethod,
       p_items: params.items,
       p_coupon_code: params.couponCode ? params.couponCode.trim() : null,

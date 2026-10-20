@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Database, OrderStatus, PaymentMethod } from "../types/database"
 import { products } from "../data/products"
+import { formatUKPostcode } from "../utils/ukPostcode"
 
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"]
 export type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"]
@@ -287,8 +288,8 @@ export async function addCustomerAddress(
         address_line: address.line,
         city: address.city,
         state: address.state || null,
-        postal_code: address.postalCode,
-        country: address.country || "United Kingdom",
+        postal_code: formatUKPostcode(address.postalCode),
+        country: "United Kingdom",
         is_default: address.isDefault ?? false,
       })
       .select()
@@ -337,8 +338,9 @@ export async function updateCustomerAddress(
     if (address.phone !== undefined) updates.phone = address.phone
     if (address.line !== undefined) updates.address_line = address.line
     if (address.city !== undefined) updates.city = address.city
-    if (address.postalCode !== undefined) updates.postal_code = address.postalCode
-    if (address.country !== undefined) updates.country = address.country
+    if (address.postalCode !== undefined)
+      updates.postal_code = formatUKPostcode(address.postalCode)
+    updates.country = "United Kingdom"
     if (address.isDefault !== undefined) updates.is_default = address.isDefault
 
     const { error } = await supabase

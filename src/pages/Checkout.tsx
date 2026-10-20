@@ -10,7 +10,15 @@ import {
   CreditCard,
   ShieldCheck,
   Truck,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
 } from "lucide-react"
+import {
+  formatUKPostcode,
+  isValidUKPostcode,
+  verifyUKPostcodeLive,
+} from "../utils/ukPostcode"
 import { Elements } from "@stripe/react-stripe-js"
 import { Breadcrumb, Button, Checkbox, Input, Select } from "../components/ui"
 import { CartItem, useStore } from "../context/StoreContext"
@@ -145,6 +153,59 @@ export default function Checkout() {
   const stripeFormRef = useRef<EmbeddedStripeFormRef>(null)
   const stripeConfigured = isStripeConfigured()
 
+  // UK Postal Code Verification State
+  const [postcodeStatus, setPostcodeStatus] = useState<
+    "idle" | "verifying" | "valid" | "invalid"
+  >("idle")
+  const [postcodeMessage, setPostcodeMessage] = useState("")
+
+  const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase()
+    setField("postalCode", val)
+    if (!val.trim()) {
+      setPostcodeStatus("idle")
+      setPostcodeMessage("")
+    }
+  }
+
+  const handlePostalCodeBlur = async () => {
+    const val = form.postalCode.trim()
+    if (!val) {
+      setPostcodeStatus("idle")
+      setPostcodeMessage("")
+      return
+    }
+
+    const formatted = formatUKPostcode(val)
+    setField("postalCode", formatted)
+
+    setPostcodeStatus("verifying")
+    setPostcodeMessage("Verifying UK postcode with Royal Mail...")
+
+    const res = await verifyUKPostcodeLive(formatted)
+    if (res.valid) {
+      setPostcodeStatus("valid")
+      const area = res.district || res.region || "Royal Mail Delivery Area"
+      setPostcodeMessage(`Verified UK Postal Code (${area})`)
+      if (!form.city.trim() && res.city) {
+        setField("city", res.city)
+      }
+      setErrors((prev) => {
+        const copy = { ...prev }
+        delete copy.postalCode
+        return copy
+      })
+    } else {
+      setPostcodeStatus("invalid")
+      setPostcodeMessage(res.error || "Please enter a valid UK postcode.")
+      setErrors((prev) => ({
+        ...prev,
+        postalCode:
+          res.error || "Please enter a valid UK postcode (e.g. SW1A 1AA, M1 1AE).",
+      }))
+    }
+  }
+
   useEffect(() => {
     const loadSettings = () => {
       getStoreSettings().then(setSettings)
@@ -275,8 +336,15 @@ export default function Checkout() {
     if (form.address.trim().length < 5)
       next.address = "Please enter your street address."
     if (!form.city.trim()) next.city = "City is required."
-    if (!form.postalCode.trim()) next.postalCode = "Postal code is required."
-    if (!form.country) next.country = "Select your country."
+    if (!form.postalCode.trim()) {
+      next.postalCode = "UK postal code is required."
+    } else if (!isValidUKPostcode(form.postalCode)) {
+      next.postalCode =
+        "Please enter a valid UK postcode (e.g. SW1A 1AA, M1 1AE, B33 8TH)."
+    } else if (postcodeStatus === "invalid") {
+      next.postalCode =
+        postcodeMessage || "This UK postal code could not be verified."
+    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -624,31 +692,70 @@ export default function Checkout() {
                   className: "full",
                 })}
                 {checkoutField("city", "City", { placeholder: "London" })}
-                {checkoutField("postalCode", "Postal code", {
-                  placeholder: "SW1A 1AA",
-                })}
-                <div className="checkout-field full">
-                  <Select
-                    label="Country"
-                    className={errors.country ? "has-error" : ""}
-                    value={form.country}
-                    onChange={(event) =>
-                      setField("country", event.target.value)
+                {/* UK Postal Code Verification Field */}
+                <div className="checkout-field">
+                  <Input
+                    className={
+                      errors.postalCode
+                        ? "has-error"
+                        : postcodeStatus === "valid"
+                          ? "border-emerald-600 ring-1 ring-emerald-500"
+                          : ""
                     }
-                    aria-invalid={Boolean(errors.country)}
-                  >
-                    <option value="">Select country</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="United States">United States</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Ireland">Ireland</option>
-                    <option value="France">France</option>
-                    <option value="Germany">Germany</option>
-                  </Select>
-                  {errors.country && (
-                    <span className="field-error">{errors.country}</span>
+                    label="UK Postal code"
+                    placeholder="e.g. SW1A 1AA"
+                    value={form.postalCode}
+                    onChange={handlePostalCodeChange}
+                    onBlur={handlePostalCodeBlur}
+                    aria-invalid={Boolean(errors.postalCode)}
+                  />
+                  {errors.postalCode && (
+                    <span className="field-error flex items-center gap-1 mt-1 text-xs text-rose-600">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {errors.postalCode}
+                    </span>
                   )}
+                  {postcodeStatus === "verifying" && (
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-1.5 animate-pulse">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-600" />
+                      <span>Verifying UK postcode with Royal Mail database...</span>
+                    </p>
+                  )}
+                  {postcodeStatus === "valid" && !errors.postalCode && (
+                    <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1.5 mt-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{postcodeMessage}</span>
+                    </p>
+                  )}
+                  {postcodeStatus === "invalid" && !errors.postalCode && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1.5 mt-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>{postcodeMessage}</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Country / Delivery Territory Fixed Exclusively to United Kingdom */}
+                <div className="checkout-field full">
+                  <label className="text-xs font-semibold text-foreground mb-1 block">
+                    Country / Delivery Territory
+                  </label>
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-neutral-50/80 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-lg">🇬🇧</span>
+                      <div>
+                        <strong className="text-foreground block text-xs">
+                          United Kingdom
+                        </strong>
+                        <span className="text-muted-foreground text-[11px]">
+                          Exclusive domestic delivery service (England, Scotland, Wales & Northern Ireland)
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 uppercase tracking-wide">
+                      UK Domestic Only
+                    </span>
+                  </div>
                 </div>
               </div>
               <Checkbox

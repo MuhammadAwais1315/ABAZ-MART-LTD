@@ -23,6 +23,7 @@ import { products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 import { OrderReceipt } from "../components/checkout/OrderReceipt"
 import { OrderStatus, PaymentMethod } from "../types/database"
+import { formatUKPostcode, isValidUKPostcode } from "../utils/ukPostcode"
 import { getEffectiveProducts } from "../services/products"
 import {
   getCustomerOrders,
@@ -248,15 +249,27 @@ export default function Account() {
       return
     }
 
+    const formattedPostcode = formatUKPostcode(addressForm.postalCode)
+    if (!isValidUKPostcode(formattedPostcode)) {
+      notify("Please enter a valid UK postal code (e.g. SW1A 1AA, M1 1AE)")
+      return
+    }
+
+    const cleanForm = {
+      ...addressForm,
+      postalCode: formattedPostcode,
+      country: "United Kingdom",
+    }
+
     if (editingAddress !== null) {
       const { error } = await updateCustomerAddress(editingAddress, {
-        label: addressForm.label,
-        name: addressForm.name,
-        phone: addressForm.phone,
-        line: addressForm.line,
-        city: addressForm.city,
-        postalCode: addressForm.postalCode,
-        country: addressForm.country,
+        label: cleanForm.label,
+        name: cleanForm.name,
+        phone: cleanForm.phone,
+        line: cleanForm.line,
+        city: cleanForm.city,
+        postalCode: cleanForm.postalCode,
+        country: "United Kingdom",
       })
       if (error) {
         notify(error.message)
@@ -265,20 +278,20 @@ export default function Account() {
       setAddresses((current) =>
         current.map((address) =>
           address.id === editingAddress
-            ? { ...address, ...addressForm }
+            ? { ...address, ...cleanForm }
             : address,
         ),
       )
       notify("Address updated successfully")
     } else if (user) {
       const { data, error } = await addCustomerAddress(user.id, {
-        label: addressForm.label,
-        name: addressForm.name,
-        phone: addressForm.phone,
-        line: addressForm.line,
-        city: addressForm.city,
-        postalCode: addressForm.postalCode,
-        country: addressForm.country,
+        label: cleanForm.label,
+        name: cleanForm.name,
+        phone: cleanForm.phone,
+        line: cleanForm.line,
+        city: cleanForm.city,
+        postalCode: cleanForm.postalCode,
+        country: "United Kingdom",
         isDefault: addresses.length === 0,
       })
       if (error) {
@@ -975,23 +988,39 @@ export default function Account() {
               required
             />
             <Input
-              label="Postal code"
+              label="UK Postal code"
               placeholder="SW1A 1AA"
               value={addressForm.postalCode}
               onChange={(event) =>
-                setAddressForm({ ...addressForm, postalCode: event.target.value })
+                setAddressForm({
+                  ...addressForm,
+                  postalCode: event.target.value.toUpperCase(),
+                })
               }
+              onBlur={() => {
+                if (addressForm.postalCode) {
+                  setAddressForm({
+                    ...addressForm,
+                    postalCode: formatUKPostcode(addressForm.postalCode),
+                  })
+                }
+              }}
               required
             />
           </div>
-          <Input
-            label="Country"
-            value={addressForm.country}
-            onChange={(event) =>
-              setAddressForm({ ...addressForm, country: event.target.value })
-            }
-            required
-          />
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-foreground">
+              Delivery Territory
+            </label>
+            <div className="p-2.5 rounded-lg border border-border bg-neutral-50 text-xs font-medium flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span>🇬🇧</span> United Kingdom (UK Domestic Delivery Only)
+              </span>
+              <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded uppercase">
+                Active
+              </span>
+            </div>
+          </div>
           <Button type="submit">
             {editingAddress === null ? "Add Address" : "Save Address"}
           </Button>
