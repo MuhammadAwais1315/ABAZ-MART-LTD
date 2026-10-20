@@ -71,12 +71,16 @@ export default function AdminDashboard() {
       }
     }
     window.addEventListener("abaz_order_status_changed", handleStatusSync)
+    window.addEventListener("abaz_order_placed", loadDashboardData)
     window.addEventListener("storage", handleStatusSync)
+    window.addEventListener("storage", loadDashboardData)
 
     return () => {
       mounted = false
       window.removeEventListener("abaz_order_status_changed", handleStatusSync)
+      window.removeEventListener("abaz_order_placed", loadDashboardData)
       window.removeEventListener("storage", handleStatusSync)
+      window.removeEventListener("storage", loadDashboardData)
     }
   }, [])
 

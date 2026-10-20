@@ -684,152 +684,221 @@ export async function uploadProductImage(
 // ORDERS & FULFILLMENT
 // ----------------------------------------------------------------------------
 
+export function mapRawOrderToAdminItem(
+  o: any,
+  profileMap?: Map<string, { email: string; phone?: string | null }>,
+): AdminOrderItem {
+  const createdDate = new Date(o.created_at || Date.now())
+  const formattedDate = createdDate.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+
+  const prof = o.user_id && profileMap ? profileMap.get(o.user_id) : null
+  const customerEmail =
+    o.customer_email ||
+    prof?.email ||
+    (o.shipping_name
+      ? `${o.shipping_name.toLowerCase().replace(/\s+/g, ".")}@example.com`
+      : "customer@example.com")
+  const customerPhone =
+    o.customer_phone ||
+    o.shipping_phone ||
+    prof?.phone ||
+    "+44 20 7946 0912"
+
+  const items: AdminOrderLineItem[] =
+    Array.isArray(o.order_items) && o.order_items.length > 0
+      ? o.order_items.map((item: any) => ({
+          id: item.id || Math.floor(Math.random() * 100000),
+          productId: item.product_id ? Number(item.product_id) : null,
+          productName: item.product_name || "Luxury Beauty Item",
+          productBrand: item.product_brand || "ABAZ MART",
+          productImage:
+            item.product_image ||
+            "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
+          selectedOption: item.selected_option || "Standard",
+          unitPrice: Number(item.unit_price) || 0,
+          quantity: Number(item.quantity) || 1,
+          lineTotal:
+            Number(item.line_total) ||
+            (Number(item.unit_price) || 0) * (item.quantity || 1),
+        }))
+      : [
+          {
+            id: 1,
+            productId: null,
+            productName: "Signature Skincare Order",
+            productBrand: "ABAZ MART",
+            productImage:
+              "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
+            selectedOption: "Standard",
+            unitPrice: Number(o.total) || 0,
+            quantity: 1,
+            lineTotal: Number(o.total) || 0,
+          },
+        ]
+
+  let carrier = o.carrier
+  let trackingNumber = o.tracking_number
+  let trackingUrl = o.tracking_url
+  let shippedAt = o.shipped_at
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(`abaz_order_tracking_${o.id}`)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        carrier = carrier || parsed.carrier
+        trackingNumber = trackingNumber || parsed.trackingNumber
+        trackingUrl = trackingUrl || parsed.trackingUrl
+        shippedAt = shippedAt || parsed.shippedAt
+      }
+    } catch {}
+  }
+
+  if (carrier && trackingNumber && !trackingUrl) {
+    trackingUrl = getCarrierTrackingUrl(carrier, trackingNumber)
+  }
+
+  let orderStatus = (o.status as OrderStatus) || "Pending"
+  if (typeof window !== "undefined") {
+    const storedStatus = localStorage.getItem(
+      `abaz_order_status_${o.id}`,
+    ) as OrderStatus | null
+    if (storedStatus) {
+      orderStatus = storedStatus
+    }
+  }
+
+  return {
+    id: String(o.id),
+    orderNumber: o.order_number || `ABZ-${String(o.id).slice(0, 6)}`,
+    customer: o.shipping_name || "Customer",
+    email: customerEmail,
+    phone: customerPhone,
+    shippingAddress: o.shipping_address || "14 Berkeley Square",
+    shippingCity: o.shipping_city || "London",
+    shippingPostalCode: o.shipping_postal_code || "W1J 5AE",
+    shippingCountry: o.shipping_country || "United Kingdom",
+    paymentMethod: (o.payment_method as PaymentMethod) || "card",
+    paymentStatus: (o.payment_status as PaymentStatus) || "paid",
+    date: formattedDate,
+    subtotal: Number(o.subtotal) || Number(o.total) || 0,
+    shipping: Number(o.shipping) || 0,
+    tax: Number(o.tax) || 0,
+    discount: Number(o.discount) || 0,
+    total: Number(o.total) || 0,
+    status: orderStatus,
+    carrier: carrier || undefined,
+    trackingNumber: trackingNumber || undefined,
+    trackingUrl: trackingUrl || undefined,
+    shippedAt: shippedAt || undefined,
+    itemsCount: items.length,
+    rawCreatedAt: o.created_at || new Date().toISOString(),
+    items,
+  }
+}
+
 export async function getAdminOrders(): Promise<{
   data: AdminOrderItem[]
   error: Error | null
 }> {
-  if (!isSupabaseConfigured()) {
-    return { data: [], error: null }
+  // Read any locally cached orders (e.g. from checkout or customer sync)
+  const localPlacedOrders: AdminOrderItem[] = []
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("abaz_placed_orders")
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            localPlacedOrders.push(mapRawOrderToAdminItem(item))
+          }
+        }
+      }
+    } catch {}
   }
 
+  let fetchedOrders: any[] = []
+
+  // 1. Try serverless /api/admin-orders first (which bypasses RLS on server)
   try {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*, order_items(*)")
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.warn("Failed to fetch admin orders from Supabase:", error.message)
-      return { data: [], error: null }
-    }
-
-    if (!data || data.length === 0) {
-      return { data: [], error: null }
-    }
-
-    // Try to get profile emails if possible
-    const userIds = Array.from(new Set(data.map((o) => o.user_id).filter(Boolean)))
-    const profileMap = new Map<string, { email: string; phone?: string | null }>()
-    if (userIds.length > 0) {
-      try {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, email, phone")
-          .in("id", userIds)
-        if (profs) {
-          for (const p of profs) {
-            profileMap.set(p.id, { email: p.email, phone: p.phone })
-          }
-        }
-      } catch {
-        // Fallback silently if profiles query fails
+    const res = await fetch("/api/admin-orders")
+    if (res.ok) {
+      const json = await res.json()
+      if (Array.isArray(json.orders) && json.orders.length > 0) {
+        fetchedOrders = json.orders
       }
     }
-
-    const mapped: AdminOrderItem[] = data.map((o) => {
-      const createdDate = new Date(o.created_at)
-      const formattedDate = createdDate.toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-
-      const prof = profileMap.get(o.user_id)
-      const customerEmail = prof?.email || (o.shipping_name ? `${o.shipping_name.toLowerCase().replace(/\s+/g, ".")}@example.com` : "customer@example.com")
-      const customerPhone = o.shipping_phone || prof?.phone || "+44 20 7946 0912"
-
-      const items: AdminOrderLineItem[] = Array.isArray(o.order_items) && o.order_items.length > 0
-        ? o.order_items.map((item: any) => ({
-            id: item.id,
-            productId: item.product_id,
-            productName: item.product_name || "Luxury Beauty Item",
-            productBrand: item.product_brand || "ABAZ MART",
-            productImage: item.product_image || "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
-            selectedOption: item.selected_option || "Standard",
-            unitPrice: Number(item.unit_price) || 0,
-            quantity: Number(item.quantity) || 1,
-            lineTotal: Number(item.line_total) || (Number(item.unit_price) || 0) * (item.quantity || 1),
-          }))
-        : [
-            {
-              id: 1,
-              productId: null,
-              productName: "Signature Skincare Order",
-              productBrand: "ABAZ MART",
-              productImage: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
-              selectedOption: "Standard",
-              unitPrice: Number(o.total),
-              quantity: 1,
-              lineTotal: Number(o.total),
-            },
-          ]
-
-      // Check for carrier / tracking info
-      let carrier = (o as any).carrier
-      let trackingNumber = (o as any).tracking_number
-      let trackingUrl = (o as any).tracking_url
-      let shippedAt = (o as any).shipped_at
-
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem(`abaz_order_tracking_${o.id}`)
-          if (stored) {
-            const parsed = JSON.parse(stored)
-            carrier = carrier || parsed.carrier
-            trackingNumber = trackingNumber || parsed.trackingNumber
-            trackingUrl = trackingUrl || parsed.trackingUrl
-            shippedAt = shippedAt || parsed.shippedAt
-          }
-        } catch {}
-      }
-
-      if (carrier && trackingNumber && !trackingUrl) {
-        trackingUrl = getCarrierTrackingUrl(carrier, trackingNumber)
-      }
-
-      let orderStatus = o.status
-      if (typeof window !== "undefined") {
-        const storedStatus = localStorage.getItem(`abaz_order_status_${o.id}`) as OrderStatus | null
-        if (storedStatus) {
-          orderStatus = storedStatus
-        }
-      }
-
-      return {
-        id: o.id,
-        orderNumber: o.order_number,
-        customer: o.shipping_name || "Customer",
-        email: customerEmail,
-        phone: customerPhone,
-        shippingAddress: o.shipping_address || "14 Berkeley Square",
-        shippingCity: o.shipping_city || "London",
-        shippingPostalCode: o.shipping_postal_code || "W1J 5AE",
-        shippingCountry: o.shipping_country || "United Kingdom",
-        paymentMethod: (o.payment_method as PaymentMethod) || "card",
-        paymentStatus: (o.payment_status as PaymentStatus) || "paid",
-        date: formattedDate,
-        subtotal: Number(o.subtotal) || Number(o.total),
-        shipping: Number(o.shipping) || 0,
-        tax: Number(o.tax) || 0,
-        discount: Number(o.discount) || 0,
-        total: Number(o.total),
-        status: orderStatus,
-        carrier: carrier || undefined,
-        trackingNumber: trackingNumber || undefined,
-        trackingUrl: trackingUrl || undefined,
-        shippedAt: shippedAt || undefined,
-        itemsCount: items.length,
-        rawCreatedAt: o.created_at,
-        items,
-      }
-    })
-
-    return { data: mapped, error: null }
-  } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "Failed to load admin orders"
-    return { data: [], error: new Error(message) }
+  } catch (apiErr) {
+    console.warn("api/admin-orders endpoint notice:", apiErr)
   }
+
+  // 2. Try Supabase RPC get_all_orders_admin
+  if (fetchedOrders.length === 0 && isSupabaseConfigured()) {
+    try {
+      const { data: rpcOrders, error: rpcErr } = await supabase.rpc("get_all_orders_admin")
+      if (!rpcErr && Array.isArray(rpcOrders) && rpcOrders.length > 0) {
+        fetchedOrders = rpcOrders
+      }
+    } catch {}
+  }
+
+  // 3. Try direct select from public.orders with order_items join
+  if (fetchedOrders.length === 0 && isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, order_items(*)")
+        .order("created_at", { ascending: false })
+
+      if (!error && data && data.length > 0) {
+        fetchedOrders = data
+      }
+    } catch {}
+  }
+
+  // 4. Try select from public.orders without join
+  if (fetchedOrders.length === 0 && isSupabaseConfigured()) {
+    try {
+      const { data: simpleOrders } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (simpleOrders && simpleOrders.length > 0) {
+        fetchedOrders = simpleOrders
+      }
+    } catch {}
+  }
+
+  // Map fetched orders
+  const mappedRemote = fetchedOrders.map((o) => mapRawOrderToAdminItem(o))
+
+  // Merge remote and local (avoiding duplicates by id or orderNumber)
+  const existingKeys = new Set(
+    mappedRemote.map((o) => `${o.id}_${o.orderNumber}`.toLowerCase()),
+  )
+  const existingOrderNumbers = new Set(
+    mappedRemote.map((o) => o.orderNumber.toLowerCase()),
+  )
+  const existingIds = new Set(mappedRemote.map((o) => o.id.toLowerCase()))
+
+  const uniqueLocal = localPlacedOrders.filter(
+    (o) =>
+      !existingKeys.has(`${o.id}_${o.orderNumber}`.toLowerCase()) &&
+      !existingOrderNumbers.has(o.orderNumber.toLowerCase()) &&
+      !existingIds.has(o.id.toLowerCase()),
+  )
+
+  const combined = [...mappedRemote, ...uniqueLocal]
+  combined.sort(
+    (a, b) => new Date(b.rawCreatedAt).getTime() - new Date(a.rawCreatedAt).getTime(),
+  )
+
+  return { data: combined, error: null }
 }
 
 export interface OrderDispatchInfo {
@@ -901,6 +970,19 @@ export async function updateOrderStatus(
       .from("orders")
       .update(payload)
       .eq("id", orderId)
+
+    // Also notify serverless /api/admin-orders endpoint to update with service role key if needed
+    fetch("/api/admin-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId,
+        status,
+        carrier: dispatchInfo?.carrier,
+        trackingNumber: dispatchInfo?.trackingNumber,
+        trackingUrl: payload.tracking_url,
+      }),
+    }).catch(() => {})
 
     // If update failed due to unknown columns carrier/tracking_number/tracking_url, fallback to status only
     if (error && (error.message?.includes("carrier") || error.message?.includes("tracking"))) {

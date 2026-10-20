@@ -74,7 +74,7 @@ export default function AdminOrders() {
     fetchOrders()
   }, [])
 
-  // Listen for real-time order status updates (e.g. cancelled from customer side or another window)
+  // Listen for real-time order status updates and newly placed orders
   useEffect(() => {
     const handleStatusSync = (e: Event) => {
       const detail = (e as CustomEvent)?.detail
@@ -89,11 +89,20 @@ export default function AdminOrders() {
         )
       }
     }
+
+    const handleNewOrder = () => {
+      fetchOrders()
+    }
+
     window.addEventListener("abaz_order_status_changed", handleStatusSync)
+    window.addEventListener("abaz_order_placed", handleNewOrder)
     window.addEventListener("storage", handleStatusSync)
+    window.addEventListener("storage", handleNewOrder)
     return () => {
       window.removeEventListener("abaz_order_status_changed", handleStatusSync)
+      window.removeEventListener("abaz_order_placed", handleNewOrder)
       window.removeEventListener("storage", handleStatusSync)
+      window.removeEventListener("storage", handleNewOrder)
     }
   }, [])
 

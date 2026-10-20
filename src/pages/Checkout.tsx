@@ -510,12 +510,82 @@ export default function Checkout() {
     }
 
     if (res.data) {
-      setConfirmedOrder(res.data)
+      const orderData = res.data
+      setConfirmedOrder(orderData)
       setConfirmedCart(cart)
       setComplete(true)
       clearCart()
       window.sessionStorage.removeItem("abaz_promo_code")
       window.sessionStorage.removeItem("abaz_promo_discount")
+
+      // Cache placed order locally and notify admin dashboard in real-time
+      try {
+        const orderRecord = {
+          id: orderData.order_id,
+          order_number: orderData.order_number,
+          user_id: user?.id || null,
+          status: "Pending",
+          subtotal: orderData.subtotal,
+          shipping: orderData.shipping,
+          tax: orderData.tax,
+          discount: orderData.discount,
+          total: orderData.total,
+          payment_method: paymentMethod,
+          payment_status: paymentMethod === "card" ? "paid" : "pending",
+          shipping_name: form.fullName,
+          shipping_phone: form.phone,
+          shipping_address: form.address,
+          shipping_city: form.city,
+          shipping_postal_code: form.postalCode,
+          shipping_country: form.country,
+          estimated_delivery_date: orderData.estimated_delivery,
+          created_at: new Date().toISOString(),
+          customer_email: form.email,
+          customer_phone: form.phone,
+          order_items: cart.map((item, idx) => ({
+            id: idx + 1,
+            order_id: orderData.order_id,
+            product_id: item.product.id,
+            product_name: item.product.name,
+            product_brand: item.product.brand,
+            product_image: item.product.image,
+            selected_option: item.option || "Standard",
+            unit_price: item.product.price,
+            quantity: item.quantity,
+            line_total: item.product.price * item.quantity,
+            created_at: new Date().toISOString(),
+          })),
+        }
+
+        const existingRaw = localStorage.getItem("abaz_placed_orders")
+        const existingList = existingRaw ? JSON.parse(existingRaw) : []
+        const updatedList = [
+          orderRecord,
+          ...existingList.filter((o: any) => o.id !== orderRecord.id),
+        ]
+        localStorage.setItem("abaz_placed_orders", JSON.stringify(updatedList))
+
+        // Also increment order count for this customer in customer list
+        const custRaw = localStorage.getItem("abaz_registered_customers")
+        if (custRaw) {
+          try {
+            const custList = JSON.parse(custRaw)
+            const updatedCust = custList.map((c: any) =>
+              c.email.toLowerCase() === form.email.toLowerCase()
+                ? { ...c, ordersCount: (c.ordersCount || 0) + 1 }
+                : c,
+            )
+            localStorage.setItem("abaz_registered_customers", JSON.stringify(updatedCust))
+          } catch {}
+        }
+
+        window.dispatchEvent(
+          new CustomEvent("abaz_order_placed", { detail: orderRecord }),
+        )
+        window.dispatchEvent(new Event("storage"))
+      } catch (cacheErr) {
+        console.warn("Could not cache placed order locally:", cacheErr)
+      }
 
       // Send branded order confirmation email in the background
       const orderPayload = res.data

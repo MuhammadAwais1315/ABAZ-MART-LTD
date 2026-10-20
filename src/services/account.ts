@@ -82,14 +82,10 @@ export async function getCustomerOrders(
 
     if (error) {
       console.warn("Failed to fetch customer orders from Supabase:", error.message)
-      return { data: getFallbackOrders(), error: null }
     }
 
-    if (!data || data.length === 0) {
-      return { data: [], error: null }
-    }
-
-    const mapped: CustomerOrder[] = data.map((o) => {
+    const fetchedRows = data || []
+    const mapped: CustomerOrder[] = fetchedRows.map((o) => {
       const createdDate = new Date(o.created_at)
       const formattedDate = createdDate.toLocaleDateString("en-GB", {
         day: "numeric",
@@ -162,6 +158,68 @@ export async function getCustomerOrders(
         },
       }
     })
+
+    // Also include any locally placed orders for this customer
+    if (typeof window !== "undefined") {
+      try {
+        const localRaw = localStorage.getItem("abaz_placed_orders")
+        if (localRaw) {
+          const localList = JSON.parse(localRaw)
+          if (Array.isArray(localList)) {
+            const existingIds = new Set(mapped.map((m) => String(m.id).toLowerCase()))
+            for (const item of localList) {
+              if (
+                item.id &&
+                !existingIds.has(String(item.id).toLowerCase()) &&
+                (!item.user_id || item.user_id === userId)
+              ) {
+                mapped.push({
+                  id: item.id,
+                  number: item.order_number,
+                  date: new Date(item.created_at || Date.now()).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }),
+                  status: (item.status as OrderStatus) || "Pending",
+                  subtotal: Number(item.subtotal) || 0,
+                  shipping: Number(item.shipping) || 0,
+                  tax: Number(item.tax) || 0,
+                  discount: Number(item.discount) || 0,
+                  total: Number(item.total) || 0,
+                  paymentMethod: (item.payment_method as PaymentMethod) || "card",
+                  carrier: item.carrier,
+                  trackingNumber: item.tracking_number,
+                  trackingUrl: item.tracking_url,
+                  shippedAt: item.shipped_at,
+                  items: Array.isArray(item.order_items)
+                    ? item.order_items.map((it: any) => ({
+                        id: it.id || 1,
+                        productId: it.product_id ? Number(it.product_id) : null,
+                        name: it.product_name || "Signature Skincare Order",
+                        brand: it.product_brand || "ABAZ MART",
+                        image: it.product_image || "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
+                        option: it.selected_option || "Standard",
+                        unitPrice: Number(it.unit_price) || 0,
+                        quantity: Number(it.quantity) || 1,
+                        lineTotal: Number(it.line_total) || 0,
+                      }))
+                    : [],
+                  shippingAddress: {
+                    name: item.shipping_name || "",
+                    phone: item.shipping_phone || "",
+                    address: item.shipping_address || "",
+                    city: item.shipping_city || "",
+                    postalCode: item.shipping_postal_code || "",
+                    country: item.shipping_country || "United Kingdom",
+                  },
+                })
+              }
+            }
+          }
+        }
+      } catch {}
+    }
 
     return { data: mapped, error: null }
   } catch (err: unknown) {
