@@ -39,16 +39,16 @@ export default function ProductPage() {
   const effectiveCatalog = getEffectiveProducts(products)
   const isDeleted = id ? isProductDeleted(id) : false
   const initialProduct =
-    effectiveCatalog.find((item) => item.id === Number(id)) || effectiveCatalog[0]
-  const [product, setProduct] = useState<Product>(initialProduct)
-  const [notFound, setNotFound] = useState(isDeleted)
+    effectiveCatalog.find((item) => item.id === Number(id)) || effectiveCatalog[0] || null
+  const [product, setProduct] = useState<Product | null>(initialProduct)
+  const [notFound, setNotFound] = useState(isDeleted || !initialProduct)
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [quantity, setQuantity] = useState(1)
-  const [option, setOption] = useState(initialProduct.options[0])
+  const [option, setOption] = useState(initialProduct?.options?.[0] || "Default")
   const [detailTab, setDetailTab] = useState("Description")
-  const [activeImage, setActiveImage] = useState(initialProduct.image)
+  const [activeImage, setActiveImage] = useState(initialProduct?.image || "")
   const [productLoading, setProductLoading] = useState(true)
   const [reviewsList, setReviewsList] = useState<ReviewItem[]>([])
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
@@ -58,28 +58,32 @@ export default function ProductPage() {
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
 
-  const discount = product.oldPrice
+  const discount = product?.oldPrice
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
     : 0
 
-  const productImages = [
-    product.image,
-    ...effectiveCatalog
-      .filter(
-        (item) => item.category === product.category && item.id !== product.id,
-      )
-      .slice(0, 3)
-      .map((item) => item.image),
-  ]
+  const productImages = product
+    ? [
+        product.image,
+        ...effectiveCatalog
+          .filter(
+            (item) => item.category === product.category && item.id !== product.id,
+          )
+          .slice(0, 3)
+          .map((item) => item.image),
+      ]
+    : []
 
-  const relatedProducts = [
-    ...effectiveCatalog.filter(
-      (item) => item.category === product.category && item.id !== product.id,
-    ),
-    ...effectiveCatalog.filter(
-      (item) => item.category !== product.category && item.id !== product.id,
-    ),
-  ].slice(0, 4)
+  const relatedProducts = product
+    ? [
+        ...effectiveCatalog.filter(
+          (item) => item.category === product.category && item.id !== product.id,
+        ),
+        ...effectiveCatalog.filter(
+          (item) => item.category !== product.category && item.id !== product.id,
+        ),
+      ].slice(0, 4)
+    : []
 
   const shadeClasses = [
     "shade-rose",
@@ -114,7 +118,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     let mounted = true
-    if (product.id) {
+    if (product?.id) {
       getProductReviews(product.id).then((res) => {
         if (mounted && res.data) {
           setReviewsList(res.data)
@@ -124,13 +128,13 @@ export default function ProductPage() {
     return () => {
       mounted = false
     }
-  }, [product.id])
+  }, [product?.id])
 
   const handleOpenReview = () => {
     if (!user) {
       notify("Please sign in to write a review")
       navigate(
-        `/login?redirect=${encodeURIComponent(`/product/${product.id}`)}`,
+        `/login?redirect=${encodeURIComponent(`/product/${product?.id || ""}`)}`,
       )
       return
     }
@@ -140,6 +144,7 @@ export default function ProductPage() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!product) return
     if (!reviewTitle.trim() || !reviewContent.trim()) {
       setReviewError("Please provide both a title and review comments.")
       return
@@ -171,17 +176,34 @@ export default function ProductPage() {
   }
 
   useEffect(() => {
+    if (!product) return
     setProductLoading(true)
-    setOption(product.options[0])
+    setOption(product.options?.[0] || "Standard")
     setActiveImage(product.image)
     setQuantity(1)
     setDetailTab("Description")
     const timer = window.setTimeout(() => setProductLoading(false), 320)
     return () => window.clearTimeout(timer)
-  }, [product.id, product.image, product.options])
+  }, [product?.id, product?.image, product?.options])
 
   const handleAdd = () => {
-    addToCart(product, quantity, option)
+    if (product) {
+      addToCart(product, quantity, option)
+    }
+  }
+
+  if (notFound || !product) {
+    return (
+      <div className="page shell text-center py-24 space-y-4">
+        <h2 className="text-2xl font-serif">Product Not Found</h2>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          This product is no longer available in our boutique catalog.
+        </p>
+        <Link to="/shop" className="btn btn-primary inline-flex">
+          Return to Shop
+        </Link>
+      </div>
+    )
   }
 
   const detailContent =
@@ -261,37 +283,29 @@ export default function ProductPage() {
           </div>
         </div>
         <div className="review-list">
-          {reviewsList.map((review, idx) => (
-            <article key={review.id ?? idx}>
-              <div>
-                <RatingStars rating={review.rating} />
-                <span>{review.date}</span>
-              </div>
-              <h3>{review.title}</h3>
-              <p>{review.text}</p>
-              <strong>
-                {review.name}
-                {review.verified ? " · Verified buyer" : ""}
-              </strong>
-            </article>
-          ))}
+          {reviewsList.length === 0 ? (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              No reviews yet. Be the first to share your experience with this product!
+            </div>
+          ) : (
+            reviewsList.map((review, idx) => (
+              <article key={review.id ?? idx}>
+                <div>
+                  <RatingStars rating={review.rating} />
+                  <span>{review.date}</span>
+                </div>
+                <h3>{review.title}</h3>
+                <p>{review.text}</p>
+                <strong>
+                  {review.name}
+                  {review.verified ? " · Verified buyer" : ""}
+                </strong>
+              </article>
+            ))
+          )}
         </div>
       </div>
     )
-
-  if (notFound) {
-    return (
-      <div className="page shell text-center py-24 space-y-4">
-        <h2 className="text-2xl font-serif">Product Not Found</h2>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          This product is no longer available in our boutique catalog.
-        </p>
-        <Link to="/shop" className="btn btn-primary inline-flex">
-          Return to Shop
-        </Link>
-      </div>
-    )
-  }
 
   if (productLoading) {
     return (

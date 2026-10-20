@@ -380,7 +380,7 @@ export async function deleteCustomerAddress(
  * Fetch customer wishlist from Supabase.
  */
 export async function getCustomerWishlist(userId: string): Promise<number[]> {
-  if (!isSupabaseConfigured()) return [1, 5, 9]
+  if (!isSupabaseConfigured()) return []
 
   try {
     const { data } = await supabase
@@ -388,10 +388,10 @@ export async function getCustomerWishlist(userId: string): Promise<number[]> {
       .select("product_id")
       .eq("user_id", userId)
 
-    if (!data) return [1, 5, 9]
+    if (!data) return []
     return data.map((item) => Number(item.product_id))
   } catch {
-    return [1, 5, 9]
+    return []
   }
 }
 

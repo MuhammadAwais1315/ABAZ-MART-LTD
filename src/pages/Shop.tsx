@@ -379,9 +379,13 @@ export default function Shop() {
           ) : (
             <div className="empty">
               <Search />
-              <h2>No products found</h2>
-              <p>Try adjusting your filters or search for something else.</p>
-              <Button onClick={clearFilters}>Reset filters</Button>
+              <h2>No products available</h2>
+              <p>
+                {catalog.length === 0
+                  ? "Our boutique catalog is currently being updated with real inventory. Items added via the Admin Portal will appear here automatically."
+                  : "Try adjusting your filters or search for something else."}
+              </p>
+              {catalog.length > 0 && <Button onClick={clearFilters}>Reset filters</Button>}
             </div>
           )}
           {!loading && filtered.length > 0 && (

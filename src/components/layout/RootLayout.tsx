@@ -50,10 +50,11 @@ export default function RootLayout() {
   const [wishlist, setWishlist] = useState<number[]>(() => {
     try {
       const saved = window.localStorage.getItem("abaz-mart-wishlist")
-      const list = saved ? (JSON.parse(saved) as number[]) : [1, 5, 9]
-      return Array.isArray(list) ? list.filter((id) => !isProductDeleted(id)) : [1, 5, 9]
+      if (!saved) return []
+      const list = JSON.parse(saved) as number[]
+      return Array.isArray(list) ? list.filter((id) => !isProductDeleted(id)) : []
     } catch {
-      return [1, 5, 9]
+      return []
     }
   })
   const [cartOpen, setCartOpen] = useState(false)

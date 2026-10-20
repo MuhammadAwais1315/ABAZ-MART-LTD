@@ -60,27 +60,6 @@ const galleryImages = [
   "https://images.unsplash.com/photo-1701271482230-5ecaec3cd3e1?auto=format&fit=crop&w=700&q=85",
 ]
 
-const testimonials = [
-  {
-    name: "Nadia Brooks",
-    image:
-      "https://images.unsplash.com/photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&w=180&q=85",
-    text: "The Petal Dew Serum transformed my morning routine. My skin feels calm, hydrated, and genuinely radiant.",
-  },
-  {
-    name: "Leila Morgan",
-    image:
-      "https://images.unsplash.com/photo-1521146764736-56c929d59c83?auto=format&fit=crop&w=180&q=85",
-    text: "Everything arrived beautifully packed, and the shade recommendations were spot on. Abaz Mart feels so considered.",
-  },
-  {
-    name: "Sofia Chen",
-    image:
-      "https://images.unsplash.com/photo-1651534400411-eaf227f82ee4?auto=format&fit=crop&w=180&q=85",
-    text: "I found my new signature fragrance and favorite hair mask in one order. Fast delivery and wonderful quality.",
-  },
-]
-
 export default function Home() {
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
   const [catalog, setCatalog] = useState<Product[]>(() => getEffectiveProducts(initialProducts))
@@ -154,15 +133,24 @@ export default function Home() {
           </Link>
         </div>
         <div className="product-grid">
-          {newArrivals.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAdd={addToCart}
-              onWishlist={toggleWishlist}
-              isWishlisted={wishlist.includes(product.id)}
-            />
-          ))}
+          {newArrivals.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-muted-foreground text-sm">
+              <p className="font-serif text-lg text-ink">New Collection Coming Soon</p>
+              <p className="mt-1 text-xs max-w-md mx-auto text-muted">
+                Our boutique is currently curating luxury beauty essentials. Real products added in the Admin Portal will automatically appear here.
+              </p>
+            </div>
+          ) : (
+            newArrivals.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAdd={addToCart}
+                onWishlist={toggleWishlist}
+                isWishlisted={wishlist.includes(product.id)}
+              />
+            ))
+          )}
         </div>
       </section>
       <section className="promo-banner shell">
@@ -177,7 +165,7 @@ export default function Home() {
           </Link>
         </div>
         <img
-          src={(catalog[2] || initialProducts[2]).image}
+          src={catalog[2]?.image || "https://images.unsplash.com/photo-1694742971702-3887ed069538?auto=format&fit=crop&w=800&q=80"}
           alt="Skincare essentials on sale"
         />
       </section>
@@ -192,15 +180,24 @@ export default function Home() {
           </Link>
         </div>
         <div className="product-grid">
-          {bestSellers.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAdd={addToCart}
-              onWishlist={toggleWishlist}
-              isWishlisted={wishlist.includes(product.id)}
-            />
-          ))}
+          {bestSellers.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-muted-foreground text-sm">
+              <p className="font-serif text-lg text-ink">Bestsellers Coming Soon</p>
+              <p className="mt-1 text-xs max-w-md mx-auto text-muted">
+                Products will automatically feature here as customers make purchases.
+              </p>
+            </div>
+          ) : (
+            bestSellers.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAdd={addToCart}
+                onWishlist={toggleWishlist}
+                isWishlisted={wishlist.includes(product.id)}
+              />
+            ))
+          )}
         </div>
       </section>
       <section className="why-section">
@@ -225,27 +222,6 @@ export default function Home() {
             <strong>Secure Payment</strong>
             <span>Protected checkout</span>
           </div>
-        </div>
-      </section>
-      <section className="section shell testimonials-section">
-        <div className="section-head centered">
-          <p className="eyebrow">Real beauty stories</p>
-          <h2>Customer Testimonials</h2>
-        </div>
-        <div className="testimonial-grid">
-          {testimonials.map((testimonial) => (
-            <article className="testimonial-card" key={testimonial.name}>
-              <RatingStars rating={5} />
-              <p>“{testimonial.text}”</p>
-              <div>
-                <img src={testimonial.image} alt={testimonial.name} />
-                <span>
-                  <strong>{testimonial.name}</strong>
-                  <small>Verified customer</small>
-                </span>
-              </div>
-            </article>
-          ))}
         </div>
       </section>
       <section className="social-gallery">

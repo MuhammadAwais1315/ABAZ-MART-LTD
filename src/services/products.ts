@@ -370,7 +370,7 @@ export async function getProductReviews(
   productId: number,
 ): Promise<{ data: ReviewItem[]; error: Error | null }> {
   if (!isSupabaseConfigured()) {
-    return { data: defaultMockReviews, error: null }
+    return { data: [], error: null }
   }
 
   try {
@@ -382,7 +382,7 @@ export async function getProductReviews(
       .order("created_at", { ascending: false })
 
     if (error || !data || data.length === 0) {
-      return { data: defaultMockReviews, error: null }
+      return { data: [], error: null }
     }
 
     const mapped: ReviewItem[] = data.map((r) => ({
@@ -401,7 +401,7 @@ export async function getProductReviews(
 
     return { data: mapped, error: null }
   } catch {
-    return { data: defaultMockReviews, error: null }
+    return { data: [], error: null }
   }
 }
 
@@ -519,37 +519,4 @@ function filterDefaultProducts(params: ProductQueryParams) {
   return { data: list, total, error: null }
 }
 
-const defaultMockReviews: ReviewItem[] = [
-  {
-    name: "Maya R.",
-    date: "12 February 2026",
-    title: "My skin looks brighter",
-    text: "This fits beautifully into my morning routine. The texture feels light, absorbs quickly, and leaves a healthy glow without any stickiness.",
-    verified: true,
-    rating: 5,
-  },
-  {
-    name: "Olivia K.",
-    date: "3 February 2026",
-    title: "Beautiful formula",
-    text: "I noticed a softer, smoother finish within the first week. It also layers perfectly under makeup and never pills.",
-    verified: true,
-    rating: 5,
-  },
-  {
-    name: "Samira D.",
-    date: "24 January 2026",
-    title: "Worth every drop",
-    text: "The packaging feels premium and the formula is even better. A little goes a long way, so it has become a daily essential.",
-    verified: true,
-    rating: 5,
-  },
-  {
-    name: "Chloe T.",
-    date: "9 January 2026",
-    title: "Gentle and effective",
-    text: "My sensitive skin has been very happy with this. It feels soothing, looks luminous, and has no overwhelming fragrance.",
-    verified: true,
-    rating: 5,
-  },
-]
+const defaultMockReviews: ReviewItem[] = []
