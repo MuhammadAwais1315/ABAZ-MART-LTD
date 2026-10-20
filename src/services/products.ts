@@ -58,55 +58,23 @@ export function mapDbProductToProduct(row: ProductRow): Product {
 /**
  * Check whether a product ID or slug is marked as deleted in the store.
  */
-export function isProductDeleted(idOrSlug: number | string): boolean {
-  if (typeof window === "undefined") return false
-  if (isSupabaseConfigured()) return false
-  try {
-    const rawDeleted = localStorage.getItem("abaz_deleted_product_ids")
-    if (rawDeleted) {
-      const parsed = JSON.parse(rawDeleted)
-      if (Array.isArray(parsed)) {
-        const numId = Number(idOrSlug)
-        if (!isNaN(numId) && parsed.includes(numId)) {
-          return true
-        }
-        // Also check if any deleted product id corresponds to this slug in defaultProducts
-        const matched = defaultProducts.find(
-          (p) =>
-            p.id === numId ||
-            p.name.toLowerCase().replace(/\s+/g, "-") === String(idOrSlug).toLowerCase(),
-        )
-        if (matched && parsed.includes(matched.id)) {
-          return true
-        }
-      }
-    }
-  } catch {}
+export function isProductDeleted(_idOrSlug: number | string): boolean {
   return false
 }
 
 /**
- * Synchronously filter deleted products and merge custom edits/created items from localStorage.
- * Used across the entire customer storefront and fallback mocks.
+ * Synchronously merge custom edits/created items from localStorage.
+ * Used across customer storefront and fallback mocks.
  */
 export function getEffectiveProducts(list: Product[] = defaultProducts): Product[] {
   if (typeof window === "undefined") {
     return list
   }
 
-  const deletedIds = new Set<number>()
   let storedEdits: Record<string, Partial<Product>> = {}
   let customCreated: Product[] = []
 
   try {
-    const rawDeleted = localStorage.getItem("abaz_deleted_product_ids")
-    if (rawDeleted) {
-      const parsed = JSON.parse(rawDeleted)
-      if (Array.isArray(parsed)) {
-        parsed.forEach((id: number) => deletedIds.add(Number(id)))
-      }
-    }
-
     const rawEdits = localStorage.getItem("abaz_custom_product_edits")
     if (rawEdits) {
       storedEdits = JSON.parse(rawEdits)
@@ -128,39 +96,31 @@ export function getEffectiveProducts(list: Product[] = defaultProducts): Product
   const newItems = customCreated.filter((p) => !existingIds.has(p.id))
   const combined = [...newItems, ...list]
 
-  return combined
-    .filter((p) => {
-      // Products directly returned from the live database are authoritative
-      if (list.length > 0 && list.some((item) => item.id === p.id)) {
-        return true
-      }
-      return !deletedIds.has(p.id)
-    })
-    .map((p) => {
-      const edit = storedEdits[p.id.toString()]
-      if (!edit) return p
-      return {
-        ...p,
-        name: edit.name ?? p.name,
-        brand: edit.brand ?? p.brand,
-        category: edit.category ?? p.category,
-        price: edit.price !== undefined ? Number(edit.price) : p.price,
-        oldPrice:
-          edit.oldPrice !== undefined
-            ? edit.oldPrice === null
-              ? undefined
-              : Number(edit.oldPrice)
-            : p.oldPrice,
-        stock: edit.stock !== undefined ? Number(edit.stock) : p.stock,
-        badge:
-          edit.badge !== undefined
-            ? edit.badge
-              ? String(edit.badge)
-              : undefined
-            : p.badge,
-        description: edit.description ?? p.description,
-      }
-    })
+  return combined.map((p) => {
+    const edit = storedEdits[p.id.toString()]
+    if (!edit) return p
+    return {
+      ...p,
+      name: edit.name ?? p.name,
+      brand: edit.brand ?? p.brand,
+      category: edit.category ?? p.category,
+      price: edit.price !== undefined ? Number(edit.price) : p.price,
+      oldPrice:
+        edit.oldPrice !== undefined
+          ? edit.oldPrice === null
+            ? undefined
+            : Number(edit.oldPrice)
+          : p.oldPrice,
+      stock: edit.stock !== undefined ? Number(edit.stock) : p.stock,
+      badge:
+        edit.badge !== undefined
+          ? edit.badge
+            ? String(edit.badge)
+            : undefined
+          : p.badge,
+      description: edit.description ?? p.description,
+    }
+  })
 }
 
 /**

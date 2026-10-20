@@ -227,19 +227,22 @@ export async function getAdminProducts(): Promise<{
   data: Product[]
   error: Error | null
 }> {
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.removeItem("abaz_deleted_product_ids")
+    } catch {}
+  }
+
   if (typeof window !== "undefined" && isSupabaseConfigured()) {
     try {
       await syncLocalProductsToSupabase()
     } catch {}
   }
 
-  const deletedIds = new Set<number>()
   let storedEdits: Record<string, Partial<AdminProductPayload>> = {}
   let customCreated: Product[] = []
   if (typeof window !== "undefined") {
     try {
-      const ids = JSON.parse(localStorage.getItem("abaz_deleted_product_ids") || "[]")
-      if (Array.isArray(ids)) ids.forEach((id: number) => deletedIds.add(id))
       storedEdits = JSON.parse(localStorage.getItem("abaz_custom_product_edits") || "{}")
       const rawCreated = JSON.parse(localStorage.getItem("abaz_custom_created_products") || "[]")
       if (Array.isArray(rawCreated)) customCreated = rawCreated
@@ -250,22 +253,20 @@ export async function getAdminProducts(): Promise<{
     const existingIds = new Set(list.map((p) => p.id))
     const merged = [...customCreated.filter((p) => !existingIds.has(p.id)), ...list]
 
-    return merged
-      .filter((p) => !deletedIds.has(p.id))
-      .map((p) => {
-        const edit = storedEdits[p.id.toString()]
-        if (!edit) return p
-        return {
-          ...p,
-          name: edit.name ?? p.name,
-          brand: edit.brand ?? p.brand,
-          category: edit.category ?? p.category,
-          price: edit.price ?? p.price,
-          oldPrice: edit.oldPrice !== undefined ? (edit.oldPrice ?? undefined) : p.oldPrice,
-          stock: edit.stock ?? p.stock,
-          badge: edit.badge !== undefined ? (edit.badge ?? undefined) : p.badge,
-        }
-      })
+    return merged.map((p) => {
+      const edit = storedEdits[p.id.toString()]
+      if (!edit) return p
+      return {
+        ...p,
+        name: edit.name ?? p.name,
+        brand: edit.brand ?? p.brand,
+        category: edit.category ?? p.category,
+        price: edit.price ?? p.price,
+        oldPrice: edit.oldPrice !== undefined ? (edit.oldPrice ?? undefined) : p.oldPrice,
+        stock: edit.stock ?? p.stock,
+        badge: edit.badge !== undefined ? (edit.badge ?? undefined) : p.badge,
+      }
+    })
   }
 
   if (!isSupabaseConfigured()) {
