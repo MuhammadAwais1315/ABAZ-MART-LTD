@@ -45,11 +45,20 @@ export default function Shop() {
   )
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([])
-  const [maxPrice, setMaxPrice] = useState(200)
+  const [maxPrice, setMaxPrice] = useState(1000)
   const [minimumRating, setMinimumRating] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    if (catalog.length > 0) {
+      const highestPrice = Math.max(...catalog.map((p) => p.price))
+      if (highestPrice > maxPrice) {
+        setMaxPrice(Math.ceil(highestPrice / 100) * 100)
+      }
+    }
+  }, [catalog, maxPrice])
 
   useEffect(() => {
     let mounted = true
@@ -243,15 +252,15 @@ export default function Shop() {
           className="price-range"
           type="range"
           min="0"
-          max="200"
-          step="5"
+          max="1000"
+          step="10"
           value={maxPrice}
           onChange={(event) => setMaxPrice(Number(event.target.value))}
           aria-label="Maximum price"
         />
         <div className="range-bounds">
           <span>£0</span>
-          <span>£200</span>
+          <span>£1,000</span>
         </div>
       </div>
       <div className="filter-group">

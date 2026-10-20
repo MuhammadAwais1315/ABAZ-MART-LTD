@@ -159,10 +159,80 @@ const CATEGORY_ID_MAP: Record<string, number> = {
 // PRODUCTS
 // ----------------------------------------------------------------------------
 
+export async function syncLocalProductsToSupabase(): Promise<{ synced: number; error: Error | null }> {
+  if (!isSupabaseConfigured() || typeof window === "undefined") {
+    return { synced: 0, error: null }
+  }
+
+  try {
+    const raw = localStorage.getItem("abaz_custom_created_products")
+    if (!raw) return { synced: 0, error: null }
+    const localList: Product[] = JSON.parse(raw)
+    if (!Array.isArray(localList) || localList.length === 0) return { synced: 0, error: null }
+
+    let count = 0
+    const remaining: Product[] = []
+
+    for (const p of localList) {
+      let categoryId = CATEGORY_ID_MAP[p.category] || 1
+      try {
+        const { data: cat } = await supabase
+          .from("categories")
+          .select("id")
+          .ilike("name", p.category)
+          .maybeSingle()
+        if (cat?.id) categoryId = Number(cat.id)
+      } catch {}
+
+      const baseSlug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+      const slug = `${baseSlug}-${Date.now().toString().slice(-6)}`
+
+      const { data, error } = await supabase
+        .from("products")
+        .insert({
+          name: p.name,
+          slug,
+          brand: p.brand,
+          category_id: categoryId,
+          category_name: p.category,
+          price: p.price,
+          old_price: p.oldPrice || null,
+          stock: p.stock,
+          rating: p.rating || 5.0,
+          review_count: p.reviewCount || 0,
+          description: p.description,
+          options: p.options || ["Standard"],
+          image: p.image,
+          is_active: true,
+        })
+        .select()
+        .single()
+
+      if (!error && data) {
+        count++
+      } else {
+        remaining.push(p)
+      }
+    }
+
+    localStorage.setItem("abaz_custom_created_products", JSON.stringify(remaining))
+    return { synced: count, error: null }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Sync failed"
+    return { synced: 0, error: new Error(msg) }
+  }
+}
+
 export async function getAdminProducts(): Promise<{
   data: Product[]
   error: Error | null
 }> {
+  if (typeof window !== "undefined" && isSupabaseConfigured()) {
+    try {
+      await syncLocalProductsToSupabase()
+    } catch {}
+  }
+
   const deletedIds = new Set<number>()
   let storedEdits: Record<string, Partial<AdminProductPayload>> = {}
   let customCreated: Product[] = []

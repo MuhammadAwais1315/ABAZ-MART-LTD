@@ -60,6 +60,7 @@ export function mapDbProductToProduct(row: ProductRow): Product {
  */
 export function isProductDeleted(idOrSlug: number | string): boolean {
   if (typeof window === "undefined") return false
+  if (isSupabaseConfigured()) return false
   try {
     const rawDeleted = localStorage.getItem("abaz_deleted_product_ids")
     if (rawDeleted) {
@@ -128,7 +129,13 @@ export function getEffectiveProducts(list: Product[] = defaultProducts): Product
   const combined = [...newItems, ...list]
 
   return combined
-    .filter((p) => !deletedIds.has(p.id))
+    .filter((p) => {
+      // Products directly returned from the live database are authoritative
+      if (list.length > 0 && list.some((item) => item.id === p.id)) {
+        return true
+      }
+      return !deletedIds.has(p.id)
+    })
     .map((p) => {
       const edit = storedEdits[p.id.toString()]
       if (!edit) return p
