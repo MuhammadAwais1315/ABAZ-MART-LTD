@@ -34,6 +34,7 @@ import {
   StoreSettings,
 } from "../services/checkout"
 import { PaymentMethod } from "../types/database"
+import { decrementProductStock } from "../services/admin"
 import { getStripe, isStripeConfigured } from "../lib/stripe"
 import {
   EmbeddedStripeForm,
@@ -578,6 +579,16 @@ export default function Checkout() {
             localStorage.setItem("abaz_registered_customers", JSON.stringify(updatedCust))
           } catch {}
         }
+
+        // Immediately update stock across database, custom edits, and local storage
+        decrementProductStock(
+          cart.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+        ).catch((err) => {
+          console.warn("Could not decrement stock:", err)
+        })
 
         window.dispatchEvent(
           new CustomEvent("abaz_order_placed", { detail: orderRecord }),

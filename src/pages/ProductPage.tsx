@@ -94,7 +94,8 @@ export default function ProductPage() {
 
   useEffect(() => {
     let mounted = true
-    if (id) {
+    const loadProduct = () => {
+      if (!id) return
       if (isProductDeleted(id)) {
         setNotFound(true)
         setProductLoading(false)
@@ -111,8 +112,22 @@ export default function ProductPage() {
         }
       })
     }
+
+    loadProduct()
+
+    const handleStockUpdate = () => {
+      loadProduct()
+    }
+
+    window.addEventListener("abaz_stock_updated", handleStockUpdate)
+    window.addEventListener("abaz_catalog_updated", handleStockUpdate)
+    window.addEventListener("storage", handleStockUpdate)
+
     return () => {
       mounted = false
+      window.removeEventListener("abaz_stock_updated", handleStockUpdate)
+      window.removeEventListener("abaz_catalog_updated", handleStockUpdate)
+      window.removeEventListener("storage", handleStockUpdate)
     }
   }, [id])
 

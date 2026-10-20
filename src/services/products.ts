@@ -99,6 +99,7 @@ export function getEffectiveProducts(list: Product[] = defaultProducts): Product
   return combined.map((p) => {
     const edit = storedEdits[p.id.toString()]
     if (!edit) return p
+    const isFromLiveDb = existingIds.has(p.id)
     return {
       ...p,
       name: edit.name ?? p.name,
@@ -111,7 +112,7 @@ export function getEffectiveProducts(list: Product[] = defaultProducts): Product
             ? undefined
             : Number(edit.oldPrice)
           : p.oldPrice,
-      stock: edit.stock !== undefined ? Number(edit.stock) : p.stock,
+      stock: isFromLiveDb ? p.stock : (edit.stock !== undefined ? Number(edit.stock) : p.stock),
       badge:
         edit.badge !== undefined
           ? edit.badge

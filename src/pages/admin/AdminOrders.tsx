@@ -24,8 +24,10 @@ import { formatPrice } from "../../utils/formatPrice"
 import {
   AdminOrderItem,
   CARRIER_OPTIONS,
+  cancelAdminOrder,
   getAdminOrders,
   getCarrierTrackingUrl,
+  restockProductStock,
   updateOrderStatus,
 } from "../../services/admin"
 import { OrderStatus, PaymentMethod } from "../../types/database"
@@ -155,7 +157,27 @@ export default function AdminOrders() {
         `Are you sure you want to cancel Order ${order.orderNumber}? This will mark the order as Cancelled, release reserved inventory, and sync customer invoice status.`,
       )
     ) {
-      await handleStatusChange(order.id, "Cancelled")
+      setUpdatingId(order.id)
+      const restockItems = order.items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+      }))
+      const { error } = await cancelAdminOrder(order.id, restockItems)
+      setUpdatingId(null)
+
+      if (error) {
+        showToast(`Failed to cancel order: ${error.message}`)
+      } else {
+        setOrders((current) =>
+          current.map((item) =>
+            item.id === order.id ? { ...item, status: "Cancelled" as OrderStatus } : item,
+          ),
+        )
+        if (selectedOrder && selectedOrder.id === order.id) {
+          setSelectedOrder((prev) => (prev ? { ...prev, status: "Cancelled" as OrderStatus } : null))
+        }
+        showToast(`Order ${order.orderNumber} cancelled and stock restored to inventory`)
+      }
     }
   }
 

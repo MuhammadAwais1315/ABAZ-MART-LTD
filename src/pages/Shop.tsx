@@ -80,11 +80,15 @@ export default function Shop() {
       loadProducts()
     }
     window.addEventListener("abaz_catalog_updated", handleCatalogUpdate)
+    window.addEventListener("abaz_stock_updated", handleCatalogUpdate)
+    window.addEventListener("abaz_order_placed", handleCatalogUpdate)
     window.addEventListener("storage", handleCatalogUpdate)
 
     return () => {
       mounted = false
       window.removeEventListener("abaz_catalog_updated", handleCatalogUpdate)
+      window.removeEventListener("abaz_stock_updated", handleCatalogUpdate)
+      window.removeEventListener("abaz_order_placed", handleCatalogUpdate)
       window.removeEventListener("storage", handleCatalogUpdate)
     }
   }, [])

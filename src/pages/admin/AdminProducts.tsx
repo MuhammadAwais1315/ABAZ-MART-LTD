@@ -52,7 +52,6 @@ export default function AdminProducts() {
   useEffect(() => {
     let mounted = true
     async function fetchProducts() {
-      setLoading(true)
       const { data } = await getAdminProducts()
       if (mounted) {
         setCatalog(data)
@@ -60,8 +59,22 @@ export default function AdminProducts() {
       }
     }
     fetchProducts()
+
+    const handleStockOrOrderUpdate = () => {
+      fetchProducts()
+    }
+
+    window.addEventListener("abaz_stock_updated", handleStockOrOrderUpdate)
+    window.addEventListener("abaz_order_placed", handleStockOrOrderUpdate)
+    window.addEventListener("abaz_catalog_updated", handleStockOrOrderUpdate)
+    window.addEventListener("storage", handleStockOrOrderUpdate)
+
     return () => {
       mounted = false
+      window.removeEventListener("abaz_stock_updated", handleStockOrOrderUpdate)
+      window.removeEventListener("abaz_order_placed", handleStockOrOrderUpdate)
+      window.removeEventListener("abaz_catalog_updated", handleStockOrOrderUpdate)
+      window.removeEventListener("storage", handleStockOrOrderUpdate)
     }
   }, [])
 

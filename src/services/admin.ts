@@ -261,6 +261,8 @@ export async function getAdminProducts(): Promise<{
     return merged.map((p) => {
       const edit = storedEdits[p.id.toString()]
       if (!edit) return p
+      // For products coming from Supabase live query, the live database stock takes strict precedence!
+      const isFromLiveDb = existingIds.has(p.id)
       return {
         ...p,
         name: edit.name ?? p.name,
@@ -268,7 +270,7 @@ export async function getAdminProducts(): Promise<{
         category: edit.category ?? p.category,
         price: edit.price ?? p.price,
         oldPrice: edit.oldPrice !== undefined ? (edit.oldPrice ?? undefined) : p.oldPrice,
-        stock: edit.stock ?? p.stock,
+        stock: isFromLiveDb ? p.stock : (edit.stock ?? p.stock),
         badge: edit.badge !== undefined ? (edit.badge ?? undefined) : p.badge,
       }
     })
@@ -613,6 +615,173 @@ export async function clearAllAdminProducts(): Promise<{ error: Error | null }> 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Failed to clear products"
     return { error: new Error(msg) }
+  }
+}
+
+/**
+ * Decrement stock for ordered products across local storage, custom created items,
+ * and Supabase database. Dispatches 'abaz_stock_updated' and 'abaz_catalog_updated' events.
+ */
+export async function decrementProductStock(
+  items: { productId: number | string | null; quantity: number }[],
+): Promise<void> {
+  if (!items || items.length === 0) return
+
+  // 1. Update localStorage: abaz_custom_created_products and abaz_custom_product_edits
+  if (typeof window !== "undefined") {
+    try {
+      const rawCreated = localStorage.getItem("abaz_custom_created_products")
+      if (rawCreated) {
+        const parsedCreated: Product[] = JSON.parse(rawCreated)
+        if (Array.isArray(parsedCreated)) {
+          let modified = false
+          for (const item of items) {
+            if (!item.productId) continue
+            const target = parsedCreated.find((p) => String(p.id) === String(item.productId))
+            if (target && target.stock !== undefined) {
+              target.stock = Math.max(0, target.stock - item.quantity)
+              modified = true
+            }
+          }
+          if (modified) {
+            localStorage.setItem("abaz_custom_created_products", JSON.stringify(parsedCreated))
+          }
+        }
+      }
+
+      const rawEdits = localStorage.getItem("abaz_custom_product_edits")
+      if (rawEdits) {
+        const parsedEdits: Record<string, Partial<AdminProductPayload>> = JSON.parse(rawEdits)
+        let modified = false
+        for (const item of items) {
+          if (!item.productId) continue
+          const key = String(item.productId)
+          if (parsedEdits[key] && parsedEdits[key].stock !== undefined) {
+            parsedEdits[key].stock = Math.max(0, Number(parsedEdits[key].stock) - item.quantity)
+            modified = true
+          }
+        }
+        if (modified) {
+          localStorage.setItem("abaz_custom_product_edits", JSON.stringify(parsedEdits))
+        }
+      }
+    } catch (localErr) {
+      console.warn("Could not decrement local stock:", localErr)
+    }
+  }
+
+  // 2. Direct Supabase update fallback
+  if (isSupabaseConfigured()) {
+    for (const item of items) {
+      if (!item.productId) continue
+      try {
+        const numId = Number(item.productId)
+        if (!isNaN(numId) && numId > 0) {
+          const { data: current } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", numId)
+            .maybeSingle()
+          if (current && current.stock !== undefined) {
+            const nextStock = Math.max(0, current.stock - item.quantity)
+            await supabase
+              .from("products")
+              .update({ stock: nextStock })
+              .eq("id", numId)
+          }
+        }
+      } catch (dbErr) {
+        console.warn("Supabase stock decrement notice:", dbErr)
+      }
+    }
+  }
+
+  // 3. Dispatch global events so UI updates instantly across all open tabs
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("abaz_stock_updated", { detail: { items } }),
+    )
+    window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
+    window.dispatchEvent(new Event("storage"))
+  }
+}
+
+/**
+ * Restock inventory when an order is cancelled
+ */
+export async function restockProductStock(
+  items: { productId: number | string | null; quantity: number }[],
+): Promise<void> {
+  if (!items || items.length === 0) return
+
+  if (typeof window !== "undefined") {
+    try {
+      const rawCreated = localStorage.getItem("abaz_custom_created_products")
+      if (rawCreated) {
+        const parsedCreated: Product[] = JSON.parse(rawCreated)
+        if (Array.isArray(parsedCreated)) {
+          let modified = false
+          for (const item of items) {
+            if (!item.productId) continue
+            const target = parsedCreated.find((p) => String(p.id) === String(item.productId))
+            if (target && target.stock !== undefined) {
+              target.stock = target.stock + item.quantity
+              modified = true
+            }
+          }
+          if (modified) {
+            localStorage.setItem("abaz_custom_created_products", JSON.stringify(parsedCreated))
+          }
+        }
+      }
+
+      const rawEdits = localStorage.getItem("abaz_custom_product_edits")
+      if (rawEdits) {
+        const parsedEdits: Record<string, Partial<AdminProductPayload>> = JSON.parse(rawEdits)
+        let modified = false
+        for (const item of items) {
+          if (!item.productId) continue
+          const key = String(item.productId)
+          if (parsedEdits[key] && parsedEdits[key].stock !== undefined) {
+            parsedEdits[key].stock = Number(parsedEdits[key].stock) + item.quantity
+            modified = true
+          }
+        }
+        if (modified) {
+          localStorage.setItem("abaz_custom_product_edits", JSON.stringify(parsedEdits))
+        }
+      }
+    } catch {}
+  }
+
+  if (isSupabaseConfigured()) {
+    for (const item of items) {
+      if (!item.productId) continue
+      try {
+        const numId = Number(item.productId)
+        if (!isNaN(numId) && numId > 0) {
+          const { data: current } = await supabase
+            .from("products")
+            .select("stock")
+            .eq("id", numId)
+            .maybeSingle()
+          if (current && current.stock !== undefined) {
+            await supabase
+              .from("products")
+              .update({ stock: current.stock + item.quantity })
+              .eq("id", numId)
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("abaz_stock_updated", { detail: { items } }),
+    )
+    window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
+    window.dispatchEvent(new Event("storage"))
   }
 }
 
@@ -1006,7 +1175,13 @@ export async function updateOrderStatus(
 
 export async function cancelAdminOrder(
   orderId: string,
+  items?: { productId: number | string | null; quantity: number }[],
 ): Promise<{ error: Error | null }> {
+  if (items && items.length > 0) {
+    try {
+      await restockProductStock(items)
+    } catch {}
+  }
   return updateOrderStatus(orderId, "Cancelled")
 }
 
