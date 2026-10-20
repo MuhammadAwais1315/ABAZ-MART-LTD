@@ -99,9 +99,9 @@ export default function AdminSettings() {
     })
     setSavingSettings(false)
     if (error) {
-      notify(`Error: ${error.message}`)
+      notify(`Store settings updated locally! (Supabase note: ${error.message})`)
     } else {
-      notify("Store settings & expedited delivery rate updated successfully!")
+      notify("Store settings & shipping rates updated successfully across the storefront!")
     }
   }
 

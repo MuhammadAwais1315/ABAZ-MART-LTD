@@ -29,7 +29,16 @@ export function OrderSummary({
   const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
 
   useEffect(() => {
-    getStoreSettings().then(setSettings)
+    const loadSettings = () => {
+      getStoreSettings().then(setSettings)
+    }
+    loadSettings()
+    window.addEventListener("abaz_settings_updated", loadSettings)
+    window.addEventListener("storage", loadSettings)
+    return () => {
+      window.removeEventListener("abaz_settings_updated", loadSettings)
+      window.removeEventListener("storage", loadSettings)
+    }
   }, [])
 
   const subtotal = cart.reduce(

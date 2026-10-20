@@ -24,24 +24,34 @@ export default function RootLayout() {
     try {
       const saved = window.localStorage.getItem("abaz-mart-cart")
       if (!saved) return []
-      const entries = JSON.parse(saved) as {
-        id: number
-        quantity: number
-        option?: string
-      }[]
-      const effectiveList = getEffectiveProducts(products)
-      return entries.flatMap((entry) => {
-        if (isProductDeleted(entry.id)) return []
-        const product = effectiveList.find((item) => item.id === entry.id)
-        return product
-          ? [
+      const parsed = JSON.parse(saved)
+      if (!Array.isArray(parsed)) return []
+
+      return parsed.flatMap((entry: any) => {
+        // If full product is preserved in cart storage
+        if (entry && entry.product && entry.product.id) {
+          return [
+            {
+              product: entry.product,
+              quantity: Math.max(1, Number(entry.quantity) || 1),
+              option: entry.option || entry.product.options?.[0] || "Standard",
+            },
+          ]
+        }
+        // Fallback for legacy format where only { id, quantity, option } was saved
+        if (entry && entry.id) {
+          const found = getEffectiveProducts(products).find((p) => p.id === entry.id)
+          if (found) {
+            return [
               {
-                product,
-                quantity: Math.max(1, entry.quantity),
-                option: entry.option || product.options[0],
+                product: found,
+                quantity: Math.max(1, Number(entry.quantity) || 1),
+                option: entry.option || found.options?.[0] || "Standard",
               },
             ]
-          : []
+          }
+        }
+        return []
       })
     } catch {
       return []
@@ -169,16 +179,11 @@ export default function RootLayout() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
 
   useEffect(() => {
-    window.localStorage.setItem(
-      "abaz-mart-cart",
-      JSON.stringify(
-        cart.map((item) => ({
-          id: item.product.id,
-          quantity: item.quantity,
-          option: item.option,
-        })),
-      ),
-    )
+    try {
+      window.localStorage.setItem("abaz-mart-cart", JSON.stringify(cart))
+    } catch (err) {
+      console.warn("Failed to persist cart to localStorage:", err)
+    }
   }, [cart])
 
   useEffect(() => {

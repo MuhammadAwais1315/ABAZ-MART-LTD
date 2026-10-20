@@ -1,6 +1,11 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Product, products } from "../data/products"
 import { Database, OrderStatus, PaymentMethod, PaymentStatus, UserRole } from "../types/database"
+import {
+  getLocalStoreSettings,
+  saveLocalStoreSettings,
+  parseNumericSetting,
+} from "./checkout"
 
 export type ProductRow = Database["public"]["Tables"]["products"]["Row"]
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"]
@@ -1127,21 +1132,10 @@ export async function getAdminStoreSettings(): Promise<{
   data: AdminStoreSettings
   error: Error | null
 }> {
-  const localExpedited =
-    typeof window !== "undefined"
-      ? localStorage.getItem("abaz_expedited_shipping_fee")
-      : null
-  const defaultExpedited = localExpedited ? parseFloat(localExpedited) : 8.5
-
+  const local = getLocalStoreSettings()
   const fallback: AdminStoreSettings = {
     id: 1,
-    currency: "GBP",
-    currencySymbol: "£",
-    shippingFee: 6.0,
-    expeditedShippingFee: defaultExpedited,
-    freeShippingThreshold: 50.0,
-    taxRate: 0.0,
-    defaultCountry: "United Kingdom",
+    ...local,
   }
 
   if (!isSupabaseConfigured()) {
@@ -1161,20 +1155,28 @@ export async function getAdminStoreSettings(): Promise<{
 
     const fetchedExpedited = (data as any).expedited_shipping_fee
 
+    const dbSettings: AdminStoreSettings = {
+      id: data.id,
+      currency: data.currency || local.currency,
+      currencySymbol: data.currency_symbol || local.currencySymbol,
+      shippingFee: parseNumericSetting(data.shipping_fee, local.shippingFee),
+      expeditedShippingFee:
+        fetchedExpedited !== undefined && fetchedExpedited !== null
+          ? parseNumericSetting(fetchedExpedited, local.expeditedShippingFee)
+          : local.expeditedShippingFee,
+      freeShippingThreshold: parseNumericSetting(
+        data.free_shipping_threshold,
+        local.freeShippingThreshold,
+      ),
+      taxRate: parseNumericSetting(data.tax_rate, local.taxRate),
+      defaultCountry: data.default_country || local.defaultCountry,
+    }
+
+    // Keep local cache in sync with verified database settings
+    saveLocalStoreSettings(dbSettings)
+
     return {
-      data: {
-        id: data.id,
-        currency: data.currency,
-        currencySymbol: data.currency_symbol,
-        shippingFee: Number(data.shipping_fee),
-        expeditedShippingFee:
-          fetchedExpedited !== undefined && fetchedExpedited !== null
-            ? Number(fetchedExpedited)
-            : defaultExpedited,
-        freeShippingThreshold: Number(data.free_shipping_threshold),
-        taxRate: Number(data.tax_rate),
-        defaultCountry: data.default_country,
-      },
+      data: dbSettings,
       error: null,
     }
   } catch {
@@ -1185,14 +1187,8 @@ export async function getAdminStoreSettings(): Promise<{
 export async function updateAdminStoreSettings(
   settings: Partial<Omit<AdminStoreSettings, "id">>,
 ): Promise<{ error: Error | null }> {
-  if (typeof window !== "undefined" && settings.expeditedShippingFee !== undefined) {
-    try {
-      localStorage.setItem(
-        "abaz_expedited_shipping_fee",
-        settings.expeditedShippingFee.toString(),
-      )
-    } catch {}
-  }
+  // 1. Immediately persist locally and broadcast update event to all customer views
+  saveLocalStoreSettings(settings)
 
   if (!isSupabaseConfigured()) return { error: null }
 

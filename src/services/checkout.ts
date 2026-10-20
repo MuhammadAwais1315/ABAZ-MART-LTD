@@ -51,22 +51,96 @@ export interface OrderResult {
 }
 
 /**
+ * Safely parse a numeric setting value preserving 0 (e.g. 0 shipping fee or 0 tax).
+ */
+export function parseNumericSetting(val: unknown, fallback: number): number {
+  if (val === undefined || val === null || val === "") return fallback
+  const num = Number(val)
+  return isNaN(num) ? fallback : num
+}
+
+/**
+ * Retrieve synchronously cached store settings from localStorage.
+ */
+export function getLocalStoreSettings(): StoreSettings {
+  if (typeof window === "undefined") return DEFAULT_STORE_SETTINGS
+  try {
+    const raw = localStorage.getItem("abaz_store_settings")
+    const localExpedited = localStorage.getItem("abaz_expedited_shipping_fee")
+    const fallbackExpedited = localExpedited
+      ? parseFloat(localExpedited)
+      : DEFAULT_STORE_SETTINGS.expeditedShippingFee
+
+    if (!raw) {
+      return {
+        ...DEFAULT_STORE_SETTINGS,
+        expeditedShippingFee: fallbackExpedited,
+      }
+    }
+
+    const parsed = JSON.parse(raw)
+    return {
+      shippingFee: parseNumericSetting(parsed.shippingFee, DEFAULT_STORE_SETTINGS.shippingFee),
+      expeditedShippingFee: parseNumericSetting(
+        parsed.expeditedShippingFee ?? localExpedited,
+        fallbackExpedited,
+      ),
+      freeShippingThreshold: parseNumericSetting(
+        parsed.freeShippingThreshold,
+        DEFAULT_STORE_SETTINGS.freeShippingThreshold,
+      ),
+      taxRate: parseNumericSetting(parsed.taxRate, DEFAULT_STORE_SETTINGS.taxRate),
+      currency: parsed.currency || DEFAULT_STORE_SETTINGS.currency,
+      currencySymbol: parsed.currencySymbol || DEFAULT_STORE_SETTINGS.currencySymbol,
+      defaultCountry: parsed.defaultCountry || DEFAULT_STORE_SETTINGS.defaultCountry,
+    }
+  } catch {
+    return DEFAULT_STORE_SETTINGS
+  }
+}
+
+/**
+ * Save store settings locally and broadcast update to all active browser views.
+ */
+export function saveLocalStoreSettings(settings: Partial<StoreSettings>): StoreSettings {
+  const current = getLocalStoreSettings()
+  const updated: StoreSettings = {
+    ...current,
+    ...settings,
+    shippingFee: parseNumericSetting(settings.shippingFee, current.shippingFee),
+    expeditedShippingFee: parseNumericSetting(
+      settings.expeditedShippingFee,
+      current.expeditedShippingFee,
+    ),
+    freeShippingThreshold: parseNumericSetting(
+      settings.freeShippingThreshold,
+      current.freeShippingThreshold,
+    ),
+    taxRate: parseNumericSetting(settings.taxRate, current.taxRate),
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("abaz_store_settings", JSON.stringify(updated))
+      localStorage.setItem("abaz_expedited_shipping_fee", updated.expeditedShippingFee.toString())
+      window.dispatchEvent(new CustomEvent("abaz_settings_updated", { detail: updated }))
+    } catch (err) {
+      console.warn("Failed to persist store settings locally:", err)
+    }
+  }
+
+  return updated
+}
+
+/**
  * Fetch store settings (shipping rates, tax rates, free shipping threshold).
+ * Prioritizes fast local persistence and merges with live Supabase database.
  */
 export async function getStoreSettings(): Promise<StoreSettings> {
-  const localExpedited =
-    typeof window !== "undefined"
-      ? localStorage.getItem("abaz_expedited_shipping_fee")
-      : null
-  const defaultExpedited = localExpedited
-    ? parseFloat(localExpedited)
-    : DEFAULT_STORE_SETTINGS.expeditedShippingFee
+  const local = getLocalStoreSettings()
 
   if (!isSupabaseConfigured()) {
-    return {
-      ...DEFAULT_STORE_SETTINGS,
-      expeditedShippingFee: defaultExpedited,
-    }
+    return local
   }
 
   try {
@@ -77,35 +151,41 @@ export async function getStoreSettings(): Promise<StoreSettings> {
       .maybeSingle()
 
     if (error || !data) {
-      return {
-        ...DEFAULT_STORE_SETTINGS,
-        expeditedShippingFee: defaultExpedited,
-      }
+      return local
     }
 
     const fetchedExpedited = (data as any).expedited_shipping_fee
 
-    return {
-      shippingFee: Number(data.shipping_fee) || DEFAULT_STORE_SETTINGS.shippingFee,
+    const remoteSettings: StoreSettings = {
+      shippingFee: parseNumericSetting(data.shipping_fee, local.shippingFee),
       expeditedShippingFee:
         fetchedExpedited !== undefined && fetchedExpedited !== null
-          ? Number(fetchedExpedited)
-          : defaultExpedited,
-      freeShippingThreshold:
-        Number(data.free_shipping_threshold) ||
-        DEFAULT_STORE_SETTINGS.freeShippingThreshold,
-      taxRate: Number(data.tax_rate) || DEFAULT_STORE_SETTINGS.taxRate,
-      currency: data.currency || DEFAULT_STORE_SETTINGS.currency,
-      currencySymbol:
-        data.currency_symbol || DEFAULT_STORE_SETTINGS.currencySymbol,
-      defaultCountry:
-        data.default_country || DEFAULT_STORE_SETTINGS.defaultCountry,
+          ? parseNumericSetting(fetchedExpedited, local.expeditedShippingFee)
+          : local.expeditedShippingFee,
+      freeShippingThreshold: parseNumericSetting(
+        data.free_shipping_threshold,
+        local.freeShippingThreshold,
+      ),
+      taxRate: parseNumericSetting(data.tax_rate, local.taxRate),
+      currency: data.currency || local.currency,
+      currencySymbol: data.currency_symbol || local.currencySymbol,
+      defaultCountry: data.default_country || local.defaultCountry,
     }
+
+    // Keep localStorage in sync with database values
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("abaz_store_settings", JSON.stringify(remoteSettings))
+        localStorage.setItem(
+          "abaz_expedited_shipping_fee",
+          remoteSettings.expeditedShippingFee.toString(),
+        )
+      } catch {}
+    }
+
+    return remoteSettings
   } catch {
-    return {
-      ...DEFAULT_STORE_SETTINGS,
-      expeditedShippingFee: defaultExpedited,
-    }
+    return local
   }
 }
 

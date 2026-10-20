@@ -26,8 +26,17 @@ export default function CartDrawer({
   const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
 
   useEffect(() => {
-    if (open) {
+    const loadSettings = () => {
       getStoreSettings().then(setSettings)
+    }
+    if (open) {
+      loadSettings()
+    }
+    window.addEventListener("abaz_settings_updated", loadSettings)
+    window.addEventListener("storage", loadSettings)
+    return () => {
+      window.removeEventListener("abaz_settings_updated", loadSettings)
+      window.removeEventListener("storage", loadSettings)
     }
   }, [open])
 

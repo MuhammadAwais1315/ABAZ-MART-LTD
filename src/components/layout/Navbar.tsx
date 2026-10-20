@@ -41,14 +41,22 @@ export default function Navbar({
 
   useEffect(() => {
     let mounted = true
-    getStoreSettings().then((settings) => {
-      if (mounted) {
-        setShippingThreshold(settings.freeShippingThreshold)
-        setCurrencySymbol(settings.currencySymbol)
-      }
-    })
+    const loadSettings = () => {
+      getStoreSettings().then((settings) => {
+        if (mounted) {
+          setShippingThreshold(settings.freeShippingThreshold)
+          setCurrencySymbol(settings.currencySymbol)
+        }
+      })
+    }
+    loadSettings()
+
+    window.addEventListener("abaz_settings_updated", loadSettings)
+    window.addEventListener("storage", loadSettings)
     return () => {
       mounted = false
+      window.removeEventListener("abaz_settings_updated", loadSettings)
+      window.removeEventListener("storage", loadSettings)
     }
   }, [])
 
