@@ -374,6 +374,126 @@ function buildTextReceipt(data: OrderConfirmationPayload): string {
   return lines.filter(Boolean).join("\n")
 }
 
+interface DispatchEmailPayload {
+  action: "dispatch"
+  carrier: string
+  trackingNumber: string
+  trackingUrl?: string
+  order: {
+    order_number: string
+    total?: number
+  }
+  customer: {
+    fullName: string
+    email: string
+    address?: string
+    city?: string
+    postalCode?: string
+    country?: string
+  }
+}
+
+function buildHtmlDispatch(data: DispatchEmailPayload): string {
+  const { order, customer, carrier, trackingNumber, trackingUrl } = data
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Order #${order.order_number} Has Shipped · Abaz Mart</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f7f3f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2b2024;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border: 1px solid #eadfe2; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+    <div style="height: 4px; background: linear-gradient(90deg, #b83b5e 0%, #d86280 50%, #c5a880 100%);"></div>
+
+    <div style="background-color: #4a1525; padding: 28px 24px 22px 24px; text-align: center; color: #ffffff;">
+      <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 700;">
+        Abaz <span style="color: #f4b8c7; font-style: italic;">Mart</span>
+      </h1>
+      <p style="margin: 6px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #e5c3cc;">
+        Order Dispatched &amp; On Its Way
+      </p>
+    </div>
+
+    <div style="padding: 28px 24px;">
+      <h2 style="font-size: 20px; color: #2b2024; margin: 0 0 12px 0;">Great news, ${customer.fullName || "Customer"}!</h2>
+      <p style="font-size: 14px; color: #615056; line-height: 1.6; margin: 0 0 24px 0;">
+        Your Abaz Mart order <strong>#${order.order_number}</strong> has been packaged with care and handed over to <strong>${carrier}</strong>.
+      </p>
+
+      <div style="background-color: #fef2f4; border: 1.5px solid #fbcfe8; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9f1239; font-weight: 700; margin-bottom: 6px;">
+          Courier &amp; Tracking Information
+        </div>
+        <div style="font-size: 16px; font-weight: 700; color: #2b2024; margin-bottom: 4px;">
+          ${carrier}
+        </div>
+        <div style="font-size: 15px; font-family: monospace; font-weight: 700; color: #b83b5e; margin-bottom: 16px; letter-spacing: 1px;">
+          ${trackingNumber}
+        </div>
+        ${
+          trackingUrl
+            ? `<a href="${trackingUrl}" style="display: inline-block; background-color: #b83b5e; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 24px; border-radius: 8px;">
+                Track Your Delivery Now
+              </a>`
+            : ""
+        }
+      </div>
+
+      ${
+        customer.address
+          ? `<div style="background-color: #faf6f7; border: 1px solid #eadfe2; border-radius: 10px; padding: 14px 18px; font-size: 12.5px; color: #615056; margin-bottom: 24px;">
+              <strong style="display: block; font-size: 11px; text-transform: uppercase; color: #b83b5e; margin-bottom: 4px;">Delivering To</strong>
+              <div>${customer.fullName}</div>
+              <div>${customer.address}</div>
+              <div>${customer.city || ""}, ${customer.postalCode || ""}</div>
+              <div>${customer.country || "United Kingdom"}</div>
+            </div>`
+          : ""
+      }
+
+      <div style="text-align: center; margin: 24px 0 8px 0;">
+        <a href="https://www.abazmart.co.uk/account" style="display: inline-block; font-size: 12.5px; color: #b83b5e; text-decoration: underline; font-weight: 600;">
+          View Your Order Details &amp; History on Abaz Mart
+        </a>
+      </div>
+    </div>
+
+    <div style="background-color: #faf6f7; border-top: 1px solid #eadfe2; padding: 20px; text-align: center; font-size: 11.5px; color: #7a686f;">
+      <p style="margin: 0 0 6px 0;">Need help with your delivery? Contact <a href="mailto:care@abazmart.co.uk" style="color: #b83b5e;">care@abazmart.co.uk</a></p>
+      <div style="font-size: 10px; color: #9c8a91; margin-top: 8px;">
+        Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company No. 17094173
+      </div>
+    </div>
+  </div>
+</body>
+</html>`
+}
+
+function buildTextDispatch(data: DispatchEmailPayload): string {
+  const { order, customer, carrier, trackingNumber, trackingUrl } = data
+  return `ABAZ MART · ORDER DISPATCH NOTIFICATION
+========================================
+Order #${order.order_number}
+Dear ${customer.fullName || "Customer"},
+
+Great news! Your order has been dispatched with ${carrier}.
+
+Courier: ${carrier}
+Tracking Number: ${trackingNumber}
+${trackingUrl ? `Track online: ${trackingUrl}` : ""}
+
+Delivering to:
+${customer.fullName}
+${customer.address || ""}
+${customer.city || ""}, ${customer.postalCode || ""}
+${customer.country || "United Kingdom"}
+
+Questions? Contact care@abazmart.co.uk
+Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company No. 17094173
+`
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true")
   res.setHeader("Access-Control-Allow-Origin", "*")
@@ -405,9 +525,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const payload: OrderConfirmationPayload =
-      typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
+    const rawBody = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
+    const isDispatch = rawBody.action === "dispatch"
 
+    if (isDispatch) {
+      const dispatchPayload = rawBody as DispatchEmailPayload
+      const { order, customer, carrier, trackingNumber, trackingUrl } = dispatchPayload
+
+      if (!customer?.email || !order?.order_number || !trackingNumber) {
+        res.status(400).json({
+          success: false,
+          error: "Missing required dispatch details (customer.email, order.order_number, and trackingNumber are required).",
+        })
+        return
+      }
+
+      const resend = new Resend(apiKey.trim())
+      const fromAddress =
+        process.env.RESEND_FROM_EMAIL?.trim() || "Abaz Mart <orders@abazmart.co.uk>"
+
+      const htmlBody = buildHtmlDispatch(dispatchPayload)
+      const textBody = buildTextDispatch(dispatchPayload)
+
+      const { data, error } = await resend.emails.send({
+        from: fromAddress,
+        to: [customer.email.trim()],
+        subject: `Your Abaz Mart Order #${order.order_number} Has Shipped via ${carrier || "Courier"}`,
+        html: htmlBody,
+        text: textBody,
+      })
+
+      if (error) {
+        console.error("[Resend] Dispatch email error:", error)
+        res.status(200).json({ success: false, configured: true, error: error.message })
+        return
+      }
+
+      console.info(`[Resend] Dispatch notification for #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`)
+      res.status(200).json({
+        success: true,
+        configured: true,
+        emailId: data?.id,
+        recipient: customer.email,
+        type: "dispatch",
+      })
+      return
+    }
+
+    const payload: OrderConfirmationPayload = rawBody
     const { order, customer, items = [], paymentMethod } = payload
 
     if (!customer?.email || !order?.order_number) {

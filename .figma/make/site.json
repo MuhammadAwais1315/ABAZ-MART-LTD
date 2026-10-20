@@ -1,7 +1,8 @@
 {
+  "title": "Abaz Mart · Luxury Skincare & Beauty",
   "description": "Discover and shop a curated selection of beauty products at Abaz Mart, featuring skincare, makeup, and more in an elegant, user-friendly online store.",
   "robots": {
-    "index": false
+    "index": true
   },
   "accessibility": {
     "addBypassLinks": false,

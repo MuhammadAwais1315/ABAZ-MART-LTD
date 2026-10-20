@@ -3,14 +3,17 @@ import { Link, useNavigate, useSearchParams } from "react-router"
 import {
   Check,
   CircleUserRound,
+  Copy,
+  Download,
+  ExternalLink,
   Heart,
   LogOut,
   MapPin,
   Package,
   Plus,
-  Download,
   ShoppingBag,
   Trash2,
+  Truck,
   Upload,
 } from "lucide-react"
 import { Badge, Breadcrumb, Button, Input, Modal } from "../components/ui"
@@ -750,6 +753,49 @@ export default function Account() {
                 )}
                 {selectedOrder.shippingAddress.phone && (
                   <div className="text-muted-foreground">Phone: {selectedOrder.shippingAddress.phone}</div>
+                )}
+              </div>
+            )}
+
+            {/* Tracking & Carrier Banner */}
+            {(selectedOrder.carrier || selectedOrder.trackingNumber) && (
+              <div className="mt-3 p-3.5 bg-rose-50/70 border border-rose-200/80 rounded-xl text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-rose-700 shrink-0" />
+                    <span className="font-semibold text-foreground">
+                      Dispatched via {selectedOrder.carrier || "Courier"}
+                    </span>
+                  </div>
+                  {selectedOrder.trackingUrl && (
+                    <a
+                      href={selectedOrder.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold text-rose-700 hover:underline"
+                    >
+                      Track Package <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+                {selectedOrder.trackingNumber && (
+                  <div className="flex items-center gap-2 text-muted-foreground text-[11px] flex-wrap">
+                    <span>Tracking Number:</span>
+                    <code className="bg-white px-2 py-0.5 rounded border border-rose-200 font-mono font-semibold text-foreground">
+                      {selectedOrder.trackingNumber}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedOrder.trackingNumber!)
+                        notify("Tracking number copied to clipboard")
+                      }}
+                      className="text-rose-600 hover:text-rose-800 underline ml-1 cursor-pointer"
+                      title="Copy tracking number"
+                    >
+                      Copy
+                    </button>
+                  </div>
                 )}
               </div>
             )}

@@ -29,6 +29,10 @@ export interface CustomerOrder {
   discount: number
   total: number
   paymentMethod?: PaymentMethod
+  carrier?: string
+  trackingNumber?: string
+  trackingUrl?: string
+  shippedAt?: string
   items: CustomerOrderItem[]
   shippingAddress: {
     name: string
@@ -113,6 +117,24 @@ export async function getCustomerOrders(
         lineTotal: Number(item.line_total),
       }))
 
+      let carrier = (o as any).carrier || undefined
+      let trackingNumber = (o as any).tracking_number || undefined
+      let trackingUrl = (o as any).tracking_url || undefined
+      let shippedAt = (o as any).shipped_at || undefined
+
+      if (typeof window !== "undefined") {
+        try {
+          const rawTracking = localStorage.getItem(`abaz_order_tracking_${o.id}`)
+          if (rawTracking) {
+            const parsedTracking = JSON.parse(rawTracking)
+            carrier = parsedTracking.carrier || carrier
+            trackingNumber = parsedTracking.trackingNumber || trackingNumber
+            trackingUrl = parsedTracking.trackingUrl || trackingUrl
+            shippedAt = parsedTracking.shippedAt || shippedAt
+          }
+        } catch {}
+      }
+
       return {
         id: o.id,
         number: o.order_number,
@@ -124,6 +146,10 @@ export async function getCustomerOrders(
         discount: Number(o.discount),
         total: Number(o.total),
         paymentMethod: (o.payment_method as PaymentMethod) || "card",
+        carrier,
+        trackingNumber,
+        trackingUrl,
+        shippedAt,
         items,
         shippingAddress: {
           name: o.shipping_name,
@@ -511,15 +537,40 @@ function getFallbackOrders(): CustomerOrder[] {
 
   return baseOrders.map((o) => {
     let orderStatus = o.status
+    let carrier: string | undefined
+    let trackingNumber: string | undefined
+    let trackingUrl: string | undefined
+    let shippedAt: string | undefined
+
     if (typeof window !== "undefined") {
       const localStatus = localStorage.getItem(`abaz_order_status_${o.id}`) as OrderStatus | null
       if (localStatus) {
         orderStatus = localStatus
       }
+      try {
+        const rawTracking = localStorage.getItem(`abaz_order_tracking_${o.id}`)
+        if (rawTracking) {
+          const parsedTracking = JSON.parse(rawTracking)
+          carrier = parsedTracking.carrier
+          trackingNumber = parsedTracking.trackingNumber
+          trackingUrl = parsedTracking.trackingUrl
+          shippedAt = parsedTracking.shippedAt
+        }
+      } catch {}
     }
     return {
       ...o,
       status: orderStatus,
+      carrier: carrier || (orderStatus === "Shipped" || orderStatus === "Delivered" ? "Royal Mail" : undefined),
+      trackingNumber:
+        trackingNumber ||
+        (orderStatus === "Shipped" || orderStatus === "Delivered" ? "GB104928472RM" : undefined),
+      trackingUrl:
+        trackingUrl ||
+        (orderStatus === "Shipped" || orderStatus === "Delivered"
+          ? "https://www.royalmail.com/track-your-item#/tracking-results/GB104928472RM"
+          : undefined),
+      shippedAt,
     }
   })
 }

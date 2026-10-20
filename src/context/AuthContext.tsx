@@ -355,7 +355,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const isAdmin = profile?.role === "admin"
+  const isAdmin =
+    profile?.role === "admin" ||
+    (user?.app_metadata as Record<string, unknown> | undefined)?.role === "admin" ||
+    (user?.user_metadata as Record<string, unknown> | undefined)?.role === "admin"
 
   return (
     <AuthContext.Provider

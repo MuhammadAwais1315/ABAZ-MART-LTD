@@ -1694,4 +1694,97 @@ SET
 
 GRANT EXECUTE ON FUNCTION public.create_order_secure(text, text, text, text, text, text, text, jsonb, text) TO authenticated, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.validate_coupon(text, numeric) TO authenticated, anon, service_role;
+
+-- Launch Readiness Enhancements:
+ALTER TABLE public.orders
+ADD COLUMN IF NOT EXISTS carrier text,
+ADD COLUMN IF NOT EXISTS tracking_number text,
+ADD COLUMN IF NOT EXISTS tracking_url text,
+ADD COLUMN IF NOT EXISTS shipped_at timestamptz,
+ADD COLUMN IF NOT EXISTS delivery_option text DEFAULT 'standard';
+
+ALTER TABLE public.store_settings
+ADD COLUMN IF NOT EXISTS expedited_shipping_fee numeric(10, 2) NOT NULL DEFAULT 8.50;
+
+UPDATE public.store_settings
+SET expedited_shipping_fee = 8.50
+WHERE id = 1 AND expedited_shipping_fee IS NULL;
+
+CREATE OR REPLACE FUNCTION public.prevent_role_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF OLD.role IS DISTINCT FROM NEW.role THEN
+    IF auth.uid() IS NOT NULL AND NOT public.is_admin() THEN
+      RAISE EXCEPTION 'Only administrators are permitted to change user roles';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.promote_user_to_admin(p_email text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_updated boolean := false;
+BEGIN
+  IF p_email IS NULL OR trim(p_email) = '' THEN
+    RAISE EXCEPTION 'Email address cannot be blank';
+  END IF;
+
+  UPDATE public.profiles
+  SET role = 'admin'
+  WHERE lower(trim(email)) = lower(trim(p_email));
+
+  IF FOUND THEN
+    v_updated := true;
+    RAISE NOTICE 'Successfully promoted user % to admin role', p_email;
+  ELSE
+    RAISE NOTICE 'No profile found matching %. Make sure the user has registered first.', p_email;
+  END IF;
+
+  RETURN v_updated;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.cancel_order_secure(p_order_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_item RECORD;
+BEGIN
+  UPDATE public.orders
+  SET status = 'Cancelled', updated_at = now()
+  WHERE id = p_order_id AND status != 'Cancelled';
+
+  IF FOUND THEN
+    FOR v_item IN
+      SELECT product_id, quantity
+      FROM public.order_items
+      WHERE order_id = p_order_id AND product_id IS NOT NULL
+    LOOP
+      UPDATE public.products
+      SET stock = stock + v_item.quantity, updated_at = now()
+      WHERE id = v_item.product_id;
+    END LOOP;
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.promote_user_to_admin(text) TO authenticated, service_role, postgres;
+GRANT EXECUTE ON FUNCTION public.cancel_order_secure(uuid) TO authenticated, anon, service_role;
+
 NOTIFY pgrst, 'reload schema';

@@ -197,6 +197,33 @@ export default function AdminOrders() {
       setSelectedOrder((prev) => (prev ? { ...prev, ...updatedOrder } : null))
     }
 
+    if (notifyCustomer && dispatchModalOrder.email) {
+      try {
+        fetch("/api/send-order-confirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "dispatch",
+            carrier: effectiveCarrier,
+            trackingNumber: trimmedTracking,
+            trackingUrl,
+            order: {
+              order_number: dispatchModalOrder.orderNumber,
+              total: dispatchModalOrder.total,
+            },
+            customer: {
+              fullName: dispatchModalOrder.customer,
+              email: dispatchModalOrder.email,
+              address: dispatchModalOrder.shippingAddress,
+              city: dispatchModalOrder.shippingCity,
+              postalCode: dispatchModalOrder.shippingPostalCode,
+              country: dispatchModalOrder.shippingCountry,
+            },
+          }),
+        }).catch((err) => console.warn("Dispatch email notification note:", err))
+      } catch {}
+    }
+
     showToast(
       `Order #${dispatchModalOrder.orderNumber} dispatched via ${effectiveCarrier} (${trimmedTracking})`,
     )
