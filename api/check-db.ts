@@ -13,7 +13,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl =
     process.env.VITE_SUPABASE_URL ||
     "https://twstiotnaaglptizaxkm.supabase.co"
-  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || ""
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+  const supabaseKey = serviceKey || process.env.VITE_SUPABASE_ANON_KEY || ""
 
   if (!supabaseKey || supabaseKey.includes("placeholder")) {
     res.status(200).json({
@@ -25,7 +26,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false },
+    })
 
     const { data: products, error: prodErr } = await supabase
       .from("products")
@@ -50,6 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       configured: true,
       supabaseUrl,
       hasKey: Boolean(supabaseKey && supabaseKey.length > 20),
+      hasServiceKey: Boolean(serviceKey && serviceKey.length > 20),
       productCount: products?.length || 0,
       products: products || [],
       prodError: prodErr ? prodErr.message : null,
