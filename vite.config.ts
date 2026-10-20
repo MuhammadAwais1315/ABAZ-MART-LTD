@@ -34,6 +34,14 @@ react(),
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
+      proxy: {
+        '/db-gateway': {
+          target: process.env.SUPABASE_UPSTREAM_URL || 'https://twstiotnaaglptizaxkm.supabase.co',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/db-gateway/, ''),
+          secure: true,
+        },
+      },
       watch: {
         ignored: [
           '**/.figma/**',
@@ -43,6 +51,14 @@ react(),
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
+      proxy: {
+        '/db-gateway': {
+          target: process.env.SUPABASE_UPSTREAM_URL || 'https://twstiotnaaglptizaxkm.supabase.co',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/db-gateway/, ''),
+          secure: true,
+        },
+      },
     },
   }
 })
