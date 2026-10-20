@@ -77,6 +77,11 @@ export default function RootLayout() {
 
   // Sync when catalog updates (e.g. admin deletes or updates a product)
   useEffect(() => {
+    try {
+      // Purge any legacy deleted IDs from browser local storage so real products are never suppressed
+      window.localStorage.removeItem("abaz_deleted_product_ids")
+    } catch {}
+
     const handleCatalogUpdate = () => {
       setCart((current) => current.filter((item) => !isProductDeleted(item.product.id)))
       setWishlist((current) => current.filter((id) => !isProductDeleted(id)))
