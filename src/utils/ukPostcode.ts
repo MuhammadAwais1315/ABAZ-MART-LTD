@@ -36,6 +36,7 @@ export interface UKPostcodeVerificationResult {
   district?: string
   region?: string
   city?: string
+  country?: string
   error?: string
 }
 
@@ -56,7 +57,7 @@ export async function verifyUKPostcodeLive(
     }
   }
 
-  // 1. Initial pattern check
+  // 1. Initial British Standard BS 7666 pattern check
   if (!isValidUKPostcode(formatted)) {
     return {
       valid: false,
@@ -68,7 +69,7 @@ export async function verifyUKPostcodeLive(
   // 2. Query live UK Royal Mail / ONS database
   try {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 3500)
+    const timeoutId = setTimeout(() => controller.abort(), 4000)
     const encoded = encodeURIComponent(formatted.replace(/\s+/g, ""))
     const response = await fetch(`https://api.postcodes.io/postcodes/${encoded}`, {
       signal: controller.signal,
@@ -80,9 +81,10 @@ export async function verifyUKPostcodeLive(
       if (data.status === 200 && data.result) {
         const result = data.result
         const cityCandidate =
-          result.parish && !result.parish.includes("unparished")
-            ? result.parish
-            : result.admin_district || result.region || ""
+          result.admin_district ||
+          result.parish ||
+          result.region ||
+          ""
 
         return {
           valid: true,
@@ -90,21 +92,46 @@ export async function verifyUKPostcodeLive(
           district: result.admin_district || undefined,
           region: result.region || undefined,
           city: cityCandidate || undefined,
+          country: result.country || "United Kingdom",
         }
       }
     } else if (response.status === 404) {
+      // Check if outcode is valid (e.g. newly built properties where outward district is valid)
+      const outcode = formatted.split(" ")[0]
+      if (outcode) {
+        try {
+          const outcodeRes = await fetch(
+            `https://api.postcodes.io/outcodes/${encodeURIComponent(outcode)}`,
+          )
+          if (outcodeRes.ok) {
+            const outData = await outcodeRes.json()
+            if (outData.status === 200 && outData.result) {
+              return {
+                valid: true,
+                formatted,
+                district: outData.result.admin_district?.[0] || undefined,
+                region: "United Kingdom",
+                city: outData.result.admin_district?.[0] || undefined,
+                country: outData.result.country?.[0] || "United Kingdom",
+              }
+            }
+          }
+        } catch {}
+      }
+
       return {
         valid: false,
         formatted,
-        error: "This UK postal code was not found. Please check for any typos.",
+        error: `"${formatted}" was not recognized in the UK Royal Mail database. Please check for typos.`,
       }
     }
   } catch {
-    // If the live network lookup is slow or unavailable, pattern validation serves as safe fallback
+    // If live lookup is slow or unavailable, pattern validation serves as safe fallback
   }
 
   return {
     valid: true,
     formatted,
+    country: "United Kingdom",
   }
 }
