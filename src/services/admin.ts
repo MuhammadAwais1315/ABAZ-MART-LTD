@@ -537,6 +537,33 @@ export async function uploadProductImage(
       })
 
     if (uploadError) {
+      if (uploadError.message?.toLowerCase().includes("bucket not found")) {
+        try {
+          const { error: createErr } = await supabase.storage.createBucket("product-images", {
+            public: true,
+          })
+          if (!createErr) {
+            const { error: retryErr } = await supabase.storage
+              .from("product-images")
+              .upload(filePath, file, {
+                cacheControl: "3600",
+                upsert: true,
+              })
+            if (!retryErr) {
+              const { data } = supabase.storage
+                .from("product-images")
+                .getPublicUrl(filePath)
+              return { url: data.publicUrl, error: null }
+            }
+          }
+        } catch {}
+        return {
+          url: null,
+          error: new Error(
+            "Bucket 'product-images' not found in Supabase Storage. Please create a public bucket named 'product-images' in Supabase Dashboard → Storage, or paste an image URL below.",
+          ),
+        }
+      }
       return { url: null, error: new Error(uploadError.message) }
     }
 

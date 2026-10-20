@@ -292,6 +292,18 @@ export default function AdminProductForm() {
               }}
             />
           </label>
+          <div className="mt-4 pt-3 border-t border-border/40">
+            <Input
+              label="Or direct image URL"
+              type="url"
+              placeholder="https://images.unsplash.com/... or any hosted image URL"
+              value={form.image}
+              onChange={(e) => setForm({ ...form, image: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Tip: You can either upload a picture using the dropzone or paste an image link directly.
+            </p>
+          </div>
         </section>
 
         <div className="admin-form-actions">
