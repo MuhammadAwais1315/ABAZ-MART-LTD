@@ -59,13 +59,23 @@ export default function ProductCard({
           <strong>{formatPrice(product.price)}</strong>
           {product.oldPrice && <del>{formatPrice(product.oldPrice)}</del>}
         </div>
-        <Button
-          variant="secondary"
-          className="add-card"
-          onClick={() => onAdd(product)}
-        >
-          <ShoppingBag size={16} /> Add to Cart
-        </Button>
+        {product.stock !== undefined && product.stock <= 0 ? (
+          <Button
+            variant="secondary"
+            className="add-card opacity-60 cursor-not-allowed"
+            disabled
+          >
+            Out of Stock
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            className="add-card"
+            onClick={() => onAdd(product)}
+          >
+            <ShoppingBag size={16} /> Add to Cart
+          </Button>
+        )}
       </div>
     </article>
   )

@@ -180,14 +180,14 @@ export default function ProductPage() {
     setProductLoading(true)
     setOption(product.options?.[0] || "Standard")
     setActiveImage(product.image)
-    setQuantity(1)
+    setQuantity(product.stock > 0 ? 1 : 0)
     setDetailTab("Description")
     const timer = window.setTimeout(() => setProductLoading(false), 320)
     return () => window.clearTimeout(timer)
-  }, [product?.id, product?.image, product?.options])
+  }, [product?.id, product?.image, product?.options, product?.stock])
 
   const handleAdd = () => {
-    if (product) {
+    if (product && product.stock > 0) {
       addToCart(product, quantity, option)
     }
   }
@@ -415,24 +415,52 @@ export default function ProductPage() {
               </div>
             )}
           </div>
-          <div className="stock-label">
-            <i /> In stock — {product.stock} available
-          </div>
+          {/* Stock Availability Indicator */}
+          {product.stock <= 0 ? (
+            <div className="stock-label text-rose-600 font-semibold flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block animate-pulse" />
+              Out of stock — Unavailable
+            </div>
+          ) : product.stock <= 5 ? (
+            <div className="stock-label text-amber-600 font-medium flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+              Low Stock — Only {product.stock} left in stock
+            </div>
+          ) : (
+            <div className="stock-label">
+              <i /> In stock — {product.stock} available
+            </div>
+          )}
+
           <div className="purchase-row">
             <div className="quantity">
               <Button
                 variant="ghost"
+                disabled={quantity <= 1 || product.stock <= 0}
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                aria-label="Decrease quantity"
               >
                 <Minus />
               </Button>
-              <span>{quantity}</span>
-              <Button variant="ghost" onClick={() => setQuantity(quantity + 1)}>
+              <span>{product.stock <= 0 ? 0 : quantity}</span>
+              <Button
+                variant="ghost"
+                disabled={quantity >= product.stock || product.stock <= 0}
+                onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                aria-label="Increase quantity"
+              >
                 <Plus />
               </Button>
             </div>
-            <Button className="grow" onClick={handleAdd}>
-              <ShoppingBag /> Add to Cart · {formatPrice(product.price * quantity)}
+            <Button
+              className="grow"
+              disabled={product.stock <= 0}
+              onClick={handleAdd}
+            >
+              <ShoppingBag />{" "}
+              {product.stock <= 0
+                ? "Out of Stock"
+                : `Add to Cart · ${formatPrice(product.price * quantity)}`}
             </Button>
             <Button
               variant="outline"
@@ -448,12 +476,14 @@ export default function ProductPage() {
           <Button
             variant="outline"
             className="buy-now"
+            disabled={product.stock <= 0}
             onClick={() => {
+              if (product.stock <= 0) return
               addToCart(product, quantity, option)
               navigate("/checkout")
             }}
           >
-            Buy Now
+            {product.stock <= 0 ? "Out of Stock" : "Buy Now"}
           </Button>
           <div className="trust-list">
             <span>

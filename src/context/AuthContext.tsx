@@ -214,6 +214,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         DEMO_STORAGE_KEY,
         JSON.stringify({ user: demoUser, profile: demoProfile }),
       )
+
+      try {
+        const rawList = window.localStorage.getItem("abaz_registered_customers")
+        const list = rawList ? JSON.parse(rawList) : []
+        const customerEntry = {
+          id: demoUser.id,
+          email,
+          fullName,
+          phone: null,
+          role: "customer",
+          createdAt: new Date().toISOString(),
+          ordersCount: 0,
+        }
+        const updated = [
+          customerEntry,
+          ...list.filter((c: any) => c.email.toLowerCase() !== email.toLowerCase()),
+        ]
+        window.localStorage.setItem("abaz_registered_customers", JSON.stringify(updated))
+        window.dispatchEvent(new CustomEvent("abaz_customer_registered", { detail: customerEntry }))
+      } catch {}
+
       return { error: null, user: demoUser }
     }
 
@@ -227,6 +248,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     })
+
+    if (!error && data.user) {
+      try {
+        const rawList = window.localStorage.getItem("abaz_registered_customers")
+        const list = rawList ? JSON.parse(rawList) : []
+        const customerEntry = {
+          id: data.user.id,
+          email: data.user.email || email,
+          fullName,
+          phone: null,
+          role: "customer",
+          createdAt: new Date().toISOString(),
+          ordersCount: 0,
+        }
+        const updated = [
+          customerEntry,
+          ...list.filter((c: any) => c.email.toLowerCase() !== email.toLowerCase()),
+        ]
+        window.localStorage.setItem("abaz_registered_customers", JSON.stringify(updated))
+        window.dispatchEvent(new CustomEvent("abaz_customer_registered", { detail: customerEntry }))
+      } catch {}
+    }
 
     return {
       error: error ? new Error(error.message) : null,

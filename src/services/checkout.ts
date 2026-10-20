@@ -1,5 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Database, PaymentMethod } from "../types/database"
+import { products as defaultProducts } from "../data/products"
+import { getEffectiveProducts } from "./products"
 
 export interface StoreSettings {
   shippingFee: number
@@ -248,7 +250,20 @@ export async function createOrderSecure(
   params: CreateOrderParams,
 ): Promise<{ data: OrderResult | null; error: Error | null }> {
   if (!isSupabaseConfigured()) {
-    // Demo fallback order creation
+    // Demo fallback order creation with stock validation
+    const catalog = getEffectiveProducts(defaultProducts)
+    for (const item of params.items) {
+      const prod = catalog.find((p) => p.id === item.product_id)
+      if (prod && prod.stock !== undefined && item.quantity > prod.stock) {
+        return {
+          data: null,
+          error: new Error(
+            `Insufficient stock for "${prod.name}": only ${prod.stock} available.`,
+          ),
+        }
+      }
+    }
+
     const subtotal = params.items.reduce((sum, item) => sum + item.quantity * 25, 0)
     let shipping =
       subtotal >= DEFAULT_STORE_SETTINGS.freeShippingThreshold

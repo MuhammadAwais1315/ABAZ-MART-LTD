@@ -18,6 +18,12 @@ export default function AdminCustomers() {
 
   useEffect(() => {
     loadCustomers()
+    window.addEventListener("abaz_customer_registered", loadCustomers)
+    window.addEventListener("storage", loadCustomers)
+    return () => {
+      window.removeEventListener("abaz_customer_registered", loadCustomers)
+      window.removeEventListener("storage", loadCustomers)
+    }
   }, [])
 
   const handleRoleToggle = async (customer: AdminCustomer) => {

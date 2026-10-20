@@ -1064,32 +1064,105 @@ export async function getAdminCustomers(): Promise<{
   data: AdminCustomer[]
   error: Error | null
 }> {
+  // 1. Collect locally registered customers from localStorage
+  const localCustomers: AdminCustomer[] = []
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("abaz_registered_customers")
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          parsed.forEach((c: any) => {
+            localCustomers.push({
+              id: c.id || `local-${Math.random()}`,
+              email: c.email || "",
+              fullName: c.fullName || c.name || (c.email ? c.email.split("@")[0] : "Customer"),
+              phone: c.phone || null,
+              avatarUrl: c.avatarUrl || null,
+              role: c.role || "customer",
+              createdAt: c.createdAt
+                ? new Date(c.createdAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "Recent",
+              ordersCount: Number(c.ordersCount) || 0,
+            })
+          })
+        }
+      }
+
+      // Also include demo profile if active
+      const rawDemo = localStorage.getItem("abaz_demo_user")
+      if (rawDemo) {
+        const parsedDemo = JSON.parse(rawDemo)
+        if (
+          parsedDemo?.profile?.email &&
+          !localCustomers.some((c) => c.email.toLowerCase() === parsedDemo.profile.email.toLowerCase())
+        ) {
+          localCustomers.push({
+            id: parsedDemo.profile.id,
+            email: parsedDemo.profile.email,
+            fullName: parsedDemo.profile.full_name || "Demo User",
+            phone: parsedDemo.profile.phone || null,
+            avatarUrl: parsedDemo.profile.avatar_url || null,
+            role: parsedDemo.profile.role || "customer",
+            createdAt: "Demo",
+            ordersCount: 1,
+          })
+        }
+      }
+    } catch (e) {
+      console.warn("Could not parse local customer cache:", e)
+    }
+  }
+
   if (!isSupabaseConfigured()) {
-    return { data: [], error: null }
+    return { data: localCustomers, error: null }
   }
 
   try {
-    const { data, error } = await supabase
+    let profilesData: any[] | null = null
+
+    // Try selecting profiles with joined order counts
+    const resWithOrders = await supabase
       .from("profiles")
       .select("*, orders(id)")
       .order("created_at", { ascending: false })
 
-    if (error || !data) {
-      return { data: [], error: null }
+    if (!resWithOrders.error && resWithOrders.data) {
+      profilesData = resWithOrders.data
+    } else {
+      // Fallback: direct select if orders join was blocked by RLS or schema
+      const resSimple = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (!resSimple.error && resSimple.data) {
+        profilesData = resSimple.data
+      }
     }
 
-    const mapped: AdminCustomer[] = data.map((p) => {
+    if (!profilesData || profilesData.length === 0) {
+      return { data: localCustomers, error: null }
+    }
+
+    const mapped: AdminCustomer[] = profilesData.map((p) => {
       const createdDate = new Date(p.created_at)
-      const formattedDate = createdDate.toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+      const formattedDate = !isNaN(createdDate.getTime())
+        ? createdDate.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })
+        : "Recent"
 
       return {
         id: p.id,
         email: p.email,
-        fullName: p.full_name || p.email.split("@")[0],
+        fullName: p.full_name || (p.email ? p.email.split("@")[0] : "Customer"),
         phone: p.phone,
         avatarUrl: p.avatar_url,
         role: p.role,
@@ -1098,10 +1171,17 @@ export async function getAdminCustomers(): Promise<{
       }
     })
 
-    return { data: mapped, error: null }
+    // Merge database profiles with local cache
+    const existingEmails = new Set(mapped.map((c) => c.email.toLowerCase()))
+    const merged = [
+      ...mapped,
+      ...localCustomers.filter((c) => !existingEmails.has(c.email.toLowerCase())),
+    ]
+
+    return { data: merged, error: null }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load customers"
-    return { data: [], error: new Error(message) }
+    return { data: localCustomers, error: new Error(message) }
   }
 }
 

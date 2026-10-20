@@ -194,6 +194,10 @@ export default function Cart() {
                       <span>{item.quantity}</span>
                       <Button
                         variant="ghost"
+                        disabled={
+                          item.product.stock !== undefined &&
+                          item.quantity >= item.product.stock
+                        }
                         onClick={() =>
                           updateQuantity(item.product.id, item.quantity + 1)
                         }
@@ -201,6 +205,12 @@ export default function Cart() {
                         <Plus />
                       </Button>
                     </div>
+                    {item.product.stock !== undefined &&
+                      item.quantity >= item.product.stock && (
+                        <p className="text-[11px] text-amber-700 font-medium mt-1">
+                          Max available stock ({item.product.stock}) reached
+                        </p>
+                      )}
                   </div>
                   <div className="cart-price">
                     <strong>

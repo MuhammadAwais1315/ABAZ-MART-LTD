@@ -113,6 +113,10 @@ export default function CartDrawer({
                         <Button
                           variant="ghost"
                           aria-label="Increase quantity"
+                          disabled={
+                            item.product.stock !== undefined &&
+                            item.quantity >= item.product.stock
+                          }
                           onClick={() =>
                             updateQuantity(item.product.id, item.quantity + 1)
                           }
@@ -124,6 +128,12 @@ export default function CartDrawer({
                         {formatPrice(item.product.price * item.quantity)}
                       </strong>
                     </div>
+                    {item.product.stock !== undefined &&
+                      item.quantity >= item.product.stock && (
+                        <p className="text-[10px] text-amber-700 font-medium mt-1">
+                          Max available stock ({item.product.stock}) reached
+                        </p>
+                      )}
                   </div>
                   <Button
                     variant="ghost"

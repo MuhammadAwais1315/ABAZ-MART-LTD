@@ -69,6 +69,11 @@ export function CheckoutSummary({
             <span>
               <strong>{item.product.name}</strong>
               <small>{item.option}</small>
+              {item.product.stock !== undefined && item.quantity > item.product.stock && (
+                <small className="text-rose-600 font-semibold block text-[10px]">
+                  Exceeds stock: only {item.product.stock} available
+                </small>
+              )}
             </span>
             <b>{formatPrice(item.product.price * item.quantity)}</b>
           </div>
@@ -301,12 +306,45 @@ export default function Checkout() {
 
   const nextStep = () => {
     if (step === 1 && !validateShipping()) return
+
+    // Verify stock availability before advancing
+    for (const item of cart) {
+      const available = item.product.stock !== undefined ? item.product.stock : 99
+      if (available <= 0) {
+        setOrderError(`"${item.product.name}" is out of stock. Please remove it from your bag.`)
+        notify(`"${item.product.name}" is out of stock`)
+        return
+      }
+      if (item.quantity > available) {
+        setOrderError(`Only ${available} available for "${item.product.name}". You currently have ${item.quantity} in your bag.`)
+        notify(`Stock limit exceeded for "${item.product.name}"`)
+        return
+      }
+    }
+
+    setOrderError(null)
     setStep((current) => Math.min(2, current + 1))
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0) return
+
+    // Strict stock verification before payment
+    for (const item of cart) {
+      const available = item.product.stock !== undefined ? item.product.stock : 99
+      if (available <= 0) {
+        setOrderError(`"${item.product.name}" is out of stock. Please remove it to proceed.`)
+        notify(`"${item.product.name}" is out of stock`)
+        return
+      }
+      if (item.quantity > available) {
+        setOrderError(`Only ${available} available for "${item.product.name}". Please adjust quantity to continue.`)
+        notify(`Stock limit exceeded for "${item.product.name}"`)
+        return
+      }
+    }
+
     if (!validatePayment()) return
 
     setSubmittingOrder(true)

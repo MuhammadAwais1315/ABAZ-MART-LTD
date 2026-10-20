@@ -131,28 +131,72 @@ export default function RootLayout() {
     quantity = 1,
     option = product.options[0],
   ) => {
+    const maxStock = product.stock !== undefined ? product.stock : 99
+    if (maxStock <= 0) {
+      notify(`"${product.name}" is currently out of stock`)
+      return
+    }
+
+    let addedCount = 0
+    let reachedLimit = false
+
     setCart((current) => {
       const found = current.find((item) => item.product.id === product.id)
+      const currentQty = found ? found.quantity : 0
+      const availableToAdd = Math.max(0, maxStock - currentQty)
+
+      if (availableToAdd <= 0) {
+        reachedLimit = true
+        return current
+      }
+
+      addedCount = Math.min(quantity, availableToAdd)
+      if (addedCount < quantity) {
+        reachedLimit = true
+      }
+
+      const finalQty = currentQty + addedCount
+
       return found
         ? current.map((item) =>
             item.product.id === product.id
-              ? { ...item, quantity: item.quantity + quantity }
+              ? { ...item, quantity: finalQty, option: option || item.option }
               : item,
           )
-        : [...current, { product, quantity, option }]
+        : [
+            ...current,
+            {
+              product,
+              quantity: addedCount,
+              option: option || product.options?.[0] || "Standard",
+            },
+          ]
     })
-    setCartOpen(true)
-    notify(`${quantity} × ${product.name} added to your cart`)
+
+    if (reachedLimit && addedCount === 0) {
+      notify(`Maximum available stock (${maxStock}) is already in your cart`)
+    } else if (reachedLimit) {
+      notify(`Only ${maxStock} in stock. Added ${addedCount} to your cart.`)
+      setCartOpen(true)
+    } else {
+      notify(`${quantity} × ${product.name} added to your cart`)
+      setCartOpen(true)
+    }
   }
 
-  const updateQuantity = (id: number, quantity: number) =>
+  const updateQuantity = (id: number, quantity: number) => {
     setCart((current) =>
-      current.map((item) =>
-        item.product.id === id
-          ? { ...item, quantity: Math.max(1, quantity) }
-          : item,
-      ),
+      current.map((item) => {
+        if (item.product.id !== id) return item
+        const maxStock = item.product.stock !== undefined ? item.product.stock : 99
+        if (quantity > maxStock) {
+          notify(`Only ${maxStock} available in stock for ${item.product.name}`)
+          return { ...item, quantity: Math.max(1, maxStock) }
+        }
+        return { ...item, quantity: Math.max(1, quantity) }
+      }),
     )
+  }
 
   const removeFromCart = (id: number) =>
     setCart((current) => current.filter((item) => item.product.id !== id))
