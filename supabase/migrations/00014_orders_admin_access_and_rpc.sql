@@ -5,11 +5,19 @@
 -- https://supabase.com/dashboard/project/twstiotnaaglptizaxkm/editor
 -- ============================================================================
 
--- 1. Ensure RLS is active on public.orders and public.order_items
+-- 1. Ensure tracking and carrier columns exist on public.orders
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS carrier text,
+  ADD COLUMN IF NOT EXISTS tracking_number text,
+  ADD COLUMN IF NOT EXISTS tracking_url text,
+  ADD COLUMN IF NOT EXISTS shipped_at timestamptz,
+  ADD COLUMN IF NOT EXISTS delivery_option text DEFAULT 'standard';
+
+-- 2. Ensure RLS is active on public.orders and public.order_items
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
--- 2. Drop legacy restrictive policies that blocked admin dashboard visibility
+-- 3. Drop legacy restrictive policies that blocked admin dashboard visibility
 DROP POLICY IF EXISTS "Users view own orders or admin view all" ON public.orders;
 DROP POLICY IF EXISTS "Allow read orders for admin or self" ON public.orders;
 DROP POLICY IF EXISTS "Allow read orders" ON public.orders;
@@ -19,31 +27,37 @@ DROP POLICY IF EXISTS "Allow update orders" ON public.orders;
 DROP POLICY IF EXISTS "Users view order items of own orders" ON public.order_items;
 DROP POLICY IF EXISTS "Allow read order items" ON public.order_items;
 
-DROP POLICY IF EXISTS "Users view status history of own orders" ON public.order_status_history;
-DROP POLICY IF EXISTS "Allow read order status history" ON public.order_status_history;
+-- 4. Safely handle order_status_history only if table exists
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'order_status_history'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.order_status_history ENABLE ROW LEVEL SECURITY';
+    EXECUTE 'DROP POLICY IF EXISTS "Users view status history of own orders" ON public.order_status_history';
+    EXECUTE 'DROP POLICY IF EXISTS "Allow read order status history" ON public.order_status_history';
+    EXECUTE 'CREATE POLICY "Allow read order status history" ON public.order_status_history FOR SELECT USING (true)';
+  END IF;
+END $$;
 
--- 3. Create permissive SELECT policy for orders so the admin dashboard can list all orders
+-- 5. Create permissive SELECT policy for orders so the admin dashboard can list all orders
 CREATE POLICY "Allow read orders"
   ON public.orders FOR SELECT
   USING (true);
 
--- 4. Create permissive UPDATE policy so admin can update status and tracking
+-- 6. Create permissive UPDATE policy so admin can update status and tracking
 CREATE POLICY "Allow update orders"
   ON public.orders FOR UPDATE
   USING (true)
   WITH CHECK (true);
 
--- 5. Create permissive SELECT policy for order items
+-- 7. Create permissive SELECT policy for order items
 CREATE POLICY "Allow read order items"
   ON public.order_items FOR SELECT
   USING (true);
 
--- 6. Create permissive SELECT policy for order status history
-CREATE POLICY "Allow read order status history"
-  ON public.order_status_history FOR SELECT
-  USING (true);
-
--- 7. High-Performance SECURITY DEFINER RPC to retrieve all orders with items & profile info
+-- 8. High-Performance SECURITY DEFINER RPC to retrieve all orders with items & profile info
 CREATE OR REPLACE FUNCTION public.get_all_orders_admin()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -113,7 +127,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_all_orders_admin() TO authenticated, anon, service_role;
 
--- 8. SECURITY DEFINER RPC to update order status, carrier and tracking info
+-- 9. SECURITY DEFINER RPC to update order status, carrier and tracking info
 CREATE OR REPLACE FUNCTION public.update_order_status_admin(
   p_order_id uuid,
   p_status text,
@@ -127,10 +141,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_old_status public.order_status;
+  v_old_status text;
   v_item record;
 BEGIN
-  SELECT status INTO v_old_status
+  SELECT status::text INTO v_old_status
   FROM public.orders
   WHERE id = p_order_id;
 
@@ -167,5 +181,5 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.update_order_status_admin(uuid, text, text, text, text) TO authenticated, anon, service_role;
 
--- 9. Reload PostgREST schema cache
+-- 10. Reload schema cache
 NOTIFY pgrst, 'reload schema';
