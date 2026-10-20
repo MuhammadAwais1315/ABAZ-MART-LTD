@@ -516,7 +516,7 @@ export async function getAdminOrders(): Promise<{
   error: Error | null
 }> {
   if (!isSupabaseConfigured()) {
-    return { data: getFallbackAdminOrders(), error: null }
+    return { data: [], error: null }
   }
 
   try {
@@ -527,11 +527,11 @@ export async function getAdminOrders(): Promise<{
 
     if (error) {
       console.warn("Failed to fetch admin orders from Supabase:", error.message)
-      return { data: getFallbackAdminOrders(), error: null }
+      return { data: [], error: null }
     }
 
     if (!data || data.length === 0) {
-      return { data: getFallbackAdminOrders(), error: null }
+      return { data: [], error: null }
     }
 
     // Try to get profile emails if possible
@@ -655,7 +655,7 @@ export async function getAdminOrders(): Promise<{
   } catch (err: unknown) {
     const message =
       err instanceof Error ? err.message : "Failed to load admin orders"
-    return { data: getFallbackAdminOrders(), error: new Error(message) }
+    return { data: [], error: new Error(message) }
   }
 }
 
@@ -892,7 +892,7 @@ export async function getAdminCustomers(): Promise<{
   error: Error | null
 }> {
   if (!isSupabaseConfigured()) {
-    return { data: getFallbackCustomers(), error: null }
+    return { data: [], error: null }
   }
 
   try {
@@ -902,7 +902,7 @@ export async function getAdminCustomers(): Promise<{
       .order("created_at", { ascending: false })
 
     if (error || !data) {
-      return { data: getFallbackCustomers(), error: null }
+      return { data: [], error: null }
     }
 
     const mapped: AdminCustomer[] = data.map((p) => {
@@ -928,7 +928,7 @@ export async function getAdminCustomers(): Promise<{
     return { data: mapped, error: null }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load customers"
-    return { data: getFallbackCustomers(), error: new Error(message) }
+    return { data: [], error: new Error(message) }
   }
 }
 
@@ -1270,299 +1270,7 @@ export async function getNewsletterSubscribers(): Promise<{
 // ----------------------------------------------------------------------------
 
 function getFallbackAdminOrders(): AdminOrderItem[] {
-  const baseList: AdminOrderItem[] = [
-    {
-      id: "demo-1",
-      orderNumber: "ABZ-10842",
-      customer: "Amara Williams",
-      email: "amara.williams@gmail.com",
-      phone: "+44 7700 900142",
-      shippingAddress: "42 Kensington High Street",
-      shippingCity: "London",
-      shippingPostalCode: "W8 4PT",
-      shippingCountry: "United Kingdom",
-      paymentMethod: "card",
-      paymentStatus: "paid",
-      date: "18 Feb 2026",
-      subtotal: 126.4,
-      shipping: 0.0,
-      tax: 0.0,
-      discount: 0.0,
-      total: 126.4,
-      status: "Delivered",
-      itemsCount: 2,
-      rawCreatedAt: "2026-02-18T10:00:00Z",
-      items: [
-        {
-          id: 101,
-          productId: 1,
-          productName: "Luminous Glow Hydrating Serum",
-          productBrand: "Aura Radiance",
-          productImage: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "30ml",
-          unitPrice: 68.0,
-          quantity: 1,
-          lineTotal: 68.0,
-        },
-        {
-          id: 102,
-          productId: 2,
-          productName: "Velvet Botanical Cleansing Balm",
-          productBrand: "Botanica Organics",
-          productImage: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "100ml",
-          unitPrice: 58.4,
-          quantity: 1,
-          lineTotal: 58.4,
-        },
-      ],
-    },
-    {
-      id: "demo-2",
-      orderNumber: "ABZ-10839",
-      customer: "Nadia Brooks",
-      email: "nadia.brooks@outlook.com",
-      phone: "+44 7700 900881",
-      shippingAddress: "18 George Street",
-      shippingCity: "Edinburgh",
-      shippingPostalCode: "EH2 2PF",
-      shippingCountry: "United Kingdom",
-      paymentMethod: "bank_transfer",
-      paymentStatus: "paid",
-      date: "18 Feb 2026",
-      subtotal: 84.0,
-      shipping: 0.0,
-      tax: 0.0,
-      discount: 0.0,
-      total: 84.0,
-      status: "Shipped",
-      carrier: "Royal Mail",
-      trackingNumber: "GB928471928RM",
-      trackingUrl: "https://www.royalmail.com/track-your-item#/tracking-results/GB928471928RM",
-      shippedAt: "2026-02-18T11:45:00Z",
-      itemsCount: 1,
-      rawCreatedAt: "2026-02-18T09:30:00Z",
-      items: [
-        {
-          id: 103,
-          productId: 4,
-          productName: "Silk Peptide Restorative Night Cream",
-          productBrand: "Cellular Glow",
-          productImage: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "50ml",
-          unitPrice: 84.0,
-          quantity: 1,
-          lineTotal: 84.0,
-        },
-      ],
-    },
-    {
-      id: "demo-3",
-      orderNumber: "ABZ-10835",
-      customer: "Sofia Chen",
-      email: "sofia.chen@icloud.com",
-      phone: "+44 7700 900329",
-      shippingAddress: "9 Deansgate",
-      shippingCity: "Manchester",
-      shippingPostalCode: "M3 2AY",
-      shippingCountry: "United Kingdom",
-      paymentMethod: "paypal",
-      paymentStatus: "paid",
-      date: "17 Feb 2026",
-      subtotal: 152.25,
-      shipping: 0.0,
-      tax: 0.0,
-      discount: 0.0,
-      total: 152.25,
-      status: "Processing",
-      itemsCount: 2,
-      rawCreatedAt: "2026-02-17T14:15:00Z",
-      items: [
-        {
-          id: 104,
-          productId: 5,
-          productName: "Rose Water Balancing Facial Mist",
-          productBrand: "Rose Atelier",
-          productImage: "https://images.unsplash.com/photo-1608248597359-548d7936a287?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "150ml",
-          unitPrice: 42.0,
-          quantity: 1,
-          lineTotal: 42.0,
-        },
-        {
-          id: 105,
-          productId: 6,
-          productName: "Cellular Renewal Youth Elixir",
-          productBrand: "Aura Radiance",
-          productImage: "https://images.unsplash.com/photo-1601049541289-9b1b7bbbfe19?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "30ml",
-          unitPrice: 110.25,
-          quantity: 1,
-          lineTotal: 110.25,
-        },
-      ],
-    },
-    {
-      id: "demo-4",
-      orderNumber: "ABZ-10831",
-      customer: "Leila Morgan",
-      email: "leila.morgan@gmail.com",
-      phone: "+44 7700 900512",
-      shippingAddress: "27 Queen Square",
-      shippingCity: "Bath",
-      shippingPostalCode: "BA1 2HX",
-      shippingCountry: "United Kingdom",
-      paymentMethod: "card",
-      paymentStatus: "pending",
-      date: "17 Feb 2026",
-      subtotal: 61.5,
-      shipping: 6.0,
-      tax: 0.0,
-      discount: 0.0,
-      total: 67.5,
-      status: "Pending",
-      itemsCount: 1,
-      rawCreatedAt: "2026-02-17T11:00:00Z",
-      items: [
-        {
-          id: 106,
-          productId: 3,
-          productName: "Golden Marula Nourishing Face Oil",
-          productBrand: "Botanica Organics",
-          productImage: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "30ml",
-          unitPrice: 61.5,
-          quantity: 1,
-          lineTotal: 61.5,
-        },
-      ],
-    },
-    {
-      id: "demo-5",
-      orderNumber: "ABZ-10828",
-      customer: "Maya Roberts",
-      email: "maya.roberts@gmail.com",
-      phone: "+44 7700 900741",
-      shippingAddress: "15 Park Row",
-      shippingCity: "Leeds",
-      shippingPostalCode: "LS1 5HD",
-      shippingCountry: "United Kingdom",
-      paymentMethod: "card",
-      paymentStatus: "refunded",
-      date: "16 Feb 2026",
-      subtotal: 91.0,
-      shipping: 0.0,
-      tax: 0.0,
-      discount: 0.0,
-      total: 91.0,
-      status: "Cancelled",
-      itemsCount: 1,
-      rawCreatedAt: "2026-02-16T16:45:00Z",
-      items: [
-        {
-          id: 107,
-          productId: 7,
-          productName: "Diamond Infused Brightening Cream",
-          productBrand: "Cellular Glow",
-          productImage: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "50ml",
-          unitPrice: 91.0,
-          quantity: 1,
-          lineTotal: 91.0,
-        },
-      ],
-    },
-    {
-      id: "demo-6",
-      orderNumber: "ABZ-10824",
-      customer: "Olivia Kim",
-      email: "olivia.kim@yahoo.co.uk",
-      phone: "+44 7700 900693",
-      shippingAddress: "73 King Street",
-      shippingCity: "Bristol",
-      shippingPostalCode: "BS1 4LE",
-      shippingCountry: "United Kingdom",
-      paymentMethod: "card",
-      paymentStatus: "paid",
-      date: "16 Feb 2026",
-      subtotal: 220.8,
-      shipping: 0.0,
-      tax: 0.0,
-      discount: 15.0,
-      total: 205.8,
-      status: "Delivered",
-      itemsCount: 3,
-      rawCreatedAt: "2026-02-16T08:20:00Z",
-      items: [
-        {
-          id: 108,
-          productId: 1,
-          productName: "Luminous Glow Hydrating Serum",
-          productBrand: "Aura Radiance",
-          productImage: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "30ml",
-          unitPrice: 68.0,
-          quantity: 1,
-          lineTotal: 68.0,
-        },
-        {
-          id: 109,
-          productId: 2,
-          productName: "Velvet Botanical Cleansing Balm",
-          productBrand: "Botanica Organics",
-          productImage: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "100ml",
-          unitPrice: 58.4,
-          quantity: 1,
-          lineTotal: 58.4,
-        },
-        {
-          id: 110,
-          productId: 8,
-          productName: "Pure Moroccan Argan Hair Elixir",
-          productBrand: "Rose Atelier",
-          productImage: "https://images.unsplash.com/photo-1608248597359-548d7936a287?auto=format&fit=crop&w=400&q=80",
-          selectedOption: "100ml",
-          unitPrice: 94.4,
-          quantity: 1,
-          lineTotal: 94.4,
-        },
-      ],
-    },
-  ]
-
-  return baseList.map((o) => {
-    let orderStatus = o.status
-    let carrier = o.carrier
-    let trackingNumber = o.trackingNumber
-    let trackingUrl = o.trackingUrl
-    let shippedAt = o.shippedAt
-
-    if (typeof window !== "undefined") {
-      const storedStatus = localStorage.getItem(`abaz_order_status_${o.id}`) as OrderStatus | null
-      if (storedStatus) orderStatus = storedStatus
-
-      const storedTrack = localStorage.getItem(`abaz_order_tracking_${o.id}`)
-      if (storedTrack) {
-        try {
-          const parsed = JSON.parse(storedTrack)
-          if (parsed.carrier) carrier = parsed.carrier
-          if (parsed.trackingNumber) trackingNumber = parsed.trackingNumber
-          if (parsed.trackingUrl) trackingUrl = parsed.trackingUrl
-          if (parsed.shippedAt) shippedAt = parsed.shippedAt
-        } catch {}
-      }
-    }
-
-    return {
-      ...o,
-      status: orderStatus,
-      carrier,
-      trackingNumber,
-      trackingUrl,
-      shippedAt,
-    }
-  })
+  return []
 }
 
 function getFallbackCategories(): AdminCategory[] {
@@ -1611,34 +1319,7 @@ function getFallbackCategories(): AdminCategory[] {
 }
 
 function getFallbackCustomers(): AdminCustomer[] {
-  return [
-    {
-      id: "cust-1",
-      email: "amara@example.com",
-      fullName: "Amara Williams",
-      phone: "+44 20 7946 0958",
-      role: "admin",
-      createdAt: "1 Jan 2026",
-      ordersCount: 4,
-    },
-    {
-      id: "cust-2",
-      email: "nadia@example.com",
-      fullName: "Nadia Brooks",
-      phone: "+44 20 7946 0912",
-      role: "customer",
-      createdAt: "15 Jan 2026",
-      ordersCount: 2,
-    },
-    {
-      id: "cust-3",
-      email: "sofia@example.com",
-      fullName: "Sofia Chen",
-      role: "customer",
-      createdAt: "2 Feb 2026",
-      ordersCount: 1,
-    },
-  ]
+  return []
 }
 
 function getFallbackCoupons(): AdminCoupon[] {
