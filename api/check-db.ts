@@ -36,6 +36,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from("categories")
       .select("id, name")
 
+    const { data: profiles, error: profErr } = await supabase
+      .from("profiles")
+      .select("id, email, full_name, role, created_at")
+      .order("created_at", { ascending: false })
+
     res.status(200).json({
       configured: true,
       supabaseUrl,
@@ -45,6 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       prodError: prodErr ? prodErr.message : null,
       categories: categories || [],
       catError: catErr ? catErr.message : null,
+      profileCount: profiles?.length || 0,
+      profiles: profiles || [],
+      profError: profErr ? profErr.message : null,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error"

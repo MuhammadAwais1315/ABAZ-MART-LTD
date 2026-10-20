@@ -1118,6 +1118,46 @@ export async function getAdminCustomers(): Promise<{
     }
   }
 
+  // 2. Attempt fetching from serverless admin API endpoint (/api/admin-customers)
+  if (typeof window !== "undefined") {
+    try {
+      const apiRes = await fetch("/api/admin-customers").then((r) => r.json())
+      if (apiRes && Array.isArray(apiRes.customers) && apiRes.customers.length > 0) {
+        const apiMapped: AdminCustomer[] = apiRes.customers.map((c: any) => ({
+          id: c.id,
+          email: c.email,
+          fullName: c.full_name || c.fullName || (c.email ? c.email.split("@")[0] : "Customer"),
+          phone: c.phone || null,
+          avatarUrl: c.avatar_url || c.avatarUrl || null,
+          role: c.role || "customer",
+          createdAt: c.created_at
+            ? new Date(c.created_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })
+            : "Recent",
+          ordersCount: Number(c.orders_count) || 0,
+        }))
+
+        // Merge with local
+        const existingEmails = new Set(apiMapped.map((c) => c.email.toLowerCase()))
+        const merged = [
+          ...apiMapped,
+          ...localCustomers.filter((c) => !existingEmails.has(c.email.toLowerCase())),
+        ]
+
+        try {
+          localStorage.setItem("abaz_registered_customers", JSON.stringify(merged))
+        } catch {}
+
+        return { data: merged, error: null }
+      }
+    } catch {
+      // Fall through to direct Supabase query
+    }
+  }
+
   if (!isSupabaseConfigured()) {
     return { data: localCustomers, error: null }
   }
@@ -1125,23 +1165,40 @@ export async function getAdminCustomers(): Promise<{
   try {
     let profilesData: any[] | null = null
 
-    // Try selecting profiles with joined order counts
-    const resWithOrders = await supabase
-      .from("profiles")
-      .select("*, orders(id)")
-      .order("created_at", { ascending: false })
+    // Try RPC get_all_customers_admin
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("get_all_customers_admin")
+    if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
+      profilesData = rpcData.map((r: any) => ({
+        id: r.id,
+        email: r.email,
+        full_name: r.full_name,
+        phone: r.phone,
+        avatar_url: r.avatar_url,
+        role: r.role,
+        created_at: r.created_at,
+        orders: Array(Number(r.orders_count) || 0).fill({ id: "dummy" }),
+      }))
+    }
 
-    if (!resWithOrders.error && resWithOrders.data) {
-      profilesData = resWithOrders.data
-    } else {
-      // Fallback: direct select if orders join was blocked by RLS or schema
-      const resSimple = await supabase
+    if (!profilesData) {
+      // Try selecting profiles with joined order counts
+      const resWithOrders = await supabase
         .from("profiles")
-        .select("*")
+        .select("*, orders(id)")
         .order("created_at", { ascending: false })
 
-      if (!resSimple.error && resSimple.data) {
-        profilesData = resSimple.data
+      if (!resWithOrders.error && resWithOrders.data && resWithOrders.data.length > 0) {
+        profilesData = resWithOrders.data
+      } else {
+        // Fallback: direct select if orders join was blocked by RLS or schema
+        const resSimple = await supabase
+          .from("profiles")
+          .select("*")
+          .order("created_at", { ascending: false })
+
+        if (!resSimple.error && resSimple.data) {
+          profilesData = resSimple.data
+        }
       }
     }
 
@@ -1177,6 +1234,10 @@ export async function getAdminCustomers(): Promise<{
       ...mapped,
       ...localCustomers.filter((c) => !existingEmails.has(c.email.toLowerCase())),
     ]
+
+    try {
+      localStorage.setItem("abaz_registered_customers", JSON.stringify(merged))
+    } catch {}
 
     return { data: merged, error: null }
   } catch (err: unknown) {

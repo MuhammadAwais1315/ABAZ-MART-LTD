@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Shield, ShieldAlert, User, Search } from "lucide-react"
+import { Shield, ShieldAlert, User, Search, RefreshCw } from "lucide-react"
 import { Badge, Button, Input } from "../../components/ui"
 import { AdminCustomer, getAdminCustomers, updateCustomerRole } from "../../services/admin"
 
@@ -61,13 +61,26 @@ export default function AdminCustomers() {
       </div>
 
       <section className="admin-panel admin-data-table">
-        <div className="admin-table-toolbar">
+        <div className="admin-table-toolbar flex items-center justify-between gap-3">
           <Input
             placeholder="Search customers by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <span>{loading ? "Loading..." : `${filtered.length} customers`}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {loading ? "Loading..." : `${filtered.length} customers`}
+            </span>
+            <Button
+              variant="outline"
+              onClick={loadCustomers}
+              disabled={loading}
+              className="text-xs flex items-center gap-1.5 py-1 px-2.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-rose-600" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className="table-scroll">
