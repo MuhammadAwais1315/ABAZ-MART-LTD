@@ -329,8 +329,8 @@ export default function Account() {
               onClick={() => setSection(item.label)}
             >
               {item.icon} {item.label}
-              {item.label === "Wishlist" && wishlist.length > 0 && (
-                <Badge>{wishlist.length}</Badge>
+              {item.label === "Wishlist" && wishlistProducts.length > 0 && (
+                <Badge>{wishlistProducts.length}</Badge>
               )}
             </Button>
           ))}

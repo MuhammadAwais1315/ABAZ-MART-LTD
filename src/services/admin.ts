@@ -470,6 +470,50 @@ export async function deleteAdminProduct(
   }
 }
 
+export async function clearAllAdminProducts(): Promise<{ error: Error | null }> {
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem("abaz_custom_created_products")
+      localStorage.removeItem("abaz_custom_product_edits")
+      localStorage.removeItem("abaz-mart-wishlist")
+      localStorage.setItem("abaz_deleted_product_ids", JSON.stringify([]))
+      window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
+    } catch {}
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { error: null }
+  }
+
+  try {
+    try {
+      await supabase.from("wishlist_items").delete().neq("id", 0)
+    } catch {}
+    try {
+      await supabase.from("cart_items").delete().neq("id", 0)
+    } catch {}
+    try {
+      await supabase.from("order_items").delete().neq("id", 0)
+    } catch {}
+    try {
+      await supabase.from("orders").delete().neq("id", 0)
+    } catch {}
+
+    const { error } = await supabase.from("products").delete().neq("id", 0)
+    if (error) {
+      await supabase.from("products").update({ is_active: false, stock: 0 }).neq("id", 0)
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
+    }
+    return { error: null }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to clear products"
+    return { error: new Error(msg) }
+  }
+}
+
 export async function uploadProductImage(
   file: File,
 ): Promise<{ url: string | null; error: Error | null }> {

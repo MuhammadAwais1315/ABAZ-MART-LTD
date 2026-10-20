@@ -52,7 +52,20 @@ export default function RootLayout() {
       const saved = window.localStorage.getItem("abaz-mart-wishlist")
       if (!saved) return []
       const list = JSON.parse(saved) as number[]
-      return Array.isArray(list) ? list.filter((id) => !isProductDeleted(id)) : []
+      if (!Array.isArray(list)) return []
+
+      // Automatically purge legacy mock default wishlist [1, 5, 9]
+      const isLegacyMock =
+        list.length === 3 &&
+        list.includes(1) &&
+        list.includes(5) &&
+        list.includes(9)
+      if (isLegacyMock) {
+        window.localStorage.removeItem("abaz-mart-wishlist")
+        return []
+      }
+
+      return list.filter((id) => !isProductDeleted(id))
     } catch {
       return []
     }

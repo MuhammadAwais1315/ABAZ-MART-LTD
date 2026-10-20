@@ -13,6 +13,7 @@ import { Badge, Button, Input, Modal, Select, Toast } from "../../components/ui"
 import { categories, Product, products } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
 import {
+  clearAllAdminProducts,
   deleteAdminProduct,
   getAdminProducts,
   updateAdminProduct,
@@ -24,6 +25,7 @@ export default function AdminProducts() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("All")
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [clearingAll, setClearingAll] = useState(false)
   const [toastMessage, setToastMessage] = useState("")
 
   // Quick Edit State
@@ -145,6 +147,24 @@ export default function AdminProducts() {
     }
   }
 
+  const handleClearAllProducts = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete ALL products and clear the catalog? This will remove all demo products from both the store and the database.",
+      )
+    ) {
+      setClearingAll(true)
+      const { error } = await clearAllAdminProducts()
+      setClearingAll(false)
+      if (error) {
+        alert(`Failed to clear products: ${error.message}`)
+      } else {
+        setCatalog([])
+        showToast("All products and demo items have been successfully removed.")
+      }
+    }
+  }
+
   const visible = catalog.filter(
     (product) =>
       (category === "All" || product.category === category) &&
@@ -161,9 +181,22 @@ export default function AdminProducts() {
           <h1>Products</h1>
           <p>Manage your beauty catalog, instant pricing, and inventory.</p>
         </div>
-        <Link className="btn btn-primary" to="/admin/products/new">
-          <Plus className="w-4 h-4" /> Add Product
-        </Link>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {catalog.length > 0 && (
+            <Button
+              variant="outline"
+              style={{ color: "#dc2626", borderColor: "#fca5a5" }}
+              onClick={handleClearAllProducts}
+              disabled={clearingAll}
+            >
+              <Trash2 className="w-4 h-4 mr-1.5" />
+              {clearingAll ? "Clearing Catalog..." : "Clear All Products"}
+            </Button>
+          )}
+          <Link className="btn btn-primary" to="/admin/products/new">
+            <Plus className="w-4 h-4" /> Add Product
+          </Link>
+        </div>
       </div>
       <section className="admin-panel admin-data-table">
         <div className="admin-table-toolbar">
