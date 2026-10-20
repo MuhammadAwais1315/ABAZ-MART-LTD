@@ -165,16 +165,22 @@ export async function getAdminProducts(): Promise<{
 }> {
   const deletedIds = new Set<number>()
   let storedEdits: Record<string, Partial<AdminProductPayload>> = {}
+  let customCreated: Product[] = []
   if (typeof window !== "undefined") {
     try {
       const ids = JSON.parse(localStorage.getItem("abaz_deleted_product_ids") || "[]")
       if (Array.isArray(ids)) ids.forEach((id: number) => deletedIds.add(id))
       storedEdits = JSON.parse(localStorage.getItem("abaz_custom_product_edits") || "{}")
+      const rawCreated = JSON.parse(localStorage.getItem("abaz_custom_created_products") || "[]")
+      if (Array.isArray(rawCreated)) customCreated = rawCreated
     } catch {}
   }
 
   const applyEditsAndFilter = (list: Product[]): Product[] => {
-    return list
+    const existingIds = new Set(list.map((p) => p.id))
+    const merged = [...customCreated.filter((p) => !existingIds.has(p.id)), ...list]
+
+    return merged
       .filter((p) => !deletedIds.has(p.id))
       .map((p) => {
         const edit = storedEdits[p.id.toString()]
@@ -274,7 +280,27 @@ export async function createAdminProduct(
   }
 
   try {
-    const categoryId = CATEGORY_ID_MAP[payload.category] || 1
+    let categoryId = CATEGORY_ID_MAP[payload.category] || 1
+    try {
+      const { data: catRow } = await supabase
+        .from("categories")
+        .select("id")
+        .ilike("name", payload.category)
+        .maybeSingle()
+      if (catRow?.id) {
+        categoryId = Number(catRow.id)
+      } else {
+        const { data: firstCat } = await supabase
+          .from("categories")
+          .select("id")
+          .limit(1)
+          .maybeSingle()
+        if (firstCat?.id) {
+          categoryId = Number(firstCat.id)
+        }
+      }
+    } catch {}
+
     const baseSlug = payload.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -306,8 +332,8 @@ export async function createAdminProduct(
       .single()
 
     if (error) {
-      registerLocalCreate(fakeProduct)
-      return { data: fakeProduct, error: null }
+      console.error("Failed to insert product into Supabase:", error.message)
+      return { data: null, error: new Error(error.message) }
     }
 
     const created: Product = {
