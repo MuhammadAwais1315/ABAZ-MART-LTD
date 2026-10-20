@@ -875,7 +875,7 @@ export function mapRawOrderToAdminItem(
     o.customer_phone ||
     o.shipping_phone ||
     prof?.phone ||
-    "+44 20 7946 0912"
+    "+4402034322415"
 
   const items: AdminOrderLineItem[] =
     Array.isArray(o.order_items) && o.order_items.length > 0

@@ -294,7 +294,7 @@ function buildHtmlReceipt(data: OrderConfirmationPayload): string {
         30-Day Happiness Guarantee · Free Returns on All Orders
       </p>
       <p style="margin: 0 0 8px 0;">
-        Questions or need support? Simply reply to this email or reach us at <a href="mailto:care@abazmart.co.uk" style="color: #b83b5e; text-decoration: underline;">care@abazmart.co.uk</a> · +44 20 7946 0958
+        Questions or need support? Simply reply to this email or reach us at <a href="mailto:care@abazmart.co.uk" style="color: #b83b5e; text-decoration: underline;">care@abazmart.co.uk</a> · +4402034322415
       </p>
       <div style="border-top: 1px solid #efe4e7; margin-top: 12px; padding-top: 12px; font-size: 10.5px; color: #9c8a91;">
         Abaz Mart Ltd · Registered in England &amp; Wales · Company No. 17094173<br/>
@@ -368,10 +368,161 @@ function buildTextReceipt(data: OrderConfirmationPayload): string {
   lines.push(
     ``,
     `Thank you for choosing Abaz Mart!`,
-    `Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company No. 17094173 · care@abazmart.co.uk`,
+    `Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company No. 17094173 · care@abazmart.co.uk · +4402034322415`,
   )
 
   return lines.filter(Boolean).join("\n")
+}
+
+function buildAdminOrderNotificationHtml(data: OrderConfirmationPayload): string {
+  const { order, customer, items = [], paymentMethod } = data
+  const isBankTransfer = paymentMethod === "bank_transfer"
+  const paymentLabel = isBankTransfer
+    ? "Direct Bank Transfer (BACS)"
+    : "Credit / Debit Card / Digital Wallet (Stripe)"
+
+  const orderDate = order.created_at
+    ? new Date(order.created_at).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : new Date().toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+
+  const itemsRows = items
+    .map(
+      (item) => `
+      <tr style="border-bottom: 1px solid #f3eef0;">
+        <td style="padding: 10px 4px; vertical-align: top;">
+          <div style="font-size: 13px; font-weight: 600; color: #2b2024;">${item.name}</div>
+          <div style="font-size: 11px; color: #7a686f; margin-top: 2px;">
+            ${item.brand ? `${item.brand} · ` : ""}${item.option || "Standard"}
+          </div>
+        </td>
+        <td style="padding: 10px 4px; text-align: center; vertical-align: top; font-size: 12.5px; color: #2b2024;">
+          ${item.quantity}
+        </td>
+        <td style="padding: 10px 4px; text-align: right; vertical-align: top; font-size: 12.5px; color: #5a4b51;">
+          ${formatGbp(item.price)}
+        </td>
+        <td style="padding: 10px 4px; text-align: right; vertical-align: top; font-size: 13px; font-weight: 700; color: #2b2024;">
+          ${formatGbp(item.price * item.quantity)}
+        </td>
+      </tr>
+    `,
+    )
+    .join("")
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>New Order #${order.order_number} Received</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f7f3f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #2b2024;">
+  <div style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; border: 1px solid #eadfe2; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+    <div style="background-color: #4a1525; padding: 22px 24px; color: #ffffff;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #f4b8c7; font-weight: 700;">
+        Store Admin Notification
+      </div>
+      <h1 style="margin: 4px 0 0 0; font-size: 22px; font-weight: 700;">
+        New Order Confirmed · #${order.order_number}
+      </h1>
+      <p style="margin: 4px 0 0 0; font-size: 13px; color: #e5c3cc;">
+        Total Received: <strong>${formatGbp(order.total)}</strong> · ${paymentLabel}
+      </p>
+    </div>
+
+    <div style="padding: 24px; border-bottom: 1px solid #efe4e7; background-color: #faf6f7;">
+      <h3 style="margin: 0 0 12px 0; font-size: 12px; text-transform: uppercase; color: #b83b5e; letter-spacing: 0.5px;">
+        Customer &amp; Delivery Details
+      </h3>
+      <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 4px 0; color: #7a686f; width: 130px;"><strong>Customer:</strong></td>
+          <td style="padding: 4px 0; color: #2b2024;"><strong>${customer.fullName}</strong></td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #7a686f;"><strong>Email:</strong></td>
+          <td style="padding: 4px 0;"><a href="mailto:${customer.email}" style="color: #b83b5e; text-decoration: underline;">${customer.email}</a></td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #7a686f;"><strong>Phone:</strong></td>
+          <td style="padding: 4px 0; color: #2b2024;">${customer.phone || "Not provided"}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #7a686f; vertical-align: top;"><strong>Delivery Address:</strong></td>
+          <td style="padding: 4px 0; color: #2b2024;">
+            ${customer.address}<br/>
+            ${customer.city}, ${customer.postalCode}<br/>
+            ${customer.country || "United Kingdom"}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #7a686f;"><strong>Payment:</strong></td>
+          <td style="padding: 4px 0; color: #2b2024;">${paymentLabel} · <span style="color: #15803d; font-weight: 700;">${isBankTransfer ? "Awaiting Settlement" : "Paid (Stripe)"}</span></td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; color: #7a686f;"><strong>Order Date:</strong></td>
+          <td style="padding: 4px 0; color: #2b2024;">${orderDate}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="padding: 24px;">
+      <h3 style="margin: 0 0 14px 0; font-size: 12px; text-transform: uppercase; color: #b83b5e; letter-spacing: 0.5px;">
+        Items Ordered
+      </h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+        <thead>
+          <tr style="border-bottom: 2px solid #eadfe2; color: #7a686f; font-size: 11px; text-transform: uppercase;">
+            <th style="text-align: left; padding: 6px 4px;">Item</th>
+            <th style="text-align: center; padding: 6px 4px;">Qty</th>
+            <th style="text-align: right; padding: 6px 4px;">Unit</th>
+            <th style="text-align: right; padding: 6px 4px;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRows}
+        </tbody>
+      </table>
+
+      <table style="width: 100%; margin-top: 16px; font-size: 13px; border-collapse: collapse;">
+        <tr>
+          <td style="text-align: right; padding: 4px 0; color: #7a686f;">Subtotal:</td>
+          <td style="text-align: right; padding: 4px 0; width: 100px;">${formatGbp(order.subtotal)}</td>
+        </tr>
+        ${
+          order.discount > 0
+            ? `<tr>
+                <td style="text-align: right; padding: 4px 0; color: #15803d;">Discount:</td>
+                <td style="text-align: right; padding: 4px 0; color: #15803d;">-${formatGbp(order.discount)}</td>
+              </tr>`
+            : ""
+        }
+        <tr>
+          <td style="text-align: right; padding: 4px 0; color: #7a686f;">Shipping:</td>
+          <td style="text-align: right; padding: 4px 0;">${order.shipping === 0 ? "Free" : formatGbp(order.shipping)}</td>
+        </tr>
+        <tr style="border-top: 2px solid #b83b5e;">
+          <td style="text-align: right; padding: 8px 0; font-size: 15px; font-weight: 700; color: #b83b5e;">Total Paid:</td>
+          <td style="text-align: right; padding: 8px 0; font-size: 15px; font-weight: 700; color: #b83b5e;">${formatGbp(order.total)}</td>
+        </tr>
+      </table>
+
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="https://www.abazmart.co.uk/admin/orders" style="display: inline-block; background-color: #b83b5e; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 12px 28px; border-radius: 8px;">
+          View in Admin Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`
 }
 
 interface DispatchEmailPayload {
@@ -600,9 +751,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       paymentMethod,
     })
 
+    const adminEmail = "abazmartltd@gmail.com"
+
     const { data, error } = await resend.emails.send({
       from: fromAddress,
       to: [customer.email.trim()],
+      bcc: customer.email.trim().toLowerCase() !== adminEmail.toLowerCase() ? [adminEmail] : undefined,
       subject: `Official Receipt for Order #${order.order_number} · Abaz Mart`,
       html: htmlBody,
       text: textBody,
@@ -619,11 +773,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     console.info(`[Resend] Order receipt #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`)
+
+    // Also send dedicated Store Admin Notification to abazmartltd@gmail.com
+    try {
+      const adminHtml = buildAdminOrderNotificationHtml({
+        order,
+        customer,
+        items,
+        paymentMethod,
+      })
+      await resend.emails.send({
+        from: fromAddress,
+        to: [adminEmail],
+        subject: `🔔 [NEW ORDER] #${order.order_number} (${formatGbp(order.total)}) - ${customer.fullName}`,
+        html: adminHtml,
+        text: `New order #${order.order_number} received from ${customer.fullName} (${customer.email}) for ${formatGbp(order.total)}. View in admin: https://www.abazmart.co.uk/admin/orders`,
+      })
+      console.info(`[Resend] Dedicated admin notification for #${order.order_number} sent to ${adminEmail}`)
+    } catch (adminErr) {
+      console.warn("[Resend] Admin notification notice:", adminErr)
+    }
+
     res.status(200).json({
       success: true,
       configured: true,
       emailId: data?.id,
       recipient: customer.email,
+      adminNotified: adminEmail,
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to send order confirmation email"

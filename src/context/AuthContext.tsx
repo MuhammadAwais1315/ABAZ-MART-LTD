@@ -164,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: "demo-user-123",
         email,
         full_name: "Amara Williams",
-        phone: "+44 20 7946 0958",
+        phone: "+4402034322415",
         avatar_url:
           "https://images.unsplash.com/photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&w=240&q=85",
         role: email.toLowerCase().includes("admin") ? "admin" : "customer",

@@ -152,7 +152,7 @@ export function OrderReceipt({
               Registered in England &amp; Wales · Company No. 17094173
             </p>
             <p className="text-xs text-muted-foreground">
-              care@abazmart.co.uk · +44 20 7946 0958
+              care@abazmart.co.uk · +4402034322415
             </p>
           </div>
 
@@ -202,7 +202,22 @@ export function OrderReceipt({
               )}
             </div>
             <div className="text-muted-foreground mt-1">
-              Est. Delivery: <span className="font-medium text-foreground">{order.estimated_delivery}</span>
+              Est. Delivery:{" "}
+              <span className="font-medium text-foreground">
+                {order.estimated_delivery && /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery)
+                  ? (() => {
+                      const [y, m, d] = order.estimated_delivery.split("-")
+                      const dt = new Date(Number(y), Number(m) - 1, Number(d))
+                      return !isNaN(dt.getTime())
+                        ? dt.toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })
+                        : order.estimated_delivery
+                    })()
+                  : order.estimated_delivery || "Within 3-5 business days"}
+              </span>
             </div>
           </div>
         </div>
@@ -314,7 +329,7 @@ export function OrderReceipt({
 
         {/* Footer Guarantee */}
         <div className="border-t border-border mt-8 pt-4 text-center text-[11px] text-muted-foreground">
-          Thank you for choosing Abaz Mart · 30-Day Happiness Guarantee · Questions? Email care@abazmart.co.uk
+          Thank you for choosing Abaz Mart · 30-Day Happiness Guarantee · Questions? Email care@abazmart.co.uk · +4402034322415
         </div>
       </div>
     </div>

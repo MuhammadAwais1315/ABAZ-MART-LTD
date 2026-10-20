@@ -813,7 +813,7 @@ export default function Checkout() {
                 })}
                 {checkoutField("phone", "Phone number", {
                   type: "tel",
-                  placeholder: "+44 20 7946 0958",
+                  placeholder: "+4402034322415",
                 })}
                 {checkoutField("address", "Street address", {
                   placeholder: "123 Rose Street, Apt 4B",

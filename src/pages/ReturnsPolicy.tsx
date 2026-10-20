@@ -89,7 +89,7 @@ export default function ReturnsPolicy() {
             <br />
             Email: <a href="mailto:care@abazmart.co.uk" className="text-rose-600 hover:underline">care@abazmart.co.uk</a>
             <br />
-            Telephone: +44 20 7946 0958
+            Telephone: +4402034322415
           </p>
         </section>
       </div>
