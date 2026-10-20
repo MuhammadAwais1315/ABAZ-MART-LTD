@@ -16,6 +16,7 @@ import {
   clearAllAdminProducts,
   deleteAdminProduct,
   getAdminProducts,
+  syncLocalProductsToSupabase,
   updateAdminProduct,
 } from "../../services/admin"
 
@@ -26,6 +27,8 @@ export default function AdminProducts() {
   const [category, setCategory] = useState("All")
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [clearingAll, setClearingAll] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [localPendingCount, setLocalPendingCount] = useState(0)
   const [toastMessage, setToastMessage] = useState("")
 
   // Quick Edit State
@@ -61,6 +64,38 @@ export default function AdminProducts() {
       mounted = false
     }
   }, [])
+
+  const checkPendingLocal = () => {
+    try {
+      const raw = localStorage.getItem("abaz_custom_created_products")
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        setLocalPendingCount(Array.isArray(parsed) ? parsed.length : 0)
+      } else {
+        setLocalPendingCount(0)
+      }
+    } catch {
+      setLocalPendingCount(0)
+    }
+  }
+
+  useEffect(() => {
+    checkPendingLocal()
+  }, [catalog])
+
+  const handleSyncToLive = async () => {
+    setSyncing(true)
+    const { synced, error } = await syncLocalProductsToSupabase()
+    setSyncing(false)
+    if (error) {
+      alert(`Supabase live publish error: ${error.message}`)
+    } else {
+      showToast(`${synced} product(s) successfully published live to your cloud store!`)
+      checkPendingLocal()
+      const { data } = await getAdminProducts()
+      setCatalog(data)
+    }
+  }
 
   const openQuickEdit = (p: Product) => {
     setQuickEditProduct(p)
@@ -198,6 +233,38 @@ export default function AdminProducts() {
           </Link>
         </div>
       </div>
+
+      {localPendingCount > 0 && (
+        <div style={{
+          backgroundColor: "#fffbeb",
+          border: "1px solid #fde68a",
+          borderRadius: "12px",
+          padding: "16px 20px",
+          marginBottom: "20px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "16px",
+          color: "#92400e"
+        }}>
+          <div>
+            <strong style={{ display: "block", fontSize: "0.95rem" }}>
+              Action Needed: {localPendingCount} product(s) saved in local draft only
+            </strong>
+            <span style={{ fontSize: "0.82rem", color: "#b45309" }}>
+              Click Publish to push this product to your live Supabase cloud database so customers can see it.
+            </span>
+          </div>
+          <Button
+            style={{ backgroundColor: "#d97768", color: "#fff", whiteSpace: "nowrap" }}
+            onClick={handleSyncToLive}
+            disabled={syncing}
+          >
+            {syncing ? "Publishing to Live Store..." : "Publish to Live Store"}
+          </Button>
+        </div>
+      )}
+
       <section className="admin-panel admin-data-table">
         <div className="admin-table-toolbar">
           <Input
