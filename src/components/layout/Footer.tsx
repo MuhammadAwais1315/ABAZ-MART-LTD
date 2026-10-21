@@ -3,6 +3,7 @@ import { ArrowRight, Camera, UsersRound } from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "../ui"
 import { subscribeNewsletter } from "../../services/admin"
+import { metaPixel } from "../../utils/metaPixel"
 
 export default function Footer({ notify }: { notify: (message: string) => void }) {
   const [email, setEmail] = useState("")
@@ -19,6 +20,7 @@ export default function Footer({ notify }: { notify: (message: string) => void }
     if (error) {
       notify(error.message)
     } else if (success) {
+      metaPixel.subscribe(email.trim())
       setEmail("")
       notify("Welcome! You have been subscribed to the Abaz Mart newsletter.")
     }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { ArrowUp, MessageCircle, X } from "lucide-react"
 import { Button } from "./ui"
+import { metaPixel } from "../utils/metaPixel"
 
 export default function SiteUtilities() {
   const [showTop, setShowTop] = useState(false)
@@ -30,10 +31,11 @@ export default function SiteUtilities() {
         )}
         <a
           className="whatsapp-button"
-          href="https://wa.me/15551234567"
+          href="https://wa.me/4402034322415"
           target="_blank"
           rel="noreferrer"
           aria-label="Chat with Abaz Mart on WhatsApp"
+          onClick={() => metaPixel.contact("whatsapp")}
         >
           <MessageCircle />
         </a>

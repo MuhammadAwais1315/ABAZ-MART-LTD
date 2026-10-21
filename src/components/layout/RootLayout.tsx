@@ -222,6 +222,9 @@ export default function RootLayout() {
 
   const toggleWishlist = (product: Product) => {
     const isSaved = wishlist.includes(product.id)
+    if (!isSaved) {
+      metaPixel.addToWishlist(product)
+    }
     setWishlist((current) =>
       current.includes(product.id)
         ? current.filter((id) => id !== product.id)

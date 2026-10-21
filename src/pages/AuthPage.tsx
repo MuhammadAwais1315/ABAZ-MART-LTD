@@ -4,6 +4,7 @@ import { ArrowRight, Check, Eye, EyeOff } from "lucide-react"
 import { Button, Checkbox, Input } from "../components/ui"
 import { useStore } from "../context/StoreContext"
 import { useAuth } from "../context/AuthContext"
+import { metaPixel } from "../utils/metaPixel"
 
 export default function AuthPage({
   mode = "login",
@@ -96,6 +97,7 @@ export default function AuthPage({
           setAuthError(error.message)
           notify(error.message)
         } else {
+          metaPixel.completeRegistration("email")
           notify("Account created successfully")
           navigate(redirectTarget)
         }

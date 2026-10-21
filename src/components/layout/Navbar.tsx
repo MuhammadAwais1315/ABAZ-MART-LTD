@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "../ui"
+import { metaPixel } from "../../utils/metaPixel"
 import { useAuth } from "../../context/AuthContext"
 import { Product, products as initialProducts } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
@@ -84,6 +85,9 @@ export default function Navbar({
 
   const search = (event: FormEvent) => {
     event.preventDefault()
+    if (query.trim()) {
+      metaPixel.search(query.trim())
+    }
     navigate(`/shop?q=${encodeURIComponent(query)}`)
     setMobileSearchOpen(false)
     setMobileOpen(false)

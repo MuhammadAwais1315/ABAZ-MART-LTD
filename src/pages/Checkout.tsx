@@ -443,6 +443,7 @@ export default function Checkout() {
 
     setOrderError(null)
     setStep((current) => Math.min(2, current + 1))
+    metaPixel.addPaymentInfo(orderTotal, paymentMethod)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
