@@ -41,6 +41,7 @@ import {
   EmbeddedStripeFormRef,
 } from "../components/checkout/EmbeddedStripeForm"
 import { OrderReceipt } from "../components/checkout/OrderReceipt"
+import { metaPixel } from "../utils/metaPixel"
 
 export function CheckoutSummary({
   cart,
@@ -286,6 +287,22 @@ export default function Checkout() {
   const taxAmount = orderSubtotal * settings.taxRate
   const orderTotal = Math.max(0, orderSubtotal + shippingFee + taxAmount - couponDiscount)
 
+  // Track Meta Pixel InitiateCheckout on checkout mount
+  const initiatedRef = useRef(false)
+  useEffect(() => {
+    if (!initiatedRef.current && cart.length > 0 && orderTotal > 0) {
+      initiatedRef.current = true
+      metaPixel.initiateCheckout(
+        cart.map((item) => ({
+          id: item.product.id,
+          price: item.product.price,
+          quantity: item.quantity,
+        })),
+        orderTotal,
+      )
+    }
+  }, [cart, orderTotal])
+
   // Initialize Stripe Payment Intent when on Payment step with card method
   useEffect(() => {
     let isMounted = true
@@ -515,6 +532,17 @@ export default function Checkout() {
       setConfirmedOrder(orderData)
       setConfirmedCart(cart)
       setComplete(true)
+
+      // Track Meta Pixel Purchase event
+      metaPixel.purchase({
+        order_number: orderData.order_number,
+        total: orderData.total,
+        items: cart.map((item) => ({
+          id: item.product.id,
+          product_id: item.product.id,
+        })),
+      })
+
       clearCart()
       window.sessionStorage.removeItem("abaz_promo_code")
       window.sessionStorage.removeItem("abaz_promo_discount")

@@ -33,6 +33,7 @@ import {
   ReviewItem,
   submitProductReview,
 } from "../services/products"
+import { metaPixel } from "../utils/metaPixel"
 
 export default function ProductPage() {
   const { id } = useParams()
@@ -91,6 +92,12 @@ export default function ProductPage() {
     "shade-berry",
     "shade-cocoa",
   ]
+
+  useEffect(() => {
+    if (product && product.id) {
+      metaPixel.viewContent(product)
+    }
+  }, [product?.id])
 
   useEffect(() => {
     let mounted = true

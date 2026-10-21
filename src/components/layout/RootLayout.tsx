@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Outlet } from "react-router"
+import { useEffect, useRef, useState } from "react"
+import { Outlet, useLocation } from "react-router"
 import { Check } from "lucide-react"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext"
 import { CartItem, StoreContext } from "../../context/StoreContext"
 import { Product, products } from "../../data/products"
 import { useScrollReveal } from "../../hooks/useScrollReveal"
+import { metaPixel } from "../../utils/metaPixel"
 import {
   getCustomerWishlist,
   toggleCustomerWishlist,
@@ -19,6 +20,18 @@ import { getEffectiveProducts, isProductDeleted } from "../../services/products"
 
 export default function RootLayout() {
   useScrollReveal()
+  const location = useLocation()
+  const isFirstRender = useRef(true)
+
+  // Track Meta Pixel PageView on client-side route changes
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    metaPixel.pageView()
+  }, [location.pathname, location.search])
+
   const { user } = useAuth()
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -176,9 +189,13 @@ export default function RootLayout() {
     if (reachedLimit && addedCount === 0) {
       notify(`Maximum available stock (${maxStock}) is already in your cart`)
     } else if (reachedLimit) {
+      if (addedCount > 0) {
+        metaPixel.addToCart(product, addedCount)
+      }
       notify(`Only ${maxStock} in stock. Added ${addedCount} to your cart.`)
       setCartOpen(true)
     } else {
+      metaPixel.addToCart(product, quantity)
       notify(`${quantity} × ${product.name} added to your cart`)
       setCartOpen(true)
     }
