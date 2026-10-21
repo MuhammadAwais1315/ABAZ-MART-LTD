@@ -6,10 +6,19 @@
       "destination": "https://twstiotnaaglptizaxkm.supabase.co/:path*"
     },
     {
+      "source": "/product/:id",
+      "destination": "/api/product-page?id=:id"
+    },
+    {
       "source": "/((?!api/|db-gateway/).*)",
       "destination": "/index.html"
     }
   ],
+  "functions": {
+    "api/product-page.ts": {
+      "includeFiles": "dist/**"
+    }
+  },
   "headers": [
     {
       "source": "/db-gateway/(.*)",
