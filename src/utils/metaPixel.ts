@@ -1,6 +1,6 @@
 /**
  * Meta (Facebook) Pixel Integration Utility
- * Pixel ID: 1179877284601261
+ * Pixel ID: 1652809650218364
  */
 
 declare global {
