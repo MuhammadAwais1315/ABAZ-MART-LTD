@@ -28,8 +28,12 @@ export default function Footer({ notify }: { notify: (message: string) => void }
     <footer className="footer">
       <div className="shell footer-grid">
         <div>
-          <Link to="/" className="logo footer-logo">
-            Abaz <i>Mart</i>
+          <Link to="/" className="footer-brand block" aria-label="Abaz Mart Home">
+            <img
+              src="/logo-horizontal-light.png"
+              alt="Abaz Mart"
+              className="site-logo-footer"
+            />
           </Link>
           <p>
             Thoughtfully chosen beauty essentials to make every day feel a

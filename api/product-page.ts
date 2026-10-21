@@ -142,6 +142,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 2. Pre-rendered HTML inside <div id="root">
   const preRenderedContent = `
     <main class="product-server-render" style="max-width: 1200px; margin: 0 auto; padding: 40px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2b2024;">
+      <header style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #efe4e7;">
+        <a href="/" style="display: inline-block; text-decoration: none;" aria-label="Abaz Mart">
+          <img src="https://www.abazmart.co.uk/logo-horizontal.png" alt="Abaz Mart" style="height: 38px; width: auto; max-width: 180px; display: block;" />
+        </a>
+      </header>
       <nav aria-label="Breadcrumb" style="font-size: 13px; color: #7a686f; margin-bottom: 28px;">
         <a href="/" style="color: #7a686f; text-decoration: none;">Home</a> /
         <a href="/shop" style="color: #7a686f; text-decoration: none;">Shop</a> /

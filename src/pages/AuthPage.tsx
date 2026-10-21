@@ -204,8 +204,12 @@ export default function AuthPage({
           alt="Premium skincare products arranged in a serene beauty setting"
         />
         <div>
-          <Link to="/" className="logo">
-            Abaz <i>Mart</i>
+          <Link to="/" className="logo-brand block mb-6" aria-label="Abaz Mart Home">
+            <img
+              src="/logo-horizontal-light.png"
+              alt="Abaz Mart"
+              style={{ height: "38px", width: "auto", objectFit: "contain" }}
+            />
           </Link>
           <h2>Your beauty journey starts here</h2>
           <p>
@@ -216,8 +220,12 @@ export default function AuthPage({
       </section>
       <section className="auth-form-panel">
         <div className="auth-card">
-          <Link to="/" className="logo">
-            Abaz <i>Mart</i>
+          <Link to="/" className="logo-brand block mb-6" aria-label="Abaz Mart Home">
+            <img
+              src="/logo-horizontal.png"
+              alt="Abaz Mart"
+              style={{ height: "40px", width: "auto", objectFit: "contain" }}
+            />
           </Link>
           {sent ? (
             <div className="auth-success">

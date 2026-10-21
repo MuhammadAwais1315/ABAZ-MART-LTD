@@ -38,8 +38,14 @@ export default function AdminLayout() {
     <div className="admin-shell">
       <aside className={`admin-sidebar ${sidebarOpen ? "is-open" : ""}`}>
         <div className="admin-logo">
-          Abaz <i>Mart</i>
-          <span>Admin</span>
+          <Link to="/admin" className="block" aria-label="Abaz Mart Admin">
+            <img
+              src="/logo-horizontal-light.png"
+              alt="Abaz Mart"
+              style={{ height: "34px", width: "auto", objectFit: "contain" }}
+            />
+          </Link>
+          <span>Administration</span>
         </div>
         <nav>
           {adminMenu.map((item) => (

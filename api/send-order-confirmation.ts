@@ -158,10 +158,10 @@ function buildHtmlReceipt(data: OrderConfirmationPayload): string {
     <div style="height: 4px; background: linear-gradient(90deg, #b83b5e 0%, #d86280 50%, #c5a880 100%);"></div>
 
     <!-- Header -->
-    <div style="background-color: #4a1525; padding: 28px 24px 22px 24px; text-align: center; color: #ffffff;">
-      <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 700; letter-spacing: 0.5px;">
-        Abaz <span style="color: #f4b8c7; font-style: italic;">Mart</span>
-      </h1>
+    <div style="background-color: #1e1519; padding: 26px 24px 20px 24px; text-align: center; color: #ffffff;">
+      <a href="https://www.abazmart.co.uk" style="text-decoration: none; display: inline-block;">
+        <img src="https://www.abazmart.co.uk/logo-horizontal-light.png" alt="Abaz Mart" style="height: 38px; width: auto; max-width: 220px; display: block; margin: 0 auto 6px auto; border: 0;" />
+      </a>
       <p style="margin: 6px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #e5c3cc;">
         Luxury Skincare &amp; Beauty · Official Receipt
       </p>
@@ -557,10 +557,10 @@ function buildHtmlDispatch(data: DispatchEmailPayload): string {
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border: 1px solid #eadfe2; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
     <div style="height: 4px; background: linear-gradient(90deg, #b83b5e 0%, #d86280 50%, #c5a880 100%);"></div>
 
-    <div style="background-color: #4a1525; padding: 28px 24px 22px 24px; text-align: center; color: #ffffff;">
-      <h1 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 700;">
-        Abaz <span style="color: #f4b8c7; font-style: italic;">Mart</span>
-      </h1>
+    <div style="background-color: #1e1519; padding: 26px 24px 20px 24px; text-align: center; color: #ffffff;">
+      <a href="https://www.abazmart.co.uk" style="text-decoration: none; display: inline-block;">
+        <img src="https://www.abazmart.co.uk/logo-horizontal-light.png" alt="Abaz Mart" style="height: 38px; width: auto; max-width: 220px; display: block; margin: 0 auto 6px auto; border: 0;" />
+      </a>
       <p style="margin: 6px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #e5c3cc;">
         Order Dispatched &amp; On Its Way
       </p>

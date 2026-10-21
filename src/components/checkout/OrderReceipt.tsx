@@ -139,9 +139,11 @@ export function OrderReceipt({
         {/* Receipt Header */}
         <div className="flex justify-between items-start border-b border-border pb-6 mb-6">
           <div>
-            <div className="text-2xl font-serif font-bold text-foreground">
-              Abaz <i className="text-rose-600 not-italic">Mart</i>
-            </div>
+            <img
+              src="/logo-horizontal.png"
+              alt="Abaz Mart"
+              className="h-10 w-auto object-contain mb-2"
+            />
             <p className="text-xs text-muted-foreground mt-1">
               Abaz Mart Ltd · Luxury Skincare & Beauty
             </p>

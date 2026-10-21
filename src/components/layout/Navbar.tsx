@@ -106,8 +106,12 @@ export default function Navbar({
           >
             {mobileOpen ? <X /> : <Menu />}
           </Button>
-          <Link to="/" className="logo">
-            Abaz <i>Mart</i>
+          <Link to="/" className="logo-brand" aria-label="Abaz Mart Home">
+            <img
+              src="/logo-horizontal.png"
+              alt="Abaz Mart"
+              className="site-logo"
+            />
           </Link>
           <div className="mobile-header-actions">
             <Button
@@ -245,9 +249,18 @@ export default function Navbar({
         )}
         <nav className={`category-nav ${mobileOpen ? "is-open" : ""}`}>
           <div className="mobile-drawer-head">
-            <span className="logo">
-              Abaz <i>Mart</i>
-            </span>
+            <Link
+              to="/"
+              className="logo-brand"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Abaz Mart Home"
+            >
+              <img
+                src="/logo-horizontal.png"
+                alt="Abaz Mart"
+                className="site-logo"
+              />
+            </Link>
             <Button
               variant="ghost"
               aria-label="Close menu"
