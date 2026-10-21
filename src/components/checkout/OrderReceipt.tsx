@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Download, Building2, CheckCircle2, Mail, Loader2, Check } from "lucide-react"
 import { Button } from "../ui"
 import { formatPrice } from "../../utils/formatPrice"
 import { OrderResult } from "../../services/checkout"
 import { PaymentMethod } from "../../types/database"
 import { downloadReceiptPdf } from "../../utils/generateReceiptPdf"
+import { metaPixel } from "../../utils/metaPixel"
 
 export interface OrderReceiptItem {
   id?: string | number
@@ -38,6 +39,21 @@ export function OrderReceipt({
 }: OrderReceiptProps) {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailStatus, setEmailStatus] = useState<{ sent: boolean; message: string } | null>(null)
+
+  // Guarantee that Meta Pixel Purchase is fired whenever this official receipt renders
+  useEffect(() => {
+    if (order && order.order_number && order.total > 0) {
+      const key = `abaz_pixel_purchase_${order.order_number}`
+      if (typeof window !== "undefined" && !window.sessionStorage.getItem(key)) {
+        window.sessionStorage.setItem(key, "1")
+        metaPixel.purchase({
+          order_number: order.order_number,
+          total: order.total,
+          items: items.map((i) => ({ id: i.id })),
+        })
+      }
+    }
+  }, [order?.order_number, order?.total])
 
   const handleDownloadPdf = () => {
     downloadReceiptPdf({ order, items, customer, paymentMethod })

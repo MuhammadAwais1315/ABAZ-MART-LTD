@@ -11,15 +11,22 @@ declare global {
 }
 
 export function fbqTrack(event: string, params?: Record<string, any>) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    try {
-      if (params) {
-        window.fbq("track", event, params)
-      } else {
-        window.fbq("track", event)
+  if (typeof window !== "undefined") {
+    // Visible console log for easy verification in browser DevTools
+    console.log(`[Meta Pixel] Tracking "${event}":`, params || {})
+
+    if (typeof window.fbq === "function") {
+      try {
+        if (params) {
+          window.fbq("track", event, params)
+        } else {
+          window.fbq("track", event)
+        }
+      } catch (err) {
+        console.warn(`[Meta Pixel] Error tracking ${event}:`, err)
       }
-    } catch (err) {
-      console.warn(`[Meta Pixel] Error tracking ${event}:`, err)
+    } else {
+      console.warn("[Meta Pixel] window.fbq is not yet available.")
     }
   }
 }
@@ -100,6 +107,7 @@ export const metaPixel = {
       num_items: order.items?.length || 1,
       value: Number(order.total.toFixed(2)),
       currency: "GBP",
+      order_id: order.order_number || "",
     })
   },
 }
