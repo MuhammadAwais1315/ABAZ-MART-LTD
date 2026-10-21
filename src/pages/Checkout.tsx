@@ -447,7 +447,10 @@ export default function Checkout() {
   }
 
   const handlePlaceOrder = async () => {
-    if (cart.length === 0) return
+    if (submittingOrder || cart.length === 0) return
+
+    setSubmittingOrder(true)
+    setOrderError(null)
 
     // Strict UK postal code verification before order creation
     const postcodeCheck = await verifyUKPostcodeLive(form.postalCode)
@@ -469,19 +472,21 @@ export default function Checkout() {
       if (available <= 0) {
         setOrderError(`"${item.product.name}" is out of stock. Please remove it to proceed.`)
         notify(`"${item.product.name}" is out of stock`)
+        setSubmittingOrder(false)
         return
       }
       if (item.quantity > available) {
         setOrderError(`Only ${available} available for "${item.product.name}". Please adjust quantity to continue.`)
         notify(`Stock limit exceeded for "${item.product.name}"`)
+        setSubmittingOrder(false)
         return
       }
     }
 
-    if (!validatePayment()) return
-
-    setSubmittingOrder(true)
-    setOrderError(null)
+    if (!validatePayment()) {
+      setSubmittingOrder(false)
+      return
+    }
 
     // If live Stripe Card / Apple Pay / Google Pay is selected
     if (paymentMethod === "card" && stripeConfigured && stripeClientSecret) {
