@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Database } from "../types/database"
+import { matchCategory } from "../utils/categoryMatcher"
 import {
   categories as defaultCategories,
   Product,
@@ -141,11 +142,23 @@ export async function getProducts(
       .select("*", { count: "exact" })
       .eq("is_active", true)
 
-    // Category filter
+    // Category filter with intelligent perfume/fragrance clustering
     if (params.category && params.category !== "All") {
-      query = query.eq("category_name", params.category)
+      const catTrim = params.category.trim()
+      if (/\b(fragran|perfum|parfum)\w*\b/i.test(catTrim)) {
+        query = query.or("category_name.ilike.%fragran%,category_name.ilike.%perfum%")
+      } else {
+        query = query.or(`category_name.ilike.%${catTrim}%,category_name.ilike.${catTrim}`)
+      }
     } else if (params.categories && params.categories.length > 0) {
-      query = query.in("category_name", params.categories)
+      const hasFragrance = params.categories.some((c) =>
+        /\b(fragran|perfum)\w*\b/i.test(c),
+      )
+      if (hasFragrance) {
+        query = query.or("category_name.ilike.%fragran%,category_name.ilike.%perfum%")
+      } else {
+        query = query.in("category_name", params.categories)
+      }
     }
 
     // Brands filter
@@ -285,25 +298,63 @@ export async function getProductById(
  * Fetch all categories from Supabase (or fallback).
  */
 export async function getCategories(): Promise<string[]> {
-  const fallback = Array.from(new Set(getEffectiveProducts(defaultProducts).map((p) => p.category)))
-  if (!isSupabaseConfigured()) {
-    return fallback.length > 0 ? fallback : [...defaultCategories]
+  const getCustomLocalCategories = (): string[] => {
+    if (typeof window === "undefined") return []
+    try {
+      const raw = localStorage.getItem("abaz_custom_categories")
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => (typeof item === "string" ? item : item.name)).filter(Boolean)
+        }
+      }
+    } catch {}
+    return []
   }
 
-  try {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("name")
-      .order("display_order", { ascending: true })
+  const catalogCategories = Array.from(
+    new Set(getEffectiveProducts(defaultProducts).map((p) => p.category)),
+  ).filter(Boolean)
 
-    if (error || !data || data.length === 0) {
-      return fallback.length > 0 ? fallback : [...defaultCategories]
+  const localCategories = getCustomLocalCategories()
+
+  let dbCategories: string[] = []
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("name")
+        .order("display_order", { ascending: true })
+
+      if (!error && data && data.length > 0) {
+        dbCategories = data.map((c: { name: string }) => c.name)
+      }
+    } catch {}
+  }
+
+  // Combine in order of precedence: db, local, catalog, defaults
+  const mergedPool = [
+    ...dbCategories,
+    ...localCategories,
+    ...catalogCategories,
+    ...defaultCategories,
+  ]
+
+  // Case-insensitive deduplication
+  const seen = new Set<string>()
+  const finalCategories: string[] = []
+
+  for (const cat of mergedPool) {
+    if (!cat) continue
+    const trimmed = cat.trim()
+    const lower = trimmed.toLowerCase()
+    if (!seen.has(lower)) {
+      seen.add(lower)
+      finalCategories.push(trimmed)
     }
-
-    return data.map((c: { name: string }) => c.name)
-  } catch {
-    return fallback.length > 0 ? fallback : [...defaultCategories]
   }
+
+  return finalCategories
 }
 
 /**
@@ -421,9 +472,11 @@ function filterDefaultProducts(params: ProductQueryParams) {
   let list = getEffectiveProducts(defaultProducts)
 
   if (params.category && params.category !== "All") {
-    list = list.filter((p) => p.category === params.category)
+    list = list.filter((p) => matchCategory(p.category, params.category))
   } else if (params.categories && params.categories.length > 0) {
-    list = list.filter((p) => params.categories!.includes(p.category))
+    list = list.filter((p) =>
+      params.categories!.some((cat) => matchCategory(p.category, cat)),
+    )
   }
 
   if (params.brands && params.brands.length > 0) {

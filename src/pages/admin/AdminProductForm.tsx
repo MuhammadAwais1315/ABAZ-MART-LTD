@@ -2,9 +2,11 @@ import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { Check, Upload, Image as ImageIcon } from "lucide-react"
 import { Button, Input, Select, Toast } from "../../components/ui"
-import { categories, Product, products } from "../../data/products"
+import { categories as defaultCategories, Product, products } from "../../data/products"
+import { matchCategory } from "../../utils/categoryMatcher"
 import {
   createAdminProduct,
+  getAdminCategories,
   getAdminProducts,
   updateAdminProduct,
   uploadProductImage,
@@ -20,13 +22,26 @@ export default function AdminProductForm() {
   const [uploading, setUploading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([...defaultCategories])
+
+  // Load categories from DB
+  useEffect(() => {
+    let mounted = true
+    getAdminCategories().then(({ data }) => {
+      if (mounted && data.length > 0) {
+        const names = data.map((c) => c.name)
+        setDynamicCategories(names)
+      }
+    })
+    return () => { mounted = false }
+  }, [])
 
   const [form, setForm] = useState({
     name: "",
     description: "",
     price: "",
     salePrice: "",
-    category: "Skincare" as Product["category"],
+    category: "Skincare" as string,
     brand: "",
     stock: "",
     options: "",
@@ -47,12 +62,15 @@ export default function AdminProductForm() {
       const found = data.find((p) => p.id === editId) || products.find((p) => p.id === editId)
 
       if (mounted && found) {
+        const matchedCat =
+          dynamicCategories.find((c) => matchCategory(c, found.category)) ||
+          found.category
         setForm({
           name: found.name,
           description: found.description,
           price: found.price.toString(),
           salePrice: found.oldPrice?.toString() || "",
-          category: found.category,
+          category: matchedCat,
           brand: found.brand,
           stock: found.stock.toString(),
           options: found.options.join(", "),
@@ -207,11 +225,13 @@ export default function AdminProductForm() {
               onChange={(event) =>
                 setForm({
                   ...form,
-                  category: event.target.value as Product["category"],
+                  category: event.target.value,
                 })
               }
             >
-              {categories.map((item) => (
+              {Array.from(
+                new Set([...dynamicCategories, ...(form.category ? [form.category] : [])]),
+              ).map((item) => (
                 <option key={item}>{item}</option>
               ))}
             </Select>

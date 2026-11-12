@@ -2,7 +2,7 @@ export type Product = {
   id: number
   name: string
   brand: string
-  category: "Skincare" | "Makeup" | "Haircare" | "Fragrance" | "Body Care"
+  category: string
   price: number
   oldPrice?: number
   rating: number

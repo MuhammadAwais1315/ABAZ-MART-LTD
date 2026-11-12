@@ -99,15 +99,31 @@ export function useCategories() {
 
   useEffect(() => {
     let mounted = true
-    getCategories()
-      .then((data) => {
-        if (mounted) setCategories(data)
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
+    const load = () => {
+      getCategories()
+        .then((data) => {
+          if (mounted) setCategories(data)
+        })
+        .finally(() => {
+          if (mounted) setLoading(false)
+        })
+    }
+
+    load()
+
+    const handleUpdate = () => {
+      load()
+    }
+
+    window.addEventListener("abaz_categories_updated", handleUpdate)
+    window.addEventListener("abaz_catalog_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+
     return () => {
       mounted = false
+      window.removeEventListener("abaz_categories_updated", handleUpdate)
+      window.removeEventListener("abaz_catalog_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
     }
   }, [])
 

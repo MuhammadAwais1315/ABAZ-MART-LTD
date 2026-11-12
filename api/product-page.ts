@@ -186,7 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           <div style="font-size: 14.5px; line-height: 1.7; color: #5a4b51; margin-bottom: 28px;">
             <h2 style="font-size: 15px; font-weight: 700; color: #2b2024; margin: 0 0 8px 0;">Product Description</h2>
-            <p style="margin: 0;">${escapeHtml(productDesc)}</p>
+            <div style="margin: 0; white-space: pre-wrap;">${escapeHtml(productDesc)}</div>
           </div>
 
           ${

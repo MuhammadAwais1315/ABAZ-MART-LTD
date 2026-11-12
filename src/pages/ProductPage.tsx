@@ -11,6 +11,11 @@ import {
   Truck,
 } from "lucide-react"
 import ProductCard from "../components/ProductCard"
+import ProductDescription, {
+  getProductIntroExcerpt,
+} from "../components/ProductDescription"
+import { useCategories } from "../hooks/useProducts"
+import { matchCategory } from "../utils/categoryMatcher"
 import {
   Badge,
   Breadcrumb,
@@ -45,6 +50,7 @@ export default function ProductPage() {
   const [notFound, setNotFound] = useState(isDeleted || !initialProduct)
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
   const { user } = useAuth()
+  const { categories: storeCategories } = useCategories()
   const navigate = useNavigate()
   const [quantity, setQuantity] = useState(1)
   const [option, setOption] = useState(initialProduct?.options?.[0] || "Default")
@@ -59,6 +65,11 @@ export default function ProductPage() {
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
 
+  const displayCategory = product
+    ? storeCategories.find((c) => matchCategory(c, product.category)) ||
+      product.category
+    : ""
+
   const discount = product?.oldPrice
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
     : 0
@@ -68,7 +79,9 @@ export default function ProductPage() {
         product.image,
         ...effectiveCatalog
           .filter(
-            (item) => item.category === product.category && item.id !== product.id,
+            (item) =>
+              matchCategory(item.category, product.category) &&
+              item.id !== product.id,
           )
           .slice(0, 3)
           .map((item) => item.image),
@@ -78,10 +91,14 @@ export default function ProductPage() {
   const relatedProducts = product
     ? [
         ...effectiveCatalog.filter(
-          (item) => item.category === product.category && item.id !== product.id,
+          (item) =>
+            matchCategory(item.category, product.category) &&
+            item.id !== product.id,
         ),
         ...effectiveCatalog.filter(
-          (item) => item.category !== product.category && item.id !== product.id,
+          (item) =>
+            !matchCategory(item.category, product.category) &&
+            item.id !== product.id,
         ),
       ].slice(0, 4)
     : []
@@ -228,32 +245,41 @@ export default function ProductPage() {
     )
   }
 
+  const isFragrance =
+    matchCategory(product.category, "Fragrance") ||
+    /extrait|parfum|fragrance|eau de/i.test(product.name) ||
+    /fragrance notes/i.test(product.description)
+
   const detailContent =
     detailTab === "Description" ? (
-      <div className="tab-copy">
-        <h3>A beautiful addition to your daily ritual</h3>
-        <p>{product.description}</p>
-        <p>
-          Thoughtfully selected by Abaz Mart for its elegant texture, reliable
-          performance, and ability to make everyday beauty feel effortless.
-        </p>
+      <div className="tab-copy !text-left !max-w-4xl pt-2">
+        <ProductDescription
+          description={product.description}
+          productName={product.name}
+          brand={product.brand}
+          category={product.category}
+        />
       </div>
     ) : detailTab === "Ingredients" ? (
-      <div className="tab-copy">
-        <h3>Made with care</h3>
-        <p>
-          Aqua, glycerin, niacinamide, squalane, panthenol, vitamin E, botanical
-          extracts, and skin-safe fragrance. Please refer to the product
-          packaging for the most current full ingredient list.
+      <div className="tab-copy !text-left !max-w-3xl">
+        <h3 className="font-serif text-xl font-semibold mb-3 text-ink">
+          {isFragrance ? "Fragrance Formulation" : "Clean Formulation"}
+        </h3>
+        <p className="text-stone-700 leading-relaxed text-sm md:text-base">
+          {isFragrance
+            ? "Alcohol Denat., Parfum (Fragrance), Aqua (Water), Limonene, Linalool, Coumarin, Citronellol, Geraniol, Alpha-Isomethyl Ionone, Benzyl Benzoate. Crafted according to IFRA luxury perfumery standards. Please refer to individual product packaging for the batch-specific ingredient formulation."
+            : "Aqua, glycerin, niacinamide, squalane, panthenol, vitamin E, botanical extracts, and skin-safe fragrance. Please refer to the product packaging for the most current full ingredient list."}
         </p>
       </div>
     ) : detailTab === "How to Use" ? (
-      <div className="tab-copy">
-        <h3>Your daily ritual</h3>
-        <p>
-          Apply a small amount to clean skin or hair as appropriate. Massage in
-          gently and allow the formula to absorb before layering your next
-          product. Use morning or evening for best results.
+      <div className="tab-copy !text-left !max-w-3xl">
+        <h3 className="font-serif text-xl font-semibold mb-3 text-ink">
+          {isFragrance ? "How to Apply Fragrance" : "Your Daily Ritual"}
+        </h3>
+        <p className="text-stone-700 leading-relaxed text-sm md:text-base">
+          {isFragrance
+            ? "Spray lightly onto warm pulse points: wrists, inner elbows, base of the neck, and behind the ears from a distance of 15–20 cm. Allow the extrait to dry naturally on the skin without rubbing to preserve the top notes and enable the complex heart and base accords to unfold seamlessly throughout the day."
+            : "Apply a small amount to clean skin or hair as appropriate. Massage in gently and allow the formula to absorb before layering your next product. Use morning or evening for best results."}
         </p>
       </div>
     ) : detailTab === "Shipping & Returns" ? (
@@ -362,8 +388,8 @@ export default function ProductPage() {
         items={[
           { label: "Home", href: "/" },
           {
-            label: product.category,
-            href: `/shop?category=${product.category}`,
+            label: displayCategory,
+            href: `/shop?category=${encodeURIComponent(displayCategory)}`,
           },
           { label: product.name },
         ]}
@@ -402,41 +428,87 @@ export default function ProductPage() {
             {product.oldPrice && <del>{formatPrice(product.oldPrice)}</del>}
             {discount > 0 && <Badge tone="gold">Save {discount}%</Badge>}
           </div>
-          <p className="detail-description">{product.description}</p>
-          <div className="option-block">
-            <strong>
-              {product.category === "Makeup" ? "Shade" : "Size"}:{" "}
-              <span>{option}</span>
-            </strong>
-            {product.category === "Makeup" ? (
-              <div className="shade-list">
-                {product.options.map((item, index) => (
-                  <Button
-                    key={item}
-                    variant="ghost"
-                    className={`${shadeClasses[index % shadeClasses.length]} ${
-                      item === option ? "is-active" : ""
-                    }`}
-                    onClick={() => setOption(item)}
-                    aria-label={`Select ${item} shade`}
-                    title={item}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="option-list">
-                {product.options.map((item) => (
-                  <Button
-                    key={item}
-                    variant={item === option ? "primary" : "outline"}
-                    onClick={() => setOption(item)}
-                  >
-                    {item}
-                  </Button>
-                ))}
-              </div>
+          <div className="detail-description space-y-2">
+            <p className="leading-relaxed text-stone-600 text-sm md:text-base m-0">
+              {getProductIntroExcerpt(product.description)}
+            </p>
+            {product.description && product.description.includes("###") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailTab("Description")
+                  const element = document.querySelector(".product-notes")
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth" })
+                  }
+                }}
+                className="text-xs font-semibold text-[#b83b5e] hover:underline inline-flex items-center gap-1 cursor-pointer pt-1"
+              >
+                View full notes &amp; details &darr;
+              </button>
             )}
           </div>
+          {(() => {
+            const rawOptions = product.options || []
+            const validOptions = rawOptions.filter(
+              (item) => item && item !== "Default" && item !== "Standard",
+            )
+
+            if (validOptions.length === 0) return null
+
+            const isMakeup = matchCategory(product.category, "Makeup")
+
+            // If only 1 option (e.g. "100 Millilitres" or "100ml")
+            if (validOptions.length === 1) {
+              return (
+                <div className="option-block flex items-center gap-2">
+                  <span className="font-semibold text-ink text-xs uppercase tracking-wider">
+                    {isMakeup ? "Shade" : "Size"}:
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-stone-100 text-ink border border-border">
+                    {validOptions[0]}
+                  </span>
+                </div>
+              )
+            }
+
+            // Multiple options
+            return (
+              <div className="option-block">
+                <strong>
+                  {isMakeup ? "Shade" : "Size"}: <span>{option}</span>
+                </strong>
+                {isMakeup ? (
+                  <div className="shade-list">
+                    {validOptions.map((item, index) => (
+                      <Button
+                        key={item}
+                        variant="ghost"
+                        className={`${shadeClasses[index % shadeClasses.length]} ${
+                          item === option ? "is-active" : ""
+                        }`}
+                        onClick={() => setOption(item)}
+                        aria-label={`Select ${item} shade`}
+                        title={item}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="option-list">
+                    {validOptions.map((item) => (
+                      <Button
+                        key={item}
+                        variant={item === option ? "primary" : "outline"}
+                        onClick={() => setOption(item)}
+                      >
+                        {item}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           {/* Stock Availability Indicator */}
           {product.stock <= 0 ? (
             <div className="stock-label text-rose-600 font-semibold flex items-center gap-2">

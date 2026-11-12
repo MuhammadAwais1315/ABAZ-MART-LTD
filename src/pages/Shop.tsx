@@ -26,6 +26,7 @@ import {
 import { useStore } from "../context/StoreContext"
 import { Product, products as initialProducts } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
+import { matchCategory } from "../utils/categoryMatcher"
 import { useBrands, useCategories } from "../hooks/useProducts"
 import { getEffectiveProducts, getProducts } from "../services/products"
 
@@ -143,7 +144,9 @@ export default function Shop() {
         .filter(
           (product) =>
             selectedCategories.length === 0 ||
-            selectedCategories.includes(product.category),
+            selectedCategories.some((sel) =>
+              matchCategory(sel, product.category),
+            ),
         )
         .filter(
           (product) =>
@@ -229,8 +232,22 @@ export default function Shop() {
           <Checkbox
             key={category}
             label={category}
-            checked={selectedCategories.includes(category)}
-            onChange={() => toggleValue(category, setSelectedCategories)}
+            checked={selectedCategories.some((sel) =>
+              matchCategory(sel, category),
+            )}
+            onChange={() => {
+              setSelectedCategories((current) => {
+                const exists = current.some((item) =>
+                  matchCategory(item, category),
+                )
+                if (exists) {
+                  return current.filter(
+                    (item) => !matchCategory(item, category),
+                  )
+                }
+                return [...current, category]
+              })
+            }}
           />
         ))}
       </div>

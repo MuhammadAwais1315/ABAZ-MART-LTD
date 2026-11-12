@@ -115,11 +115,14 @@ export default function Home() {
           <div className="home-category-grid">
             {categories.map((category, i) => (
               <Link
-                to={`/shop?category=${category}`}
+                to={`/shop?category=${encodeURIComponent(category)}`}
                 className="home-category-tile"
                 key={category}
               >
-                <img src={categoryImages[i]} alt={`${category} collection`} />
+                <img
+                  src={categoryImages[i % categoryImages.length]}
+                  alt={`${category} collection`}
+                />
                 <strong>{category}</strong>
               </Link>
             ))}

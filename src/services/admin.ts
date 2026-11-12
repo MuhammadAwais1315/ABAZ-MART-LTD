@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Product, products } from "../data/products"
 import { Database, OrderStatus, PaymentMethod, PaymentStatus, UserRole } from "../types/database"
+import { matchCategory } from "../utils/categoryMatcher"
 import {
   getLocalStoreSettings,
   saveLocalStoreSettings,
@@ -359,22 +360,18 @@ export async function createAdminProduct(
 
   try {
     let categoryId = CATEGORY_ID_MAP[payload.category] || 1
+    let canonicalCategoryName = payload.category
     try {
-      const { data: catRow } = await supabase
+      const { data: allCats } = await supabase
         .from("categories")
-        .select("id")
-        .ilike("name", payload.category)
-        .maybeSingle()
-      if (catRow?.id) {
-        categoryId = Number(catRow.id)
-      } else {
-        const { data: firstCat } = await supabase
-          .from("categories")
-          .select("id")
-          .limit(1)
-          .maybeSingle()
-        if (firstCat?.id) {
-          categoryId = Number(firstCat.id)
+        .select("id, name")
+      if (allCats && allCats.length > 0) {
+        const foundCat = allCats.find((c) =>
+          matchCategory(c.name, payload.category),
+        )
+        if (foundCat) {
+          categoryId = Number(foundCat.id)
+          canonicalCategoryName = foundCat.name
         }
       }
     } catch {}
@@ -392,7 +389,7 @@ export async function createAdminProduct(
         slug,
         brand: payload.brand,
         category_id: categoryId,
-        category_name: payload.category,
+        category_name: canonicalCategoryName,
         price: payload.price,
         old_price: payload.oldPrice || null,
         stock: payload.stock,
@@ -465,7 +462,22 @@ export async function updateAdminProduct(
     if (payload.brand !== undefined) updates.brand = payload.brand
     if (payload.category !== undefined) {
       updates.category_name = payload.category
-      updates.category_id = CATEGORY_ID_MAP[payload.category] || 1
+      let catId = CATEGORY_ID_MAP[payload.category] || 1
+      try {
+        const { data: allCats } = await supabase
+          .from("categories")
+          .select("id, name")
+        if (allCats && allCats.length > 0) {
+          const foundCat = allCats.find((c) =>
+            matchCategory(c.name, payload.category!),
+          )
+          if (foundCat) {
+            catId = Number(foundCat.id)
+            updates.category_name = foundCat.name
+          }
+        }
+      } catch {}
+      updates.category_id = catId
     }
     if (payload.price !== undefined) updates.price = payload.price
     if (payload.oldPrice !== undefined) updates.old_price = payload.oldPrice
@@ -1193,8 +1205,37 @@ export async function getAdminCategories(): Promise<{
   data: AdminCategory[]
   error: Error | null
 }> {
+  const getLocalCategories = (): AdminCategory[] => {
+    if (typeof window === "undefined") return []
+    try {
+      const raw = localStorage.getItem("abaz_custom_categories")
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  }
+
+  const localCategories = getLocalCategories()
+  const fallback = getFallbackCategories()
+
+  // Merge local categories with fallback
+  const mergeWithLocal = (baseList: AdminCategory[]) => {
+    const list = [...baseList]
+    for (const local of localCategories) {
+      const existingIdx = list.findIndex(
+        (c) => c.name.toLowerCase() === local.name.toLowerCase() || c.id === local.id,
+      )
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...local }
+      } else {
+        list.push(local)
+      }
+    }
+    return list.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+  }
+
   if (!isSupabaseConfigured()) {
-    return { data: getFallbackCategories(), error: null }
+    return { data: mergeWithLocal(fallback), error: null }
   }
 
   try {
@@ -1204,7 +1245,7 @@ export async function getAdminCategories(): Promise<{
       .order("display_order", { ascending: true })
 
     if (error || !data) {
-      return { data: getFallbackCategories(), error: null }
+      return { data: mergeWithLocal(fallback), error: null }
     }
 
     const mapped: AdminCategory[] = data.map((c) => ({
@@ -1217,11 +1258,11 @@ export async function getAdminCategories(): Promise<{
       productCount: Array.isArray(c.products) ? c.products.length : 0,
     }))
 
-    return { data: mapped, error: null }
+    return { data: mergeWithLocal(mapped), error: null }
   } catch (err: unknown) {
     const message =
       err instanceof Error ? err.message : "Failed to load categories"
-    return { data: getFallbackCategories(), error: new Error(message) }
+    return { data: mergeWithLocal(fallback), error: new Error(message) }
   }
 }
 
@@ -1230,18 +1271,31 @@ export async function createAdminCategory(category: {
   description?: string
   displayOrder?: number
 }): Promise<{ data: AdminCategory | null; error: Error | null }> {
-  if (!isSupabaseConfigured()) {
-    return {
-      data: {
-        id: Date.now(),
-        name: category.name,
-        slug: category.name.toLowerCase().replace(/\s+/g, "-"),
-        description: category.description || null,
-        displayOrder: category.displayOrder || 1,
-        productCount: 0,
-      },
-      error: null,
+  const newCat: AdminCategory = {
+    id: Date.now(),
+    name: category.name,
+    slug: category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+    description: category.description || null,
+    displayOrder: category.displayOrder || 1,
+    productCount: 0,
+  }
+
+  const saveLocal = (cat: AdminCategory) => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("abaz_custom_categories")
+        const list: AdminCategory[] = raw ? JSON.parse(raw) : []
+        list.push(cat)
+        localStorage.setItem("abaz_custom_categories", JSON.stringify(list))
+        window.dispatchEvent(new CustomEvent("abaz_categories_updated", { detail: { category: cat } }))
+        window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
+      } catch {}
     }
+  }
+
+  if (!isSupabaseConfigured()) {
+    saveLocal(newCat)
+    return { data: newCat, error: null }
   }
 
   try {
@@ -1258,23 +1312,24 @@ export async function createAdminCategory(category: {
       .single()
 
     if (error) {
-      return { data: null, error: new Error(error.message) }
+      saveLocal(newCat)
+      return { data: newCat, error: null }
     }
 
-    return {
-      data: {
-        id: Number(data.id),
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        displayOrder: data.display_order,
-        productCount: 0,
-      },
-      error: null,
+    const created: AdminCategory = {
+      id: Number(data.id),
+      name: data.name,
+      slug: data.slug,
+      description: data.description,
+      displayOrder: data.display_order,
+      productCount: 0,
     }
+
+    saveLocal(created)
+    return { data: created, error: null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to create category"
-    return { data: null, error: new Error(message) }
+    saveLocal(newCat)
+    return { data: newCat, error: null }
   }
 }
 
@@ -1282,6 +1337,17 @@ export async function updateAdminCategory(
   id: number,
   category: Partial<{ name: string; description: string; displayOrder: number }>,
 ): Promise<{ error: Error | null }> {
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("abaz_custom_categories")
+      let list: AdminCategory[] = raw ? JSON.parse(raw) : []
+      list = list.map((c) => (c.id === id ? { ...c, ...category } : c))
+      localStorage.setItem("abaz_custom_categories", JSON.stringify(list))
+      window.dispatchEvent(new CustomEvent("abaz_categories_updated"))
+      window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
+    } catch {}
+  }
+
   if (!isSupabaseConfigured()) return { error: null }
 
   try {
@@ -1302,6 +1368,21 @@ export async function updateAdminCategory(
 }
 
 export async function deleteAdminCategory(id: number): Promise<{ error: Error | null }> {
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("abaz_custom_categories")
+      if (raw) {
+        const list: AdminCategory[] = JSON.parse(raw)
+        localStorage.setItem(
+          "abaz_custom_categories",
+          JSON.stringify(list.filter((c) => c.id !== id)),
+        )
+      }
+      window.dispatchEvent(new CustomEvent("abaz_categories_updated"))
+      window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
+    } catch {}
+  }
+
   if (!isSupabaseConfigured()) return { error: null }
 
   try {

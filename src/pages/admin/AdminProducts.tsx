@@ -10,11 +10,13 @@ import {
   Sparkles,
 } from "lucide-react"
 import { Badge, Button, Input, Modal, Select, Toast } from "../../components/ui"
-import { categories, Product, products } from "../../data/products"
+import { categories as defaultCategories, Product, products } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
+import { matchCategory } from "../../utils/categoryMatcher"
 import {
   clearAllAdminProducts,
   deleteAdminProduct,
+  getAdminCategories,
   getAdminProducts,
   syncLocalProductsToSupabase,
   updateAdminProduct,
@@ -30,6 +32,7 @@ export default function AdminProducts() {
   const [syncing, setSyncing] = useState(false)
   const [localPendingCount, setLocalPendingCount] = useState(0)
   const [toastMessage, setToastMessage] = useState("")
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([...defaultCategories])
 
   // Quick Edit State
   const [quickEditProduct, setQuickEditProduct] = useState<Product | null>(null)
@@ -76,6 +79,17 @@ export default function AdminProducts() {
       window.removeEventListener("abaz_catalog_updated", handleStockOrOrderUpdate)
       window.removeEventListener("storage", handleStockOrOrderUpdate)
     }
+  }, [])
+
+  // Load dynamic categories from DB
+  useEffect(() => {
+    let mounted = true
+    getAdminCategories().then(({ data }) => {
+      if (mounted && data.length > 0) {
+        setDynamicCategories(data.map((c) => c.name))
+      }
+    })
+    return () => { mounted = false }
   }, [])
 
   const checkPendingLocal = () => {
@@ -215,7 +229,7 @@ export default function AdminProducts() {
 
   const visible = catalog.filter(
     (product) =>
-      (category === "All" || product.category === category) &&
+      (category === "All" || matchCategory(product.category, category)) &&
       `${product.name} ${product.brand}`
         .toLowerCase()
         .includes(search.toLowerCase()),
@@ -290,7 +304,7 @@ export default function AdminProducts() {
             onChange={(event) => setCategory(event.target.value)}
           >
             <option>All</option>
-            {categories.map((item) => (
+            {dynamicCategories.map((item) => (
               <option key={item}>{item}</option>
             ))}
           </Select>
@@ -484,7 +498,7 @@ export default function AdminProducts() {
                     })
                   }
                 >
-                  {categories.map((cat) => (
+                  {dynamicCategories.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
