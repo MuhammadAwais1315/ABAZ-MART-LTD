@@ -251,7 +251,9 @@ h2 { font-size: clamp(2rem, 3vw, 3rem); line-height: 1.1; }
 .empty h2, .empty h1 { font-size: 2rem; margin-bottom: 10px; }
 .empty p { color: var(--muted); margin-bottom: 24px; }
 
-.product-detail { display: grid; grid-template-columns: 1.05fr .95fr; gap: 80px; align-items: center; }
+.product-page { padding-top: 18px; }
+.product-page .breadcrumb { margin-bottom: 18px; }
+.product-detail { display: grid; grid-template-columns: 1.05fr .95fr; gap: 64px; align-items: start; }
 .product-gallery { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; align-items: start; }
 .thumbnail-list { display: grid; gap: 12px; }
 .thumbnail-list .btn { width: 76px; height: 88px; min-height: 0; padding: 6px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: white; display: flex; align-items: center; justify-content: center; }
@@ -808,8 +810,9 @@ td small { color: var(--muted); }
 .not-found-illustration i { width: 72px; height: 72px; display: grid; place-items: center; border-radius: 50%; color: var(--rose); background: var(--blush); }
 .not-found-illustration svg { width: 30px; }
 
-.product-loading-breadcrumb { min-height: 16px; width: 210px; margin-bottom: 44px; }
-.product-loading-grid { display: grid; grid-template-columns: 72px minmax(0, 1.05fr) minmax(320px, .95fr); gap: 16px; }
+.product-loading-page { padding-top: 18px; }
+.product-loading-breadcrumb { min-height: 16px; width: 210px; margin-bottom: 18px; }
+.product-loading-grid { display: grid; grid-template-columns: 72px minmax(0, 1.05fr) minmax(320px, .95fr); gap: 16px; align-items: start; }
 .product-loading-gallery { display: grid; align-content: start; gap: 12px; }
 .product-loading-gallery .skeleton { min-height: 78px; }
 .product-loading-image { min-height: 620px; }
@@ -908,6 +911,8 @@ td small { color: var(--muted); }
   .footer-bottom { padding-block: 20px; flex-direction: column; gap: 16px; }
   .page { padding-block: 32px 72px; }
   .breadcrumb { margin-bottom: 30px; }
+  .product-page { padding-top: 14px; }
+  .product-page .breadcrumb { margin-bottom: 14px; }
   .shop-heading { align-items: stretch; flex-direction: column; }
   .shop-layout { grid-template-columns: 1fr; gap: 28px; }
   .filters { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }

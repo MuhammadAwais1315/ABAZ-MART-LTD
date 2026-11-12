@@ -147,7 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <img src="https://www.abazmart.co.uk/logo-horizontal.png" alt="Abaz Mart" style="height: 38px; width: auto; max-width: 180px; display: block;" />
         </a>
       </header>
-      <nav aria-label="Breadcrumb" style="font-size: 13px; color: #7a686f; margin-bottom: 28px;">
+      <nav aria-label="Breadcrumb" style="font-size: 13px; color: #7a686f; margin-bottom: 16px;">
         <a href="/" style="color: #7a686f; text-decoration: none;">Home</a> /
         <a href="/shop" style="color: #7a686f; text-decoration: none;">Shop</a> /
         <a href="/shop?category=${encodeURIComponent(productCategory)}" style="color: #7a686f; text-decoration: none;">${escapeHtml(productCategory)}</a> /
