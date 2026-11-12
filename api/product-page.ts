@@ -155,11 +155,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       </nav>
 
       <article style="display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start;">
-        <div style="flex: 1 1 420px; max-width: 520px;">
+        <div style="flex: 1 1 420px; max-width: 520px; display: flex; align-items: center; justify-content: center; background: #ffffff; border-radius: 16px; border: 1px solid #efe4e7; box-shadow: 0 4px 24px rgba(43,32,36,0.04); min-height: 480px; padding: 24px;">
           <img
             src="${escapeHtml(productImg)}"
             alt="${escapeHtml(productName)}"
-            style="width: 100%; height: auto; border-radius: 16px; object-fit: cover; box-shadow: 0 4px 24px rgba(43,32,36,0.06); border: 1px solid #efe4e7;"
+            style="max-width: 100%; max-height: 480px; width: auto; height: auto; object-fit: contain;"
           />
         </div>
 
