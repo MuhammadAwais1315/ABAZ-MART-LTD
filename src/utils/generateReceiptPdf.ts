@@ -353,11 +353,17 @@ export function downloadReceiptPdf({
   const itemDescriptionWidth = 96 // Constrained width from x=18 to x=114
 
   items.forEach((item) => {
+    const cleanItemName = (item.name || "")
+      .replace(/ASIN:\s*[A-Z0-9]+\s*\|\s*/gi, "")
+      .replace(/\s*\|\s*ASIN:\s*[A-Z0-9]+/gi, "")
+      .replace(/\(ASIN:\s*[A-Z0-9]+\)/gi, "")
+      .trim()
+
     // Wrap product name into lines fitting within itemDescriptionWidth
     doc.setFont("helvetica", "bold")
     doc.setFontSize(8.5)
     const nameLines: string[] = doc.splitTextToSize(
-      item.name,
+      cleanItemName,
       itemDescriptionWidth,
     )
     const nameHeight = nameLines.length * 3.8

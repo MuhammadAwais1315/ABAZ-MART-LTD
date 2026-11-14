@@ -47,7 +47,7 @@ const WHOLESALE_FALLBACK = {
       order_id: "f8a4b2c0-1126-4d9a-8e2b-7c3d1e5f9a01",
       product_id: null,
       product_name:
-        "Afnan Lynked Freedom Eau de Parfum 100ml (ASIN: B0FW4HMWYF | GTIN: 6290171077428)",
+        "Afnan Lynked Freedom Eau de Parfum 100ml (GTIN: 6290171077428)",
       product_brand: "Afnan",
       product_image:
         "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80",

@@ -474,7 +474,11 @@ export function OrderReceipt({
                 <tr key={`${item.id ?? idx}-${idx}`}>
                   <td className="py-3">
                     <div className="font-semibold text-foreground">
-                      {item.name}
+                      {item.name
+                        ?.replace(/ASIN:\s*[A-Z0-9]+\s*\|\s*/gi, "")
+                        .replace(/\s*\|\s*ASIN:\s*[A-Z0-9]+/gi, "")
+                        .replace(/\(ASIN:\s*[A-Z0-9]+\)/gi, "")
+                        .trim()}
                     </div>
                     <div className="text-[11px] text-muted-foreground">
                       {item.brand ? `${item.brand} · ` : ""}

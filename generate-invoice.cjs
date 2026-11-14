@@ -63,8 +63,8 @@ const LINE_ITEMS = [
   {
     description: "Afnan Lynked Freedom Eau de Parfum 100ml / 3.4 fl oz",
     details: "Luxury EDP Spray for Men & Unisex | Aromatic Spicy Fragrance",
-    sku: "ASIN: B0FW4HMWYF",
-    gtin: "GTIN / EAN: 6290171077428",
+    sku: "GTIN / EAN: 6290171077428",
+    gtin: "EAN-13: 6290171077428",
     quantity: 120,
     unitPrice: 25.0,
   },
@@ -842,7 +842,7 @@ console.log(`\n📋  Summary:`)
 console.log(`    Invoice No:   ${INVOICE.number}`)
 console.log(`    Order No:     ${INVOICE.orderNumber}`)
 console.log(`    Product:      Afnan Lynked Freedom EDP 100ml`)
-console.log(`    Identifiers:  ASIN: B0FW4HMWYF | GTIN: 6290171077428`)
+console.log(`    Identifiers:  GTIN: 6290171077428 | EAN-13: 6290171077428`)
 console.log(`    Quantity:     120 units`)
 console.log(`    Rate:         ${fmtPrice(25.0)} / unit`)
 console.log(`    Total Amount: ${fmtPrice(grandTotal)}`)

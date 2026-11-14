@@ -1001,7 +1001,11 @@ export function mapRawOrderToAdminItem(
       ? o.order_items.map((item: any) => ({
           id: item.id || Math.floor(Math.random() * 100000),
           productId: item.product_id ? Number(item.product_id) : null,
-          productName: item.product_name || "Luxury Beauty Item",
+          productName: (item.product_name || "Luxury Beauty Item")
+            .replace(/ASIN:\s*[A-Z0-9]+\s*\|\s*/gi, "")
+            .replace(/\s*\|\s*ASIN:\s*[A-Z0-9]+/gi, "")
+            .replace(/\(ASIN:\s*[A-Z0-9]+\)/gi, "")
+            .trim(),
           productBrand: item.product_brand || "ABAZ MART",
           productImage:
             item.product_image ||
@@ -1271,7 +1275,7 @@ export async function getAdminOrders(): Promise<{
           id: "whl-item-1",
           productId: null,
           productName:
-            "Afnan Lynked Freedom Eau de Parfum 100ml (ASIN: B0FW4HMWYF | GTIN: 6290171077428)",
+            "Afnan Lynked Freedom Eau de Parfum 100ml (GTIN: 6290171077428)",
           productBrand: "Afnan",
           productImage:
             "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80",

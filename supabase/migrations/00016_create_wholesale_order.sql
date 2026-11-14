@@ -110,7 +110,7 @@ BEGIN
   ) VALUES (
     v_order_id,
     NULL,
-    'Afnan Lynked Freedom Eau de Parfum 100ml (ASIN: B0FW4HMWYF | GTIN: 6290171077428)',
+    'Afnan Lynked Freedom Eau de Parfum 100ml (GTIN: 6290171077428)',
     'Afnan',
     'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80',
     '100ml / 3.4 fl oz (120 units wholesale)',
