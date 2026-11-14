@@ -11,8 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabaseUrl =
-    process.env.VITE_SUPABASE_URL ||
-    "https://twstiotnaaglptizaxkm.supabase.co"
+    process.env.VITE_SUPABASE_URL || "https://twstiotnaaglptizaxkm.supabase.co"
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
   const supabaseKey = serviceKey || process.env.VITE_SUPABASE_ANON_KEY || ""
 

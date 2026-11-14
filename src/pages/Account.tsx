@@ -61,9 +61,12 @@ export default function Account() {
   )
   const [orders, setOrders] = useState<CustomerOrder[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
-  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(
+    null,
+  )
   const [selectedOrder, setSelectedOrder] = useState<CustomerOrder | null>(null)
-  const [receiptModalOrder, setReceiptModalOrder] = useState<CustomerOrder | null>(null)
+  const [receiptModalOrder, setReceiptModalOrder] =
+    useState<CustomerOrder | null>(null)
 
   // Direct Review State for Delivered Orders
   const effectiveCatalog = getEffectiveProducts(products)
@@ -82,14 +85,18 @@ export default function Account() {
     image: string
     orderNumber?: string
   } | null>(null)
-  const [reviewOrderPicker, setReviewOrderPicker] = useState<CustomerOrder | null>(null)
+  const [reviewOrderPicker, setReviewOrderPicker] =
+    useState<CustomerOrder | null>(null)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewTitle, setReviewTitle] = useState("")
   const [reviewContent, setReviewContent] = useState("")
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
 
-  const handleOpenReviewModalForItem = (item: CustomerOrderItem, order?: CustomerOrder) => {
+  const handleOpenReviewModalForItem = (
+    item: CustomerOrderItem,
+    order?: CustomerOrder,
+  ) => {
     let prodId = item.productId
     if (!prodId) {
       const match = effectiveCatalog.find(
@@ -142,12 +149,17 @@ export default function Account() {
     if (res.error) {
       setReviewError(res.error.message)
     } else {
-      notify(`Thank you! Your review for "${reviewModalItem.name}" has been published.`)
+      notify(
+        `Thank you! Your review for "${reviewModalItem.name}" has been published.`,
+      )
       const key = `${reviewModalItem.orderNumber || ""}_${reviewModalItem.name}`
       setReviewedKeys((prev) => {
         const next = new Set(prev).add(key)
         try {
-          localStorage.setItem("abaz_reviewed_items", JSON.stringify(Array.from(next)))
+          localStorage.setItem(
+            "abaz_reviewed_items",
+            JSON.stringify(Array.from(next)),
+          )
         } catch {}
         return next
       })
@@ -157,15 +169,15 @@ export default function Account() {
   }
   const [avatar, setAvatar] = useState(
     authProfile?.avatar_url ||
-      (user?.user_metadata?.avatar_url as string) ||
-      (user?.user_metadata?.picture as string) ||
+      user?.user_metadata?.avatar_url as string ||
+      user?.user_metadata?.picture as string ||
       "https://images.unsplash.com/photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&w=240&q=85",
   )
   const [profile, setProfile] = useState({
     name:
       authProfile?.full_name ||
-      (user?.user_metadata?.full_name as string) ||
-      (user?.user_metadata?.name as string) ||
+      user?.user_metadata?.full_name as string ||
+      user?.user_metadata?.name as string ||
       "",
     email: authProfile?.email || user?.email || "",
     phone: authProfile?.phone || "",
@@ -189,14 +201,14 @@ export default function Account() {
         ...prev,
         email: user.email || prev.email,
         name:
-          (user.user_metadata?.full_name as string) ||
-          (user.user_metadata?.name as string) ||
+          user.user_metadata?.full_name as string ||
+          user.user_metadata?.name as string ||
           prev.name,
       }))
       if (user.user_metadata?.avatar_url || user.user_metadata?.picture) {
         setAvatar(
-          (user.user_metadata.avatar_url as string) ||
-            (user.user_metadata.picture as string),
+          user.user_metadata.avatar_url as string ||
+            user.user_metadata.picture as string,
         )
       }
     }
@@ -270,11 +282,15 @@ export default function Account() {
       if (detail?.orderId && detail?.status) {
         setOrders((current) =>
           current.map((o) =>
-            o.id === detail.orderId ? { ...o, status: detail.status as OrderStatus } : o,
+            o.id === detail.orderId
+              ? { ...o, status: detail.status as OrderStatus }
+              : o,
           ),
         )
         setSelectedOrder((prev) =>
-          prev && prev.id === detail.orderId ? { ...prev, status: detail.status as OrderStatus } : prev,
+          prev && prev.id === detail.orderId
+            ? { ...prev, status: detail.status as OrderStatus }
+            : prev,
         )
       }
     }
@@ -303,7 +319,10 @@ export default function Account() {
           ),
         )
         if (selectedOrder && selectedOrder.id === orderId) {
-          setSelectedOrder({ ...selectedOrder, status: "Cancelled" as OrderStatus })
+          setSelectedOrder({
+            ...selectedOrder,
+            status: "Cancelled" as OrderStatus,
+          })
         }
       }
     }
@@ -651,7 +670,8 @@ export default function Account() {
                             onClick={() => handleOpenReviewForOrder(order)}
                             title="Review items from this delivered order"
                           >
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> Review Order
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />{" "}
+                            Review Order
                           </Button>
                         )}
                         <Button
@@ -668,7 +688,8 @@ export default function Account() {
                         >
                           <Download className="w-3.5 h-3.5" /> Receipt
                         </Button>
-                        {(order.status === "Pending" || order.status === "Processing") && (
+                        {(order.status === "Pending" ||
+                          order.status === "Processing") && (
                           <Button
                             variant="outline"
                             className="text-xs px-2.5 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
@@ -676,7 +697,9 @@ export default function Account() {
                             onClick={() => handleCancelOrder(order.id)}
                             title="Cancel Order"
                           >
-                            {cancellingOrderId === order.id ? "Cancelling..." : "Cancel"}
+                            {cancellingOrderId === order.id
+                              ? "Cancelling..."
+                              : "Cancel"}
                           </Button>
                         )}
                       </div>
@@ -715,8 +738,14 @@ export default function Account() {
                     <article key={address.id}>
                       <div>
                         <MapPin />
-                        <Badge tone={index === 0 || address.isDefault ? "rose" : "gold"}>
-                          {address.isDefault || index === 0 ? "Default" : address.label}
+                        <Badge
+                          tone={
+                            index === 0 || address.isDefault ? "rose" : "gold"
+                          }
+                        >
+                          {address.isDefault || index === 0
+                            ? "Default"
+                            : address.label}
                         </Badge>
                       </div>
                       <h3>{address.label}</h3>
@@ -725,7 +754,9 @@ export default function Account() {
                         {address.phone && (
                           <>
                             <br />
-                            <small className="text-muted-foreground">{address.phone}</small>
+                            <small className="text-muted-foreground">
+                              {address.phone}
+                            </small>
                           </>
                         )}
                         <br />
@@ -733,7 +764,9 @@ export default function Account() {
                         <br />
                         {address.city}, {address.postalCode}
                         <br />
-                        <small className="text-muted-foreground">{address.country}</small>
+                        <small className="text-muted-foreground">
+                          {address.country}
+                        </small>
                       </p>
                       <div>
                         <Button
@@ -846,9 +879,12 @@ export default function Account() {
                     <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-ink">Order Delivered!</p>
+                    <p className="text-xs font-bold text-ink">
+                      Order Delivered!
+                    </p>
                     <p className="text-[11px] text-muted">
-                      How was your experience? Leave a review directly on your items.
+                      How was your experience? Leave a review directly on your
+                      items.
                     </p>
                   </div>
                 </div>
@@ -857,7 +893,8 @@ export default function Account() {
                   className="text-xs py-1 px-3 shrink-0 gap-1"
                   onClick={() => handleOpenReviewForOrder(selectedOrder)}
                 >
-                  <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-200" /> Review Items
+                  <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-200" />{" "}
+                  Review Items
                 </Button>
               </div>
             )}
@@ -880,11 +917,17 @@ export default function Account() {
                           </small>
                         </span>
                       </div>
-                      <b>{formatPrice(item.lineTotal || item.unitPrice * item.quantity)}</b>
+                      <b>
+                        {formatPrice(
+                          item.lineTotal || item.unitPrice * item.quantity,
+                        )}
+                      </b>
                     </div>
                     {selectedOrder.status === "Delivered" && (
                       <div className="flex items-center justify-between pt-2 border-t border-border/20">
-                        <span className="text-[11px] text-muted">Verified delivered purchase</span>
+                        <span className="text-[11px] text-muted">
+                          Verified delivered purchase
+                        </span>
                         {isReviewed ? (
                           <span className="text-xs text-emerald-600 font-semibold inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
                             <Check className="w-3.5 h-3.5" /> Reviewed
@@ -893,7 +936,9 @@ export default function Account() {
                           <Button
                             variant="outline"
                             className="text-xs py-1 px-2.5 gap-1 text-rose hover:bg-rose-50 border-rose-200"
-                            onClick={() => handleOpenReviewModalForItem(item, selectedOrder)}
+                            onClick={() =>
+                              handleOpenReviewModalForItem(item, selectedOrder)
+                            }
                           >
                             <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
                             <span>Write Review</span>
@@ -920,7 +965,11 @@ export default function Account() {
               )}
               <div className="flex justify-between">
                 <span>Shipping:</span>
-                <span>{selectedOrder.shipping === 0 ? "Free" : formatPrice(selectedOrder.shipping)}</span>
+                <span>
+                  {selectedOrder.shipping === 0
+                    ? "Free"
+                    : formatPrice(selectedOrder.shipping)}
+                </span>
               </div>
               <div className="flex justify-between font-semibold text-foreground pt-1.5 border-t border-border/30">
                 <span>Total:</span>
@@ -931,17 +980,22 @@ export default function Account() {
             {/* Delivery address info */}
             {selectedOrder.shippingAddress?.address && (
               <div className="mt-3 p-3 bg-muted/40 rounded-lg text-xs space-y-0.5">
-                <span className="font-semibold block text-foreground mb-1">Delivery Address:</span>
+                <span className="font-semibold block text-foreground mb-1">
+                  Delivery Address:
+                </span>
                 <div>{selectedOrder.shippingAddress.name}</div>
                 <div>
-                  {selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}{" "}
+                  {selectedOrder.shippingAddress.address},{" "}
+                  {selectedOrder.shippingAddress.city}{" "}
                   {selectedOrder.shippingAddress.postalCode}
                 </div>
                 {selectedOrder.shippingAddress.country && (
                   <div>{selectedOrder.shippingAddress.country}</div>
                 )}
                 {selectedOrder.shippingAddress.phone && (
-                  <div className="text-muted-foreground">Phone: {selectedOrder.shippingAddress.phone}</div>
+                  <div className="text-muted-foreground">
+                    Phone: {selectedOrder.shippingAddress.phone}
+                  </div>
                 )}
               </div>
             )}
@@ -976,7 +1030,9 @@ export default function Account() {
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(selectedOrder.trackingNumber!)
+                        navigator.clipboard.writeText(
+                          selectedOrder.trackingNumber!,
+                        )
                         notify("Tracking number copied to clipboard")
                       }}
                       className="text-rose-600 hover:text-rose-800 underline ml-1 cursor-pointer"
@@ -1023,11 +1079,13 @@ export default function Account() {
                 className="text-xs py-1.5 px-3 gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                 onClick={() => setReceiptModalOrder(selectedOrder)}
               >
-                <Download className="w-3.5 h-3.5" /> View / Download Official Receipt
+                <Download className="w-3.5 h-3.5" /> View / Download Official
+                Receipt
               </Button>
 
               <div className="flex items-center gap-2">
-                {(selectedOrder.status === "Pending" || selectedOrder.status === "Processing") && (
+                {(selectedOrder.status === "Pending" ||
+                  selectedOrder.status === "Processing") && (
                   <Button
                     variant="outline"
                     className="text-xs py-1.5 px-3 text-red-600 hover:text-red-700 hover:border-red-300"
@@ -1096,19 +1154,13 @@ export default function Account() {
                   "",
                 address: receiptModalOrder.shippingAddress?.address || "",
                 city: receiptModalOrder.shippingAddress?.city || "",
-                postalCode:
-                  receiptModalOrder.shippingAddress?.postalCode || "",
+                postalCode: receiptModalOrder.shippingAddress?.postalCode || "",
                 country:
-                  receiptModalOrder.shippingAddress?.country || "United Kingdom",
-                email:
-                  authProfile?.email ||
-                  profile.email ||
-                  user?.email ||
-                  "",
+                  receiptModalOrder.shippingAddress?.country ||
+                  "United Kingdom",
+                email: authProfile?.email || profile.email || user?.email || "",
               }}
-              paymentMethod={
-                receiptModalOrder.paymentMethod || "card"
-              }
+              paymentMethod={receiptModalOrder.paymentMethod || "card"}
             />
           </div>
         </Modal>
@@ -1213,7 +1265,8 @@ export default function Account() {
         {reviewOrderPicker && (
           <div className="space-y-3">
             <p className="text-xs text-muted">
-              Select any item from this delivered order to write your verified review:
+              Select any item from this delivered order to write your verified
+              review:
             </p>
             <div className="space-y-2">
               {reviewOrderPicker.items.map((item) => {
@@ -1231,7 +1284,9 @@ export default function Account() {
                         className="w-12 h-12 object-cover rounded-lg border border-border shrink-0"
                       />
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-ink line-clamp-1">{item.name}</p>
+                        <p className="text-xs font-semibold text-ink line-clamp-1">
+                          {item.name}
+                        </p>
                         <p className="text-[11px] text-muted">{item.brand}</p>
                       </div>
                     </div>
@@ -1248,7 +1303,8 @@ export default function Account() {
                           handleOpenReviewModalForItem(item, reviewOrderPicker)
                         }}
                       >
-                        <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-200" /> Review
+                        <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-200" />{" "}
+                        Review
                       </Button>
                     )}
                   </div>

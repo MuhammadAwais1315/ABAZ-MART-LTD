@@ -15,8 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabaseUrl =
-    process.env.VITE_SUPABASE_URL ||
-    "https://twstiotnaaglptizaxkm.supabase.co"
+    process.env.VITE_SUPABASE_URL || "https://twstiotnaaglptizaxkm.supabase.co"
   // Prefer service_role key to bypass RLS for admin endpoints, fallback to anon key
   const supabaseKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -24,7 +23,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ""
 
   if (!supabaseKey || supabaseKey.includes("placeholder")) {
-    res.status(200).json({ customers: [], error: "Supabase key not configured" })
+    res
+      .status(200)
+      .json({ customers: [], error: "Supabase key not configured" })
     return
   }
 
@@ -34,7 +35,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
     // 1. First attempt to call the RPC if available
-    const { data: rpcData, error: rpcErr } = await supabase.rpc("get_all_customers_admin")
+    const { data: rpcData, error: rpcErr } = await supabase.rpc(
+      "get_all_customers_admin",
+    )
     if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
       return res.status(200).json({ customers: rpcData, source: "rpc" })
     }
@@ -49,7 +52,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const mapped = profiles.map((p) => ({
         id: p.id,
         email: p.email,
-        full_name: p.full_name || (p.email ? p.email.split("@")[0] : "Customer"),
+        full_name:
+          p.full_name || (p.email ? p.email.split("@")[0] : "Customer"),
         phone: p.phone,
         avatar_url: p.avatar_url,
         role: p.role,
@@ -69,19 +73,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const mapped = simpleProfiles.map((p) => ({
         id: p.id,
         email: p.email,
-        full_name: p.full_name || (p.email ? p.email.split("@")[0] : "Customer"),
+        full_name:
+          p.full_name || (p.email ? p.email.split("@")[0] : "Customer"),
         phone: p.phone,
         avatar_url: p.avatar_url,
         role: p.role,
         created_at: p.created_at,
         orders_count: 0,
       }))
-      return res.status(200).json({ customers: mapped, source: "simple_profiles" })
+      return res
+        .status(200)
+        .json({ customers: mapped, source: "simple_profiles" })
     }
 
     res.status(200).json({
       customers: [],
-      error: profErr ? profErr.message : simpleErr ? simpleErr.message : "No profiles found",
+      error: profErr
+        ? profErr.message
+        : simpleErr
+          ? simpleErr.message
+          : "No profiles found",
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error"

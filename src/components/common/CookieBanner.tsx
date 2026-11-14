@@ -43,10 +43,16 @@ export default function CookieBanner() {
             Your Privacy & Cookies
           </p>
           <p className="text-muted-foreground leading-relaxed">
-            We use essential cookies to power your cart and secure checkout, and optional analytics to tailor your luxury shopping experience. Learn more in our{" "}
-            <Link to="/privacy" className="text-rose-600 hover:underline font-medium">
+            We use essential cookies to power your cart and secure checkout, and
+            optional analytics to tailor your luxury shopping experience. Learn
+            more in our{" "}
+            <Link
+              to="/privacy"
+              className="text-rose-600 hover:underline font-medium"
+            >
               Privacy Policy
-            </Link>.
+            </Link>
+            .
           </p>
           <div className="flex items-center gap-2 pt-2">
             <Button

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react"
-import { ArrowRight, Check, Minus, Plus, ShoppingBag, Sparkles, Trash2 } from "lucide-react"
+import {
+  ArrowRight,
+  Check,
+  Minus,
+  Plus,
+  ShoppingBag,
+  Sparkles,
+  Trash2,
+} from "lucide-react"
 import { Link } from "react-router"
 import { Breadcrumb, Button, Input } from "../components/ui"
 import { CartItem, useStore } from "../context/StoreContext"
@@ -27,7 +35,9 @@ export function OrderSummary({
   })
   const [promoError, setPromoError] = useState<string | null>(null)
   const [validatingPromo, setValidatingPromo] = useState(false)
-  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
+  const [settings, setSettings] = useState<StoreSettings>(
+    DEFAULT_STORE_SETTINGS,
+  )
 
   useEffect(() => {
     const loadSettings = () => {

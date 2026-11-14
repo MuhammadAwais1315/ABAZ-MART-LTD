@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react"
 import { Shield, ShieldAlert, User, Search, RefreshCw } from "lucide-react"
 import { Badge, Button, Input } from "../../components/ui"
-import { AdminCustomer, getAdminCustomers, updateCustomerRole } from "../../services/admin"
+import {
+  AdminCustomer,
+  getAdminCustomers,
+  updateCustomerRole,
+} from "../../services/admin"
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<AdminCustomer[]>([])
@@ -28,9 +32,14 @@ export default function AdminCustomers() {
 
   const handleRoleToggle = async (customer: AdminCustomer) => {
     const newRole = customer.role === "admin" ? "customer" : "admin"
-    const actionLabel = newRole === "admin" ? "promote to Administrator" : "demote to Customer"
+    const actionLabel =
+      newRole === "admin" ? "promote to Administrator" : "demote to Customer"
 
-    if (window.confirm(`Are you sure you want to ${actionLabel} for "${customer.email}"?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to ${actionLabel} for "${customer.email}"?`,
+      )
+    ) {
       setUpdatingId(customer.id)
       const { error } = await updateCustomerRole(customer.id, newRole)
       setUpdatingId(null)
@@ -38,7 +47,9 @@ export default function AdminCustomers() {
         alert(`Failed to update role: ${error.message}`)
       } else {
         setCustomers((current) =>
-          current.map((c) => (c.id === customer.id ? { ...c, role: newRole } : c)),
+          current.map((c) =>
+            c.id === customer.id ? { ...c, role: newRole } : c,
+          ),
         )
       }
     }
@@ -56,7 +67,10 @@ export default function AdminCustomers() {
         <div>
           <p className="eyebrow">Accounts</p>
           <h1>Customers</h1>
-          <p>View registered clientele, account activity, and administrative roles.</p>
+          <p>
+            View registered clientele, account activity, and administrative
+            roles.
+          </p>
         </div>
       </div>
 
@@ -77,7 +91,11 @@ export default function AdminCustomers() {
               disabled={loading}
               className="text-xs flex items-center gap-1.5 py-1 px-2.5"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-rose-600" : ""}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${
+                  loading ? "animate-spin text-rose-600" : ""
+                }`}
+              />
               Refresh
             </Button>
           </div>
@@ -99,13 +117,19 @@ export default function AdminCustomers() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <td
+                    colSpan={7}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     Loading customer profiles...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <td
+                    colSpan={7}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No customers found matching your search.
                   </td>
                 </tr>
@@ -115,13 +139,17 @@ export default function AdminCustomers() {
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-blush text-rose-700 flex items-center justify-center font-bold text-xs uppercase">
-                          {cust.fullName.charAt(0) || <User className="w-4 h-4" />}
+                          {cust.fullName.charAt(0) || (
+                            <User className="w-4 h-4" />
+                          )}
                         </div>
                         <strong>{cust.fullName}</strong>
                       </div>
                     </td>
                     <td>
-                      <span className="text-xs text-muted-foreground">{cust.email}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {cust.email}
+                      </span>
                     </td>
                     <td>
                       <span className="text-xs text-muted-foreground">
@@ -134,10 +162,14 @@ export default function AdminCustomers() {
                       </Badge>
                     </td>
                     <td>
-                      <span className="text-xs text-muted-foreground">{cust.createdAt}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {cust.createdAt}
+                      </span>
                     </td>
                     <td>
-                      <span className="text-xs font-semibold">{cust.ordersCount}</span>
+                      <span className="text-xs font-semibold">
+                        {cust.ordersCount}
+                      </span>
                     </td>
                     <td>
                       <Button
@@ -148,11 +180,13 @@ export default function AdminCustomers() {
                       >
                         {cust.role === "admin" ? (
                           <>
-                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" /> Demote to Customer
+                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />{" "}
+                            Demote to Customer
                           </>
                         ) : (
                           <>
-                            <Shield className="w-3.5 h-3.5 text-emerald-600" /> Promote to Admin
+                            <Shield className="w-3.5 h-3.5 text-emerald-600" />{" "}
+                            Promote to Admin
                           </>
                         )}
                       </Button>

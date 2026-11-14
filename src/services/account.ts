@@ -63,7 +63,7 @@ export interface AddressItem {
  */
 export async function getCustomerOrders(
   userId: string,
-): Promise<{ data: CustomerOrder[]; error: Error | null }> {
+): Promise<{ data: CustomerOrder[] error: Error | null }> {
   if (!isSupabaseConfigured()) {
     return { data: getFallbackOrders(), error: null }
   }
@@ -81,7 +81,10 @@ export async function getCustomerOrders(
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.warn("Failed to fetch customer orders from Supabase:", error.message)
+      console.warn(
+        "Failed to fetch customer orders from Supabase:",
+        error.message,
+      )
     }
 
     const fetchedRows = data || []
@@ -95,13 +98,15 @@ export async function getCustomerOrders(
 
       let orderStatus = o.status
       if (typeof window !== "undefined") {
-        const localStatus = localStorage.getItem(`abaz_order_status_${o.id}`) as OrderStatus | null
+        const localStatus = localStorage.getItem(
+          `abaz_order_status_${o.id}`,
+        ) as OrderStatus | null
         if (localStatus) {
           orderStatus = localStatus
         }
       }
 
-      const rawItems = (o.order_items as OrderItemRow[]) || []
+      const rawItems = o.order_items as OrderItemRow[] || []
       const items: CustomerOrderItem[] = rawItems.map((item) => ({
         id: Number(item.id),
         productId: item.product_id ? Number(item.product_id) : null,
@@ -121,7 +126,9 @@ export async function getCustomerOrders(
 
       if (typeof window !== "undefined") {
         try {
-          const rawTracking = localStorage.getItem(`abaz_order_tracking_${o.id}`)
+          const rawTracking = localStorage.getItem(
+            `abaz_order_tracking_${o.id}`,
+          )
           if (rawTracking) {
             const parsedTracking = JSON.parse(rawTracking)
             carrier = parsedTracking.carrier || carrier
@@ -142,7 +149,7 @@ export async function getCustomerOrders(
         tax: Number(o.tax),
         discount: Number(o.discount),
         total: Number(o.total),
-        paymentMethod: (o.payment_method as PaymentMethod) || "card",
+        paymentMethod: o.payment_method as PaymentMethod || "card",
         carrier,
         trackingNumber,
         trackingUrl,
@@ -166,7 +173,9 @@ export async function getCustomerOrders(
         if (localRaw) {
           const localList = JSON.parse(localRaw)
           if (Array.isArray(localList)) {
-            const existingIds = new Set(mapped.map((m) => String(m.id).toLowerCase()))
+            const existingIds = new Set(
+              mapped.map((m) => String(m.id).toLowerCase()),
+            )
             for (const item of localList) {
               if (
                 item.id &&
@@ -176,18 +185,20 @@ export async function getCustomerOrders(
                 mapped.push({
                   id: item.id,
                   number: item.order_number,
-                  date: new Date(item.created_at || Date.now()).toLocaleDateString("en-GB", {
+                  date: new Date(
+                    item.created_at || Date.now(),
+                  ).toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "long",
                     year: "numeric",
                   }),
-                  status: (item.status as OrderStatus) || "Pending",
+                  status: item.status as OrderStatus || "Pending",
                   subtotal: Number(item.subtotal) || 0,
                   shipping: Number(item.shipping) || 0,
                   tax: Number(item.tax) || 0,
                   discount: Number(item.discount) || 0,
                   total: Number(item.total) || 0,
-                  paymentMethod: (item.payment_method as PaymentMethod) || "card",
+                  paymentMethod: item.payment_method as PaymentMethod || "card",
                   carrier: item.carrier,
                   trackingNumber: item.tracking_number,
                   trackingUrl: item.tracking_url,
@@ -198,7 +209,9 @@ export async function getCustomerOrders(
                         productId: it.product_id ? Number(it.product_id) : null,
                         name: it.product_name || "Signature Skincare Order",
                         brand: it.product_brand || "ABAZ MART",
-                        image: it.product_image || "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
+                        image:
+                          it.product_image ||
+                          "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=400&q=80",
                         option: it.selected_option || "Standard",
                         unitPrice: Number(it.unit_price) || 0,
                         quantity: Number(it.quantity) || 1,
@@ -228,14 +241,15 @@ export async function getCustomerOrders(
   }
 }
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * Cancel an order safely with local resilience and database syncing.
  */
 export async function cancelOrder(
   orderId: string,
-): Promise<{ success: boolean; error: Error | null }> {
+): Promise<{ success: boolean error: Error | null }> {
   // Always record cancellation locally so it immediately takes effect and persists
   if (typeof window !== "undefined") {
     try {
@@ -270,7 +284,10 @@ export async function cancelOrder(
       .eq("id", orderId)
 
     if (updateError) {
-      console.warn("Direct DB order cancel error (persisted locally):", updateError.message)
+      console.warn(
+        "Direct DB order cancel error (persisted locally):",
+        updateError.message,
+      )
     }
 
     return { success: true, error: null }
@@ -285,7 +302,7 @@ export async function cancelOrder(
  */
 export async function getCustomerAddresses(
   userId: string,
-): Promise<{ data: AddressItem[]; error: Error | null }> {
+): Promise<{ data: AddressItem[] error: Error | null }> {
   if (!isSupabaseConfigured()) {
     return { data: getFallbackAddresses(), error: null }
   }
@@ -327,7 +344,7 @@ export async function getCustomerAddresses(
 export async function addCustomerAddress(
   userId: string,
   address: Omit<AddressItem, "id">,
-): Promise<{ data: AddressItem | null; error: Error | null }> {
+): Promise<{ data: AddressItem | null error: Error | null }> {
   if (!isSupabaseConfigured()) {
     return {
       data: { id: Date.now(), ...address },
@@ -408,7 +425,8 @@ export async function updateCustomerAddress(
 
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update address"
+    const message =
+      err instanceof Error ? err.message : "Failed to update address"
     return { error: new Error(message) }
   }
 }
@@ -431,7 +449,8 @@ export async function deleteCustomerAddress(
 
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete address"
+    const message =
+      err instanceof Error ? err.message : "Failed to delete address"
     return { error: new Error(message) }
   }
 }

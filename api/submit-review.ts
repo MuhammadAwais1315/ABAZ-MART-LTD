@@ -20,7 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
+    const body =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
     const { productId, rating, title, content, reviewerName, userId } = body
 
     if (!productId || !rating || !title || !content) {
@@ -63,7 +64,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!finalUserId) {
-      res.status(401).json({ error: "You must be signed in to submit a review" })
+      res
+        .status(401)
+        .json({ error: "You must be signed in to submit a review" })
       return
     }
 
@@ -90,14 +93,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq("user_id", finalUserId)
         .neq("status", "Cancelled")
 
-      const isBuyer = Array.isArray(buyerOrders) && buyerOrders.some((ord: any) =>
-        Array.isArray(ord.order_items) &&
-        ord.order_items.some((it: any) => Number(it.product_id) === Number(productId))
-      )
+      const isBuyer =
+        Array.isArray(buyerOrders) &&
+        buyerOrders.some(
+          (ord: any) =>
+            Array.isArray(ord.order_items) &&
+            ord.order_items.some(
+              (it: any) => Number(it.product_id) === Number(productId),
+            ),
+        )
 
       if (!isBuyer) {
         res.status(403).json({
-          error: "Verified buyers only: You can only review products you have purchased.",
+          error:
+            "Verified buyers only: You can only review products you have purchased.",
         })
         return
       }
@@ -152,7 +161,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq("product_id", prodIdNum)
 
       if (allReviews && allReviews.length > 0) {
-        const sum = allReviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0)
+        const sum = allReviews.reduce(
+          (acc, r) => acc + (Number(r.rating) || 5),
+          0,
+        )
         const avg = Math.round((sum / allReviews.length) * 10) / 10
         await supabase
           .from("products")
@@ -166,7 +178,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({ success: true, data: savedReview })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to submit review"
+    const message =
+      err instanceof Error ? err.message : "Failed to submit review"
     res.status(500).json({ error: message })
   }
 }

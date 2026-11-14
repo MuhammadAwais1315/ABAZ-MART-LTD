@@ -15,7 +15,8 @@ export default function AuthPage({
   const [searchParams] = useSearchParams()
   const redirectTarget = searchParams.get("redirect") || "/account"
   const { notify } = useStore()
-  const { user, loading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth()
+  const { user, loading, signIn, signUp, signInWithGoogle, resetPassword } =
+    useAuth()
 
   const isRegister = mode === "register"
   const isForgot = mode === "forgot"
@@ -88,11 +89,7 @@ export default function AuthPage({
       }
 
       if (isRegister) {
-        const { error } = await signUp(
-          form.email,
-          form.password,
-          form.fullName,
-        )
+        const { error } = await signUp(form.email, form.password, form.fullName)
         if (error) {
           setAuthError(error.message)
           notify(error.message)
@@ -114,7 +111,8 @@ export default function AuthPage({
         navigate(redirectTarget)
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Authentication error"
+      const message =
+        err instanceof Error ? err.message : "Authentication error"
       setAuthError(message)
     } finally {
       setSubmitting(false)
@@ -206,7 +204,11 @@ export default function AuthPage({
           alt="Premium skincare products arranged in a serene beauty setting"
         />
         <div>
-          <Link to="/" className="logo-brand block mb-6" aria-label="Abaz Mart Home">
+          <Link
+            to="/"
+            className="logo-brand block mb-6"
+            aria-label="Abaz Mart Home"
+          >
             <img
               src="/logo-horizontal-light.png"
               alt="Abaz Mart"
@@ -222,7 +224,11 @@ export default function AuthPage({
       </section>
       <section className="auth-form-panel">
         <div className="auth-card">
-          <Link to="/" className="logo-brand block mb-6" aria-label="Abaz Mart Home">
+          <Link
+            to="/"
+            className="logo-brand block mb-6"
+            aria-label="Abaz Mart Home"
+          >
             <img
               src="/logo-horizontal.png"
               alt="Abaz Mart"
