@@ -300,6 +300,7 @@ export async function getAdminProducts(): Promise<{
     const mapped: Product[] = data.map((item) => ({
       id: Number(item.id),
       name: item.name,
+      slug: item.slug || undefined,
       brand: item.brand,
       category: item.category_name as Product["category"],
       price: Number(item.price),

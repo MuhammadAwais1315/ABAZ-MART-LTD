@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Database } from "../types/database"
 import { matchCategory } from "../utils/categoryMatcher"
+import { slugify, getProductSlug } from "../utils/slugify"
 import {
   categories as defaultCategories,
   Product,
@@ -41,6 +42,7 @@ export function mapDbProductToProduct(row: ProductRow): Product {
   return {
     id: Number(row.id),
     name: row.name,
+    slug: row.slug || undefined,
     brand: row.brand,
     category: row.category_name as Product["category"],
     price: Number(row.price),
@@ -254,13 +256,20 @@ export async function getProductById(
     return { data: null, error: new Error("Product no longer available") }
   }
 
+  const rawKey = String(idOrSlug).trim()
+  const lowerKey = rawKey.toLowerCase()
+  const isNumeric = !Number.isNaN(Number(rawKey)) && /^\d+$/.test(rawKey)
+  const numericId = isNumeric ? Number(rawKey) : NaN
+
   const effectiveFallback = getEffectiveProducts(defaultProducts)
   const findInFallback = () =>
-    effectiveFallback.find(
-      (p) =>
-        p.id === Number(idOrSlug) ||
-        p.name.toLowerCase().replace(/\s+/g, "-") === String(idOrSlug).toLowerCase(),
-    ) || null
+    effectiveFallback.find((p) => {
+      if (isNumeric && p.id === numericId) return true
+      if (p.slug && p.slug.toLowerCase() === lowerKey) return true
+      if (slugify(p.name) === lowerKey) return true
+      if (p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === lowerKey) return true
+      return false
+    }) || null
 
   if (!isSupabaseConfigured()) {
     const found = findInFallback()
@@ -268,24 +277,69 @@ export async function getProductById(
   }
 
   try {
-    const isNumeric = !Number.isNaN(Number(idOrSlug))
-    const query = supabase
-      .from("products")
-      .select("*")
-      .eq("is_active", true)
+    let productRow: any = null
 
-    const finalQuery = isNumeric
-      ? query.eq("id", Number(idOrSlug))
-      : query.eq("slug", String(idOrSlug))
+    if (isNumeric) {
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .eq("id", numericId)
+        .maybeSingle()
+      if (data) {
+        productRow = data
+      }
+    }
 
-    const { data, error } = await finalQuery.maybeSingle()
+    if (!productRow) {
+      // 1. Try exact slug match
+      const { data: exactSlugData } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .eq("slug", rawKey)
+        .maybeSingle()
 
-    if (error || !data) {
+      if (exactSlugData) {
+        productRow = exactSlugData
+      }
+    }
+
+    if (!productRow) {
+      // 2. Try slug prefix match (handles cases where a slug had an admin timestamp suffix)
+      const { data: prefixSlugData } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .ilike("slug", `${rawKey}%`)
+        .maybeSingle()
+
+      if (prefixSlugData) {
+        productRow = prefixSlugData
+      }
+    }
+
+    if (!productRow) {
+      // 3. Try matching product name
+      const nameGuess = rawKey.replace(/-/g, " ")
+      const { data: nameData } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .ilike("name", `%${nameGuess}%`)
+        .maybeSingle()
+
+      if (nameData) {
+        productRow = nameData
+      }
+    }
+
+    if (!productRow) {
       const fallback = findInFallback()
       return { data: fallback, error: null }
     }
 
-    const mapped = mapDbProductToProduct(data)
+    const mapped = mapDbProductToProduct(productRow)
     const [effective] = getEffectiveProducts([mapped])
     return { data: effective || null, error: null }
   } catch (err) {
@@ -358,27 +412,54 @@ export async function getCategories(): Promise<string[]> {
 }
 
 /**
- * Fetch all unique brands from Supabase (or fallback).
+ * Fetch unique brands of active products currently listed in the catalog.
+ * Optionally filtered by category so only brands present in that category are returned.
  */
-export async function getBrands(): Promise<string[]> {
-  const fallback = Array.from(new Set(getEffectiveProducts(defaultProducts).map((p) => p.brand))).sort()
+export async function getBrands(category?: string): Promise<string[]> {
+  let fallback = getEffectiveProducts(defaultProducts)
+  if (category && category !== "All") {
+    fallback = fallback.filter((p) => matchCategory(p.category, category))
+  }
+  const fallbackBrands = Array.from(
+    new Set(fallback.map((p) => p.brand?.trim()).filter((b): b is string => Boolean(b))),
+  ).sort((a, b) => a.localeCompare(b))
+
   if (!isSupabaseConfigured()) {
-    return fallback
+    return fallbackBrands
   }
 
   try {
-    const { data, error } = await supabase
-      .from("brands")
-      .select("name")
-      .order("name", { ascending: true })
+    let query = supabase
+      .from("products")
+      .select("brand")
+      .eq("is_active", true)
 
-    if (error || !data || data.length === 0) {
-      return fallback
+    if (category && category !== "All") {
+      const catTrim = category.trim()
+      if (/\b(fragran|perfum|parfum)\w*\b/i.test(catTrim)) {
+        query = query.or("category_name.ilike.%fragran%,category_name.ilike.%perfum%")
+      } else {
+        query = query.or(`category_name.ilike.%${catTrim}%,category_name.ilike.${catTrim}`)
+      }
     }
 
-    return data.map((b) => b.name)
+    const { data, error } = await query
+
+    if (error || !data || data.length === 0) {
+      return fallbackBrands
+    }
+
+    const unique = Array.from(
+      new Set(
+        data
+          .map((row: { brand: string }) => row.brand?.trim())
+          .filter((b: string): b is string => Boolean(b)),
+      ),
+    ).sort((a, b) => a.localeCompare(b))
+
+    return unique.length > 0 ? unique : fallbackBrands
   } catch {
-    return fallback
+    return fallbackBrands
   }
 }
 

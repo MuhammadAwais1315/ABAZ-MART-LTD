@@ -4,6 +4,7 @@ import { Link } from "react-router"
 import { Breadcrumb, Button, Input } from "../components/ui"
 import { CartItem, useStore } from "../context/StoreContext"
 import { formatPrice } from "../utils/formatPrice"
+import { getProductUrl } from "../utils/slugify"
 import {
   DEFAULT_STORE_SETTINGS,
   getStoreSettings,
@@ -178,7 +179,7 @@ export default function Cart() {
                   <img src={item.product.image} alt={item.product.name} />
                   <div className="cart-copy">
                     <p className="eyebrow">{item.product.brand}</p>
-                    <Link to={`/product/${item.product.id}`}>
+                    <Link to={getProductUrl(item.product)}>
                       {item.product.name}
                     </Link>
                     <small>{item.option}</small>

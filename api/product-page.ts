@@ -16,6 +16,18 @@ function escapeJson(str: string): string {
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")
 }
 
+function slugify(text: string): string {
+  if (!text) return ""
+  return text
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&+/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS & caching headers (revalidate product pages every 60 seconds)
   res.setHeader("Access-Control-Allow-Origin", "*")
@@ -40,12 +52,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         auth: { persistSession: false },
       })
 
-      const isNumeric = !isNaN(Number(productId))
+      const isNumeric = !isNaN(Number(productId)) && /^\d+$/.test(productId)
       const query = supabase.from("products").select("*").eq("is_active", true)
 
-      const { data, error } = isNumeric
+      let { data, error } = isNumeric
         ? await query.eq("id", Number(productId)).maybeSingle()
         : await query.eq("slug", productId).maybeSingle()
+
+      if (!data && !isNumeric) {
+        // Try slug prefix match
+        const prefixRes = await supabase
+          .from("products")
+          .select("*")
+          .eq("is_active", true)
+          .ilike("slug", `${productId}%`)
+          .maybeSingle()
+
+        if (prefixRes.data) {
+          data = prefixRes.data
+        } else {
+          // Try name match
+          const nameGuess = productId.replace(/-/g, " ")
+          const nameRes = await supabase
+            .from("products")
+            .select("*")
+            .eq("is_active", true)
+            .ilike("name", `%${nameGuess}%`)
+            .maybeSingle()
+          if (nameRes.data) {
+            data = nameRes.data
+          }
+        }
+      }
 
       if (!error && data) {
         product = data
@@ -107,7 +145,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ingredients = product.ingredients || ""
 
   const pageTitle = `${productName} · £${productPrice.toFixed(2)} | Abaz Mart UK`
-  const canonicalUrl = `https://www.abazmart.co.uk/product/${product.id}`
+  const productSlug = product.slug || slugify(productName)
+  const canonicalUrl = `https://www.abazmart.co.uk/product/${productSlug}`
 
   // 1. Build Schema.org Product JSON-LD
   const schemaLd = {

@@ -4,6 +4,7 @@ import { Link } from "react-router"
 import { Button } from "../ui"
 import { CartItem } from "../../context/StoreContext"
 import { formatPrice } from "../../utils/formatPrice"
+import { getProductUrl } from "../../utils/slugify"
 import {
   DEFAULT_STORE_SETTINGS,
   getStoreSettings,
@@ -94,7 +95,7 @@ export default function CartDrawer({
                 <article className="drawer-item" key={item.product.id}>
                   <img src={item.product.image} alt={item.product.name} />
                   <div>
-                    <Link to={`/product/${item.product.id}`} onClick={onClose}>
+                    <Link to={getProductUrl(item.product)} onClick={onClose}>
                       {item.product.name}
                     </Link>
                     <span>{item.option}</span>

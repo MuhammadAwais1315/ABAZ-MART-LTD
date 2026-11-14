@@ -33,21 +33,43 @@ import { formatPrice } from "../utils/formatPrice"
 import {
   getEffectiveProducts,
   getProductById,
+  getProducts,
   getProductReviews,
   isProductDeleted,
   ReviewItem,
   submitProductReview,
 } from "../services/products"
+import { getProductSlug, getProductUrl } from "../utils/slugify"
 import { metaPixel } from "../utils/metaPixel"
 
 export default function ProductPage() {
-  const { id } = useParams()
+  const { slug, id } = useParams()
+  const rawIdentifier = (slug || id || "").trim()
   const effectiveCatalog = getEffectiveProducts(products)
-  const isDeleted = id ? isProductDeleted(id) : false
-  const initialProduct =
-    effectiveCatalog.find((item) => item.id === Number(id)) || effectiveCatalog[0] || null
+  const [catalog, setCatalog] = useState<Product[]>(effectiveCatalog)
+
+  const isDeleted = rawIdentifier ? isProductDeleted(rawIdentifier) : false
+
+  const findMatchingProduct = (list: Product[], key: string): Product | null => {
+    if (!key) return null
+    const lower = key.toLowerCase()
+    const isNum = /^\d+$/.test(key)
+    const num = isNum ? Number(key) : NaN
+
+    return (
+      list.find((item) => {
+        if (isNum && item.id === num) return true
+        if (item.slug && item.slug.toLowerCase() === lower) return true
+        if (getProductSlug(item).toLowerCase() === lower) return true
+        if (item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === lower) return true
+        return false
+      }) || null
+    )
+  }
+
+  const initialProduct = findMatchingProduct(effectiveCatalog, rawIdentifier)
   const [product, setProduct] = useState<Product | null>(initialProduct)
-  const [notFound, setNotFound] = useState(isDeleted || !initialProduct)
+  const [notFound, setNotFound] = useState(isDeleted)
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
   const { user } = useAuth()
   const { categories: storeCategories } = useCategories()
@@ -65,6 +87,19 @@ export default function ProductPage() {
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
 
+  // Fetch full live catalog for related products
+  useEffect(() => {
+    let mounted = true
+    getProducts({ limit: 100 }).then((res) => {
+      if (mounted && res.data && res.data.length > 0) {
+        setCatalog(res.data)
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   const displayCategory = product
     ? storeCategories.find((c) => matchCategory(c, product.category)) ||
       product.category
@@ -77,7 +112,7 @@ export default function ProductPage() {
   const productImages = product
     ? [
         product.image,
-        ...effectiveCatalog
+        ...catalog
           .filter(
             (item) =>
               matchCategory(item.category, product.category) &&
@@ -90,12 +125,12 @@ export default function ProductPage() {
 
   const relatedProducts = product
     ? [
-        ...effectiveCatalog.filter(
+        ...catalog.filter(
           (item) =>
             matchCategory(item.category, product.category) &&
             item.id !== product.id,
         ),
-        ...effectiveCatalog.filter(
+        ...catalog.filter(
           (item) =>
             !matchCategory(item.category, product.category) &&
             item.id !== product.id,
@@ -116,16 +151,26 @@ export default function ProductPage() {
     }
   }, [product?.id])
 
+  // Redirect numeric IDs (e.g. /product/3) to SEO name-based slug URL (e.g. /product/eira-barrier-restore-cream)
+  useEffect(() => {
+    if (product && /^\d+$/.test(rawIdentifier)) {
+      const canonicalSlugUrl = getProductUrl(product)
+      if (canonicalSlugUrl && canonicalSlugUrl !== `/product/${rawIdentifier}`) {
+        navigate(canonicalSlugUrl, { replace: true })
+      }
+    }
+  }, [product, rawIdentifier, navigate])
+
   useEffect(() => {
     let mounted = true
     const loadProduct = () => {
-      if (!id) return
-      if (isProductDeleted(id)) {
+      if (!rawIdentifier) return
+      if (isProductDeleted(rawIdentifier)) {
         setNotFound(true)
         setProductLoading(false)
         return
       }
-      getProductById(id).then((res) => {
+      getProductById(rawIdentifier).then((res) => {
         if (mounted) {
           if (res.data) {
             setProduct(res.data)
@@ -153,7 +198,7 @@ export default function ProductPage() {
       window.removeEventListener("abaz_catalog_updated", handleStockUpdate)
       window.removeEventListener("storage", handleStockUpdate)
     }
-  }, [id])
+  }, [rawIdentifier])
 
   useEffect(() => {
     let mounted = true
@@ -173,7 +218,7 @@ export default function ProductPage() {
     if (!user) {
       notify("Please sign in to write a review")
       navigate(
-        `/login?redirect=${encodeURIComponent(`/product/${product?.id || ""}`)}`,
+        `/login?redirect=${encodeURIComponent(product ? getProductUrl(product) : "/shop")}`,
       )
       return
     }

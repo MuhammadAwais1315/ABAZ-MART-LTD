@@ -21,6 +21,7 @@ import { useStore } from "../context/StoreContext"
 import { useAuth } from "../context/AuthContext"
 import { products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
+import { getProductUrl } from "../utils/slugify"
 import { OrderReceipt } from "../components/checkout/OrderReceipt"
 import { OrderStatus, PaymentMethod } from "../types/database"
 import { formatUKPostcode, isValidUKPostcode } from "../utils/ukPostcode"
@@ -643,11 +644,11 @@ export default function Account() {
                 <div className="account-wishlist-grid">
                   {wishlistProducts.map((product) => (
                     <article className="wishlist-product" key={product.id}>
-                      <Link to={`/product/${product.id}`}>
+                      <Link to={getProductUrl(product)}>
                         <img src={product.image} alt={product.name} />
                       </Link>
                       <p className="eyebrow">{product.brand}</p>
-                      <Link to={`/product/${product.id}`}>{product.name}</Link>
+                      <Link to={getProductUrl(product)}>{product.name}</Link>
                       <strong>{formatPrice(product.price)}</strong>
                       <div>
                         <Button onClick={() => addToCart(product)}>

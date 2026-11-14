@@ -17,6 +17,7 @@ import { metaPixel } from "../../utils/metaPixel"
 import { useAuth } from "../../context/AuthContext"
 import { Product, products as initialProducts } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
+import { getProductUrl } from "../../utils/slugify"
 import { useCategories } from "../../hooks/useProducts"
 import { getProducts } from "../../services/products"
 import { getStoreSettings } from "../../services/checkout"
@@ -141,7 +142,7 @@ export default function Navbar({
                   suggestions.map((product) => (
                     <Link
                       key={product.id}
-                      to={`/product/${product.id}`}
+                      to={getProductUrl(product)}
                       onClick={() => setQuery("")}
                     >
                       <img src={product.image} alt={product.name} />
@@ -228,7 +229,7 @@ export default function Navbar({
                 {suggestions.map((product) => (
                   <Link
                     key={product.id}
-                    to={`/product/${product.id}`}
+                    to={getProductUrl(product)}
                     onClick={() => {
                       setQuery("")
                       setMobileSearchOpen(false)

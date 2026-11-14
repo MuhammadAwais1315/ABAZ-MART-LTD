@@ -3,6 +3,7 @@ import { Link } from "react-router"
 import { Product } from "../data/products"
 import { Badge, Button, RatingStars } from "./ui"
 import { formatPrice } from "../utils/formatPrice"
+import { getProductUrl } from "../utils/slugify"
 
 export default function ProductCard({
   product,
@@ -18,10 +19,12 @@ export default function ProductCard({
   const discount = product.oldPrice
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
     : 0
+  const productUrl = getProductUrl(product)
+
   return (
     <article className="product-card">
       <div className="product-image-wrap">
-        <Link to={`/product/${product.id}`}>
+        <Link to={productUrl}>
           <img
             src={product.image}
             alt={product.name}
@@ -47,7 +50,7 @@ export default function ProductCard({
       </div>
       <div className="product-info">
         <p className="eyebrow">{product.brand}</p>
-        <Link to={`/product/${product.id}`} className="product-name">
+        <Link to={productUrl} className="product-name">
           {product.name}
         </Link>
         <RatingStars

@@ -30,6 +30,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Home },
       { path: "shop", Component: Shop },
+      { path: "product/:slug", Component: ProductPage },
       { path: "product/:id", Component: ProductPage },
       { path: "cart", Component: Cart },
       {

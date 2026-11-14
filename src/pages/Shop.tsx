@@ -27,7 +27,7 @@ import { useStore } from "../context/StoreContext"
 import { Product, products as initialProducts } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 import { matchCategory } from "../utils/categoryMatcher"
-import { useBrands, useCategories } from "../hooks/useProducts"
+import { useCategories } from "../hooks/useProducts"
 import { getEffectiveProducts, getProducts } from "../services/products"
 
 export default function Shop() {
@@ -40,7 +40,6 @@ export default function Shop() {
   const [view, setView] = useState<"grid" | "list">("grid")
   const [catalog, setCatalog] = useState<Product[]>(() => getEffectiveProducts(initialProducts))
   const { categories } = useCategories()
-  const { brands: fetchedBrands } = useBrands()
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     categoryParam ? [categoryParam] : [],
   )
@@ -64,7 +63,7 @@ export default function Shop() {
   useEffect(() => {
     let mounted = true
     const loadProducts = () => {
-      getProducts({ limit: 100 })
+      getProducts({ limit: 250 })
         .then((res) => {
           if (mounted && res.data) {
             setCatalog(res.data)
@@ -100,10 +99,32 @@ export default function Shop() {
     }
   }, [sortParam])
 
+  // Show only brands that are present in the selected category and currently listed in the catalog
   const brands = useMemo(() => {
-    if (fetchedBrands && fetchedBrands.length > 0) return fetchedBrands
-    return Array.from(new Set(catalog.map((product) => product.brand))).sort()
-  }, [fetchedBrands, catalog])
+    const categoryProducts =
+      selectedCategories.length === 0
+        ? catalog
+        : catalog.filter((product) =>
+            selectedCategories.some((sel) =>
+              matchCategory(sel, product.category),
+            ),
+          )
+
+    const uniqueBrands = Array.from(
+      new Set(
+        categoryProducts
+          .map((product) => product.brand?.trim())
+          .filter((b): b is string => Boolean(b)),
+      ),
+    ).sort((a, b) => a.localeCompare(b))
+
+    return uniqueBrands
+  }, [catalog, selectedCategories])
+
+  // Automatically unselect any brand that is not available in the current category
+  useEffect(() => {
+    setSelectedBrands((current) => current.filter((b) => brands.includes(b)))
+  }, [brands])
 
   const skinTypes = ["Oily", "Dry", "Combination", "Sensitive"]
   const productSkinType = (product: Product) =>
@@ -254,14 +275,20 @@ export default function Shop() {
       <div className="filter-group">
         <h3>Brand</h3>
         <div className="brand-filter-list">
-          {brands.map((brand) => (
-            <Checkbox
-              key={brand}
-              label={brand}
-              checked={selectedBrands.includes(brand)}
-              onChange={() => toggleValue(brand, setSelectedBrands)}
-            />
-          ))}
+          {brands.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic py-1">
+              No brands in this category
+            </p>
+          ) : (
+            brands.map((brand) => (
+              <Checkbox
+                key={brand}
+                label={brand}
+                checked={selectedBrands.includes(brand)}
+                onChange={() => toggleValue(brand, setSelectedBrands)}
+              />
+            ))
+          )}
         </div>
       </div>
       <div className="filter-group">
