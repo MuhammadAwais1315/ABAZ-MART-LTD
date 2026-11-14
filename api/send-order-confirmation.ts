@@ -645,6 +645,84 @@ Abaz Mart Ltd · Office 951 60 Tottenham Court Road, London W1T 2EW · Company N
 `
 }
 
+function buildHtmlReviewRequest(data: any): string {
+  const { order, customer, items = order?.items || [] } = data
+  const reviewUrl = `https://www.abazmart.co.uk/account?order=${encodeURIComponent(order?.order_number || "")}&tab=orders&review=true`
+
+  const itemsHtml = Array.isArray(items)
+    ? items
+        .map((item: any) => {
+          const name = item.product_name || item.name || "Product"
+          const brand = item.product_brand || item.brand || "Abaz Mart"
+          const img = item.product_image || item.image || ""
+          return `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f0e6e8;">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                ${
+                  img
+                    ? `<img src="${img}" alt="${name}" style="width: 54px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #eadfe2;" />`
+                    : ""
+                }
+                <div>
+                  <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #b83b5e; font-weight: 700;">${brand}</div>
+                  <div style="font-size: 14px; font-weight: 600; color: #2b2024; margin-top: 2px;">${name}</div>
+                </div>
+              </div>
+              <a href="${reviewUrl}" style="display: inline-block; padding: 8px 16px; background-color: #b83b5e; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                Rate &amp; Review &#9733;
+              </a>
+            </div>
+          `
+        })
+        .join("")
+    : ""
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How was your order #${order?.order_number}? · Abaz Mart</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; background-color: #f7f3f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2b2024;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 14px; border: 1px solid #eadfe2; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+    <div style="height: 4px; background: linear-gradient(90deg, #b83b5e 0%, #d86280 50%, #c5a880 100%);"></div>
+
+    <div style="background-color: #1e1519; padding: 26px 24px 20px 24px; text-align: center; color: #ffffff;">
+      <a href="https://www.abazmart.co.uk" style="text-decoration: none; display: inline-block;">
+        <img src="https://www.abazmart.co.uk/logo-horizontal-light.png" alt="Abaz Mart" style="height: 38px; width: auto; max-width: 220px; display: block; margin: 0 auto 6px auto; border: 0;" />
+      </a>
+      <p style="margin: 6px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #e5c3cc;">
+        Delivered Order · We Value Your Review
+      </p>
+    </div>
+
+    <div style="padding: 28px 24px;">
+      <h2 style="font-size: 20px; color: #2b2024; margin: 0 0 12px 0;">Hello ${customer?.fullName || "Valued Customer"},</h2>
+      <p style="font-size: 14px; color: #615056; line-height: 1.6; margin: 0 0 20px 0;">
+        Your Abaz Mart order <strong>#${order?.order_number}</strong> was successfully delivered! How did you like your products? Please take a moment to share your feedback with our community.
+      </p>
+
+      <div style="margin-bottom: 24px;">
+        ${itemsHtml}
+      </div>
+
+      <div style="text-align: center; margin: 30px 0 16px 0;">
+        <a href="${reviewUrl}" style="display: inline-block; background-color: #b83b5e; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+          Review All Items in Your Account
+        </a>
+      </div>
+
+      <div style="border-top: 1px solid #efe4e7; margin-top: 28px; padding-top: 16px; font-size: 11px; color: #8e7a82; line-height: 1.5; text-align: center;">
+        <p style="margin: 0 0 4px 0;"><strong>ABAZ MART LTD</strong> · Registered in England &amp; Wales (Company No. 17094173)</p>
+        <p style="margin: 0;">Office 951 60 Tottenham Court Road, London W1T 2EW · Care: care@abazmart.co.uk</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true")
   res.setHeader("Access-Control-Allow-Origin", "*")
@@ -719,6 +797,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emailId: data?.id,
         recipient: customer.email,
         type: "dispatch",
+      })
+      return
+    }
+
+    const isReviewRequest = rawBody.action === "review_request"
+    if (isReviewRequest) {
+      const { order, customer } = rawBody
+      if (!customer?.email || !order?.order_number) {
+        res.status(400).json({
+          success: false,
+          error: "Missing required details (customer.email and order.order_number are required).",
+        })
+        return
+      }
+
+      const resend = new Resend(apiKey.trim())
+      const fromAddress =
+        process.env.RESEND_FROM_EMAIL?.trim() || "Abaz Mart <orders@abazmart.co.uk>"
+
+      const reviewHtml = buildHtmlReviewRequest(rawBody)
+      const reviewText = `Hello ${customer.fullName || "Customer"},\n\nYour recent Abaz Mart order #${order.order_number} has been delivered! How did you like your products?\n\nPlease leave a review: https://www.abazmart.co.uk/account?order=${encodeURIComponent(order.order_number)}&tab=orders&review=true\n\nThank you for choosing Abaz Mart.`
+
+      const { data, error } = await resend.emails.send({
+        from: fromAddress,
+        to: [customer.email.trim()],
+        subject: `How was your order #${order.order_number}? Leave a review · Abaz Mart`,
+        html: reviewHtml,
+        text: reviewText,
+      })
+
+      if (error) {
+        console.error("[Resend] Review request email error:", error)
+        res.status(200).json({ success: false, configured: true, error: error.message })
+        return
+      }
+
+      console.info(`[Resend] Review request for #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`)
+      res.status(200).json({
+        success: true,
+        configured: true,
+        emailId: data?.id,
+        recipient: customer.email,
+        type: "review_request",
       })
       return
     }

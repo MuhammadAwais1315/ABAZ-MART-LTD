@@ -12,6 +12,7 @@ import {
   Package,
   Plus,
   ShoppingBag,
+  Star,
   Trash2,
   Truck,
   Upload,
@@ -25,7 +26,7 @@ import { getProductUrl } from "../utils/slugify"
 import { OrderReceipt } from "../components/checkout/OrderReceipt"
 import { OrderStatus, PaymentMethod } from "../types/database"
 import { formatUKPostcode, isValidUKPostcode } from "../utils/ukPostcode"
-import { getEffectiveProducts } from "../services/products"
+import { getEffectiveProducts, submitProductReview } from "../services/products"
 import {
   getCustomerOrders,
   cancelOrder,
@@ -34,6 +35,7 @@ import {
   updateCustomerAddress,
   deleteCustomerAddress,
   CustomerOrder,
+  CustomerOrderItem,
   AddressItem,
 } from "../services/account"
 
@@ -51,13 +53,108 @@ export default function Account() {
   const [accountParams] = useSearchParams()
   const accountTab = accountParams.get("tab")
   const [section, setSection] = useState(
-    accountTab === "wishlist" ? "Wishlist" : "Profile",
+    accountTab === "wishlist"
+      ? "Wishlist"
+      : accountTab === "orders"
+        ? "Orders"
+        : "Profile",
   )
   const [orders, setOrders] = useState<CustomerOrder[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<CustomerOrder | null>(null)
   const [receiptModalOrder, setReceiptModalOrder] = useState<CustomerOrder | null>(null)
+
+  // Direct Review State for Delivered Orders
+  const effectiveCatalog = getEffectiveProducts(products)
+  const [reviewedKeys, setReviewedKeys] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set()
+    try {
+      const raw = localStorage.getItem("abaz_reviewed_items")
+      if (raw) return new Set(JSON.parse(raw))
+    } catch {}
+    return new Set()
+  })
+  const [reviewModalItem, setReviewModalItem] = useState<{
+    productId: number
+    name: string
+    brand: string
+    image: string
+    orderNumber?: string
+  } | null>(null)
+  const [reviewOrderPicker, setReviewOrderPicker] = useState<CustomerOrder | null>(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewTitle, setReviewTitle] = useState("")
+  const [reviewContent, setReviewContent] = useState("")
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
+
+  const handleOpenReviewModalForItem = (item: CustomerOrderItem, order?: CustomerOrder) => {
+    let prodId = item.productId
+    if (!prodId) {
+      const match = effectiveCatalog.find(
+        (p) => p.name.toLowerCase() === item.name.toLowerCase(),
+      )
+      prodId = match ? match.id : 1
+    }
+    setReviewModalItem({
+      productId: prodId,
+      name: item.name,
+      brand: item.brand,
+      image: item.image,
+      orderNumber: order?.number,
+    })
+    setReviewRating(5)
+    setReviewTitle("")
+    setReviewContent("")
+    setReviewError(null)
+  }
+
+  const handleOpenReviewForOrder = (order: CustomerOrder) => {
+    if (!order.items || order.items.length === 0) return
+    if (order.items.length === 1) {
+      handleOpenReviewModalForItem(order.items[0], order)
+    } else {
+      setReviewOrderPicker(order)
+    }
+  }
+
+  const handleSubmitAccountReview = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!reviewModalItem) return
+    if (!reviewTitle.trim() || !reviewContent.trim()) {
+      setReviewError("Please provide both a title and review comments.")
+      return
+    }
+
+    setSubmittingReview(true)
+    setReviewError(null)
+
+    const res = await submitProductReview(
+      reviewModalItem.productId,
+      reviewRating,
+      reviewTitle,
+      reviewContent,
+    )
+
+    setSubmittingReview(false)
+
+    if (res.error) {
+      setReviewError(res.error.message)
+    } else {
+      notify(`Thank you! Your review for "${reviewModalItem.name}" has been published.`)
+      const key = `${reviewModalItem.orderNumber || ""}_${reviewModalItem.name}`
+      setReviewedKeys((prev) => {
+        const next = new Set(prev).add(key)
+        try {
+          localStorage.setItem("abaz_reviewed_items", JSON.stringify(Array.from(next)))
+        } catch {}
+        return next
+      })
+      setReviewModalItem(null)
+      setReviewOrderPicker(null)
+    }
+  }
   const [avatar, setAvatar] = useState(
     authProfile?.avatar_url ||
       (user?.user_metadata?.avatar_url as string) ||
@@ -148,6 +245,23 @@ export default function Account() {
       mounted = false
     }
   }, [user?.id])
+
+  // Support direct review links (e.g. ?tab=orders&review=true&order=1004)
+  useEffect(() => {
+    if (accountTab === "orders") {
+      setSection("Orders")
+      const orderNum = accountParams.get("order")
+      const shouldReview = accountParams.get("review") === "true"
+      if (shouldReview && orders.length > 0) {
+        const target = orderNum
+          ? orders.find((o) => o.number === orderNum || o.id === orderNum)
+          : orders.find((o) => o.status === "Delivered")
+        if (target) {
+          handleOpenReviewForOrder(target)
+        }
+      }
+    }
+  }, [accountTab, accountParams, orders])
 
   // Listen for order status changes across the system
   useEffect(() => {
@@ -530,6 +644,16 @@ export default function Account() {
                         {order.status}
                       </Badge>
                       <div className="flex items-center gap-2">
+                        {order.status === "Delivered" && (
+                          <Button
+                            variant="outline"
+                            className="text-xs px-2.5 py-1 gap-1 text-amber-700 bg-amber-50/70 hover:bg-amber-100 border-amber-300"
+                            onClick={() => handleOpenReviewForOrder(order)}
+                            title="Review items from this delivered order"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> Review Order
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           onClick={() => setSelectedOrder(order)}
@@ -714,21 +838,72 @@ export default function Account() {
                 </Button>
               </div>
             </div>
-            <div className="order-detail-items">
-              {selectedOrder.items.map((item) => (
-                <div key={item.id}>
-                  <img src={item.image} alt={item.name} />
-                  <span>
-                    <strong>{item.name}</strong>
-                    <small>
-                      {item.brand ? `${item.brand} • ` : ""}
-                      {item.option}
-                      {item.quantity > 1 ? ` × ${item.quantity}` : ""}
-                    </small>
-                  </span>
-                  <b>{formatPrice(item.lineTotal || item.unitPrice * item.quantity)}</b>
+
+            {selectedOrder.status === "Delivered" && (
+              <div className="p-3.5 bg-gradient-to-r from-amber-50 via-rose-50/40 to-amber-50/60 border border-amber-200/90 rounded-xl flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-ink">Order Delivered!</p>
+                    <p className="text-[11px] text-muted">
+                      How was your experience? Leave a review directly on your items.
+                    </p>
+                  </div>
                 </div>
-              ))}
+                <Button
+                  variant="secondary"
+                  className="text-xs py-1 px-3 shrink-0 gap-1"
+                  onClick={() => handleOpenReviewForOrder(selectedOrder)}
+                >
+                  <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-200" /> Review Items
+                </Button>
+              </div>
+            )}
+
+            <div className="order-detail-items">
+              {selectedOrder.items.map((item) => {
+                const itemKey = `${selectedOrder.number}_${item.name}`
+                const isReviewed = reviewedKeys.has(itemKey)
+                return (
+                  <div key={item.id} className="flex-col !items-stretch gap-2">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-3">
+                        <img src={item.image} alt={item.name} />
+                        <span>
+                          <strong>{item.name}</strong>
+                          <small>
+                            {item.brand ? `${item.brand} • ` : ""}
+                            {item.option}
+                            {item.quantity > 1 ? ` × ${item.quantity}` : ""}
+                          </small>
+                        </span>
+                      </div>
+                      <b>{formatPrice(item.lineTotal || item.unitPrice * item.quantity)}</b>
+                    </div>
+                    {selectedOrder.status === "Delivered" && (
+                      <div className="flex items-center justify-between pt-2 border-t border-border/20">
+                        <span className="text-[11px] text-muted">Verified delivered purchase</span>
+                        {isReviewed ? (
+                          <span className="text-xs text-emerald-600 font-semibold inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            <Check className="w-3.5 h-3.5" /> Reviewed
+                          </span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="text-xs py-1 px-2.5 gap-1 text-rose hover:bg-rose-50 border-rose-200"
+                            onClick={() => handleOpenReviewModalForItem(item, selectedOrder)}
+                          >
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                            <span>Write Review</span>
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Order financial breakdown */}
@@ -1026,6 +1201,181 @@ export default function Account() {
             {editingAddress === null ? "Add Address" : "Save Address"}
           </Button>
         </form>
+      </Modal>
+
+      {/* Review Picker Modal for Delivered Orders with multiple items */}
+      <Modal
+        open={Boolean(reviewOrderPicker)}
+        title={`Review Items from Order #${reviewOrderPicker?.number || ""}`}
+        size="md"
+        onClose={() => setReviewOrderPicker(null)}
+      >
+        {reviewOrderPicker && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted">
+              Select any item from this delivered order to write your verified review:
+            </p>
+            <div className="space-y-2">
+              {reviewOrderPicker.items.map((item) => {
+                const key = `${reviewOrderPicker.number}_${item.name}`
+                const isReviewed = reviewedKeys.has(key)
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3 border border-border/50 rounded-xl flex items-center justify-between gap-3 bg-white hover:border-border transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-12 h-12 object-cover rounded-lg border border-border shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-ink line-clamp-1">{item.name}</p>
+                        <p className="text-[11px] text-muted">{item.brand}</p>
+                      </div>
+                    </div>
+                    {isReviewed ? (
+                      <span className="text-xs text-emerald-600 font-medium inline-flex items-center gap-1 shrink-0 bg-emerald-50 px-2 py-1 rounded-md">
+                        <Check className="w-3.5 h-3.5" /> Reviewed
+                      </span>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        className="text-xs py-1 px-3 shrink-0 gap-1"
+                        onClick={() => {
+                          setReviewOrderPicker(null)
+                          handleOpenReviewModalForItem(item, reviewOrderPicker)
+                        }}
+                      >
+                        <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-200" /> Review
+                      </Button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Direct Review Modal */}
+      <Modal
+        open={Boolean(reviewModalItem)}
+        title="Leave a Product Review"
+        size="md"
+        onClose={() => setReviewModalItem(null)}
+      >
+        {reviewModalItem && (
+          <form onSubmit={handleSubmitAccountReview} className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl border border-border/40">
+              <img
+                src={reviewModalItem.image}
+                alt={reviewModalItem.name}
+                className="w-14 h-14 object-cover rounded-lg border border-border shrink-0"
+              />
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-rose block">
+                  {reviewModalItem.brand || "Abaz Mart"}
+                </span>
+                <p className="text-sm font-semibold text-ink line-clamp-1">
+                  {reviewModalItem.name}
+                </p>
+                {reviewModalItem.orderNumber && (
+                  <span className="text-[11px] text-muted block mt-0.5">
+                    Verified Purchase · Order #{reviewModalItem.orderNumber}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {reviewError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+                {reviewError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-ink mb-1.5">
+                Your Rating
+              </label>
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    className="p-1 cursor-pointer transition-transform hover:scale-110 focus:outline-none"
+                    aria-label={`Rate ${star} stars`}
+                  >
+                    <Star
+                      className={`w-6 h-6 ${
+                        star <= reviewRating
+                          ? "fill-amber-400 text-amber-500"
+                          : "text-neutral-300"
+                      }`}
+                    />
+                  </button>
+                ))}
+                <span className="text-xs font-medium text-muted ml-2">
+                  {reviewRating === 5
+                    ? "Excellent"
+                    : reviewRating === 4
+                      ? "Very Good"
+                      : reviewRating === 3
+                        ? "Average"
+                        : reviewRating === 2
+                          ? "Below Average"
+                          : "Poor"}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink mb-1">
+                Review Headline
+              </label>
+              <Input
+                placeholder="e.g. Visible results within a week, highly recommended!"
+                value={reviewTitle}
+                onChange={(e) => setReviewTitle(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-ink mb-1">
+                Your Experience &amp; Feedback
+              </label>
+              <textarea
+                className="w-full min-h-[110px] p-3 text-xs rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-rose/20 focus:border-rose transition-colors bg-white text-ink"
+                placeholder="Share texture, effectiveness, delivery experience, or tips for other customers..."
+                value={reviewContent}
+                onChange={(e) => setReviewContent(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setReviewModalItem(null)}
+                disabled={submittingReview}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="secondary"
+                disabled={submittingReview}
+                className="gap-1.5"
+              >
+                {submittingReview ? "Publishing..." : "Submit Review"}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   )

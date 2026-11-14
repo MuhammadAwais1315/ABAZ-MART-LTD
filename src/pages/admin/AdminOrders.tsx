@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   XCircle,
   ExternalLink,
+  Send,
+  Star,
 } from "lucide-react"
 import { Badge, Button, Input, Modal, Select, Toast } from "../../components/ui"
 import { formatPrice } from "../../utils/formatPrice"
@@ -267,6 +269,50 @@ export default function AdminOrders() {
     setCopiedAddress(true)
     showToast("Shipping address copied to clipboard")
     window.setTimeout(() => setCopiedAddress(false), 2500)
+  }
+
+  const handleRequestCustomerReview = async (order: AdminOrderItem) => {
+    const customerEmail = order.email || ""
+    const customerName = order.customer || "Customer"
+
+    const reviewLink = `https://www.abazmart.co.uk/account?order=${encodeURIComponent(order.orderNumber)}&tab=orders&review=true`
+    try {
+      await navigator.clipboard.writeText(reviewLink)
+    } catch {}
+
+    try {
+      const res = await fetch("/api/send-order-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "review_request",
+          order: {
+            id: order.id,
+            order_number: order.orderNumber,
+            items: (order.items || []).map((i) => ({
+              product_name: i.name,
+              product_brand: i.brand,
+              product_image: i.image,
+              unit_price: i.unitPrice,
+              quantity: i.quantity,
+              line_total: i.lineTotal,
+            })),
+          },
+          customer: {
+            fullName: customerName,
+            email: customerEmail,
+          },
+        }),
+      })
+
+      if (res.ok) {
+        showToast(`Review request sent to ${customerEmail || "customer"} & review link copied!`)
+      } else {
+        showToast("Review request link copied to clipboard!")
+      }
+    } catch {
+      showToast("Review request link copied to clipboard!")
+    }
   }
 
   // Filter logic
@@ -587,6 +633,17 @@ export default function AdminOrders() {
                     {/* Actions */}
                     <td className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {order.status === "Delivered" && (
+                          <Button
+                            variant="outline"
+                            className="text-xs py-1.5 px-2.5 gap-1 text-amber-700 bg-amber-50/70 hover:bg-amber-100 border-amber-300"
+                            onClick={() => handleRequestCustomerReview(order)}
+                            title="Send Review Request email & copy review link"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                            <span>Request Review</span>
+                          </Button>
+                        )}
                         {order.status !== "Cancelled" && (
                           <Button
                             variant="outline"
@@ -707,6 +764,34 @@ export default function AdminOrders() {
           {/* Tab 1: Fulfillment & Customer Items */}
           {activeModalTab === "details" && (
             <div className="space-y-6">
+              {/* Delivered Order Review Request Card */}
+              {selectedOrder.status === "Delivered" && (
+                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                      <Star className="w-5 h-5 fill-amber-400 text-amber-500" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs uppercase tracking-wider font-bold text-amber-800">
+                          Delivered Order Review
+                        </span>
+                        <Badge tone="green">Delivered</Badge>
+                      </div>
+                      <p className="text-xs text-ink font-medium mt-0.5">
+                        Request verified customer review for #{selectedOrder.orderNumber}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    className="text-xs py-1.5 px-3.5 gap-1.5"
+                    onClick={() => handleRequestCustomerReview(selectedOrder)}
+                  >
+                    <Send className="w-3.5 h-3.5" /> Request Customer Review
+                  </Button>
+                </div>
+              )}
               {/* Courier & Parcel Tracking Card */}
               {selectedOrder.carrier && selectedOrder.trackingNumber ? (
                 <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl flex flex-wrap items-center justify-between gap-4">

@@ -202,15 +202,22 @@ export default function ProductPage() {
 
   useEffect(() => {
     let mounted = true
-    if (product?.id) {
-      getProductReviews(product.id).then((res) => {
-        if (mounted && res.data) {
-          setReviewsList(res.data)
-        }
-      })
+    const loadReviews = () => {
+      if (product?.id) {
+        getProductReviews(product.id).then((res) => {
+          if (mounted && res.data) {
+            setReviewsList(res.data)
+          }
+        })
+      }
     }
+
+    loadReviews()
+
+    window.addEventListener("abaz_review_updated", loadReviews)
     return () => {
       mounted = false
+      window.removeEventListener("abaz_review_updated", loadReviews)
     }
   }, [product?.id])
 
