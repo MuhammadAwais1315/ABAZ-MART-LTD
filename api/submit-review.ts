@@ -67,19 +67,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
+    // 1. Verify Buyer or Admin status
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", finalUserId)
+      .maybeSingle()
+
+    const isAdmin = profile?.role === "admin"
+
+    if (!isAdmin) {
+      // Check if user has an order with this product
+      const { data: buyerOrders, error: orderErr } = await supabase
+        .from("orders")
+        .select(`
+          id,
+          status,
+          order_items (
+            product_id
+          )
+        `)
+        .eq("user_id", finalUserId)
+        .neq("status", "Cancelled")
+
+      const isBuyer = Array.isArray(buyerOrders) && buyerOrders.some((ord: any) =>
+        Array.isArray(ord.order_items) &&
+        ord.order_items.some((it: any) => Number(it.product_id) === Number(productId))
+      )
+
+      if (!isBuyer) {
+        res.status(403).json({
+          error: "Verified buyers only: You can only review products you have purchased.",
+        })
+        return
+      }
+    }
+
+    const numRating = Math.min(5, Math.max(1, Number(rating)))
+    const cleanTitle = String(title).trim()
+    const cleanContent = String(content).trim()
+    const prodIdNum = Number(productId)
+
     const reviewPayload = {
-      product_id: Number(productId),
+      product_id: prodIdNum,
       user_id: finalUserId,
       reviewer_name: finalReviewerName,
-      rating: Math.min(5, Math.max(1, Number(rating))),
-      title: String(title).trim(),
-      content: String(content).trim(),
+      rating: numRating,
+      title: cleanTitle,
+      content: cleanContent,
       is_verified_buyer: true,
       is_approved: true,
       updated_at: new Date().toISOString(),
     }
 
-    // Try upsert first
+    // 2. Upsert review
+    let savedReview: any = null
     const { data, error } = await supabase
       .from("reviews")
       .upsert(reviewPayload, { onConflict: "product_id,user_id" })
@@ -87,7 +129,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .maybeSingle()
 
     if (error) {
-      // Fallback: try insert
       const { data: insertData, error: insertErr } = await supabase
         .from("reviews")
         .insert(reviewPayload)
@@ -98,12 +139,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(400).json({ error: insertErr.message })
         return
       }
-
-      res.status(200).json({ success: true, data: insertData })
-      return
+      savedReview = insertData
+    } else {
+      savedReview = data
     }
 
-    res.status(200).json({ success: true, data })
+    // 3. Sync products table rating and review_count so it displays for everyone
+    try {
+      const { data: allReviews } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("product_id", prodIdNum)
+
+      if (allReviews && allReviews.length > 0) {
+        const sum = allReviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0)
+        const avg = Math.round((sum / allReviews.length) * 10) / 10
+        await supabase
+          .from("products")
+          .update({
+            rating: avg,
+            review_count: allReviews.length,
+          })
+          .eq("id", prodIdNum)
+      }
+    } catch {}
+
+    res.status(200).json({ success: true, data: savedReview })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to submit review"
     res.status(500).json({ error: message })

@@ -482,12 +482,96 @@ function saveLocalReview(productId: number, item: ReviewItem): void {
     const filtered = existing.filter((r) => r.id !== item.id && r.text !== item.text)
     const updated = [item, ...filtered]
     localStorage.setItem(`abaz_reviews_${productId}`, JSON.stringify(updated))
-    window.dispatchEvent(new CustomEvent("abaz_review_updated"))
+    window.dispatchEvent(new CustomEvent("abaz_review_updated", { detail: { productId } }))
   } catch {}
 }
 
 /**
- * Fetch approved reviews for a product.
+ * Checks whether a user is a verified buyer of a specific product (or an admin).
+ * Verifies against Supabase orders/order_items and local orders.
+ */
+export async function checkUserIsBuyer(
+  productId: number | string,
+  userId?: string,
+): Promise<{ isBuyer: boolean; reason?: string }> {
+  if (!userId) {
+    return {
+      isBuyer: false,
+      reason: "Please sign in to leave a review for this product.",
+    }
+  }
+
+  const numProdId = Number(productId)
+
+  // 1. Check if user is an admin
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle()
+
+      if (profile?.role === "admin") {
+        return { isBuyer: true }
+      }
+    } catch {}
+
+    // 2. Query Supabase orders table for matching purchased product
+    try {
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select(`
+          id,
+          status,
+          order_items (
+            product_id
+          )
+        `)
+        .eq("user_id", userId)
+        .neq("status", "Cancelled")
+
+      if (!error && Array.isArray(orders)) {
+        const found = orders.some((ord: any) =>
+          Array.isArray(ord.order_items) &&
+          ord.order_items.some((it: any) => Number(it.product_id) === numProdId),
+        )
+        if (found) {
+          return { isBuyer: true }
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Check locally placed orders (offline or dev fallback)
+  if (typeof window !== "undefined") {
+    try {
+      const localRaw = localStorage.getItem("abaz_placed_orders")
+      if (localRaw) {
+        const localList = JSON.parse(localRaw)
+        if (Array.isArray(localList)) {
+          const foundLocal = localList.some((ord: any) =>
+            (!ord.user_id || ord.user_id === userId) &&
+            ord.status !== "Cancelled" &&
+            Array.isArray(ord.order_items) &&
+            ord.order_items.some((it: any) => Number(it.product_id) === numProdId),
+          )
+          if (foundLocal) {
+            return { isBuyer: true }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return {
+    isBuyer: false,
+    reason: "Verified buyers only: You can only review products you have purchased.",
+  }
+}
+
+/**
+ * Fetch all customer reviews for a product so all visitors (guests and customers) can see ratings.
  */
 export async function getProductReviews(
   productId: number,
@@ -499,11 +583,11 @@ export async function getProductReviews(
   }
 
   try {
+    // Select all reviews for this product without restricting to author
     const { data, error } = await supabase
       .from("reviews")
       .select("*")
       .eq("product_id", productId)
-      .eq("is_approved", true)
       .order("created_at", { ascending: false })
 
     if (error || !data || data.length === 0) {
@@ -521,7 +605,7 @@ export async function getProductReviews(
       }),
       title: r.title,
       text: r.content,
-      verified: r.is_verified_buyer,
+      verified: r.is_verified_buyer ?? true,
     }))
 
     // Merge database reviews and locally submitted reviews
@@ -536,11 +620,12 @@ export async function getProductReviews(
 }
 
 /**
- * Submit a customer review with multi-tier resilience:
- * 1. Calls submit_review_secure RPC
- * 2. Falls back to direct Supabase upsert
- * 3. Falls back to serverless /api/submit-review endpoint (service-role bypass)
- * 4. Falls back to immediate local storage persistence so reviews are never lost
+ * Submit a customer review with verified buyer validation and multi-tier resilience:
+ * 1. Validates that user has purchased this product
+ * 2. Calls submit_review_secure RPC
+ * 3. Falls back to direct Supabase upsert
+ * 4. Falls back to serverless /api/submit-review endpoint (service-role bypass)
+ * 5. Falls back to immediate local storage persistence so reviews are never lost
  */
 export async function submitProductReview(
   productId: number,
@@ -561,10 +646,29 @@ export async function submitProductReview(
     sessionToken = sessionData?.session?.access_token || ""
   } catch {}
 
+  if (!user?.id) {
+    return {
+      data: null,
+      error: new Error("Please sign in to submit a review."),
+    }
+  }
+
+  // Enforce Verified Buyer check
+  const buyerCheck = await checkUserIsBuyer(productId, user.id)
+  if (!buyerCheck.isBuyer) {
+    return {
+      data: null,
+      error: new Error(
+        buyerCheck.reason ||
+          "Verified buyers only: You can only review products you have purchased.",
+      ),
+    }
+  }
+
   const reviewerName =
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
-    (user?.email ? user.email.split("@")[0] : "Verified Customer")
+    (user?.email ? user.email.split("@")[0] : "Verified Buyer")
 
   const buildReviewItem = (id?: number): ReviewItem => ({
     id: id || Date.now(),
@@ -580,6 +684,27 @@ export async function submitProductReview(
     verified: true,
   })
 
+  const syncLocalRatingOverrides = (newReview: ReviewItem) => {
+    saveLocalReview(productId, newReview)
+    try {
+      const rawEdits = localStorage.getItem("abaz_custom_product_edits") || "{}"
+      const edits = JSON.parse(rawEdits)
+      const existing = edits[productId.toString()] || {}
+      const allForProd = getLocalReviews(productId)
+      const total = allForProd.length
+      const avg =
+        total > 0
+          ? Number((allForProd.reduce((a, b) => a + b.rating, 0) / total).toFixed(1))
+          : cleanRating
+      edits[productId.toString()] = {
+        ...existing,
+        rating: avg,
+        reviewCount: total,
+      }
+      localStorage.setItem("abaz_custom_product_edits", JSON.stringify(edits))
+    } catch {}
+  }
+
   if (isSupabaseConfigured()) {
     // Strategy 1: Attempt the RPC function
     try {
@@ -592,7 +717,7 @@ export async function submitProductReview(
 
       if (!error && data) {
         const item = buildReviewItem(Number(data.id))
-        saveLocalReview(productId, item)
+        syncLocalRatingOverrides(item)
         return { data: item, error: null }
       }
     } catch {}
@@ -621,7 +746,7 @@ export async function submitProductReview(
 
         if (!insertErr && inserted) {
           const item = buildReviewItem(Number(inserted.id))
-          saveLocalReview(productId, item)
+          syncLocalRatingOverrides(item)
           return { data: item, error: null }
         }
       } catch {}
@@ -649,7 +774,7 @@ export async function submitProductReview(
         const json = await res.json()
         if (json?.data) {
           const item = buildReviewItem(Number(json.data.id))
-          saveLocalReview(productId, item)
+          syncLocalRatingOverrides(item)
           return { data: item, error: null }
         }
       }
@@ -658,7 +783,7 @@ export async function submitProductReview(
 
   // Strategy 4: Local persistence fallback
   const fallbackItem = buildReviewItem()
-  saveLocalReview(productId, fallbackItem)
+  syncLocalRatingOverrides(fallbackItem)
   return { data: fallbackItem, error: null }
 }
 

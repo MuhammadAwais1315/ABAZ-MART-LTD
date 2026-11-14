@@ -32,6 +32,7 @@ import { useAuth } from "../context/AuthContext"
 import { Product, products } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 import {
+  checkUserIsBuyer,
   getEffectiveProducts,
   getProductById,
   getProducts,
@@ -82,6 +83,8 @@ export default function ProductPage() {
   const [productLoading, setProductLoading] = useState(true)
   const [reviewsList, setReviewsList] = useState<ReviewItem[]>([])
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [checkingBuyer, setCheckingBuyer] = useState(false)
+  const [buyerRestrictedOpen, setBuyerRestrictedOpen] = useState(false)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewTitle, setReviewTitle] = useState("")
   const [reviewContent, setReviewContent] = useState("")
@@ -246,7 +249,7 @@ export default function ProductPage() {
     }
   }, [product?.id])
 
-  const handleOpenReview = () => {
+  const handleOpenReview = async () => {
     if (!user) {
       notify("Please sign in to write a review")
       navigate(
@@ -254,6 +257,17 @@ export default function ProductPage() {
       )
       return
     }
+    if (!product) return
+
+    setCheckingBuyer(true)
+    const check = await checkUserIsBuyer(product.id, user.id)
+    setCheckingBuyer(false)
+
+    if (!check.isBuyer) {
+      setBuyerRestrictedOpen(true)
+      return
+    }
+
     setReviewError(null)
     setReviewModalOpen(true)
   }
@@ -385,7 +399,9 @@ export default function ProductPage() {
             <span>
               Based on {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
             </span>
-            <Button onClick={handleOpenReview}>Write a review</Button>
+            <Button onClick={handleOpenReview} disabled={checkingBuyer}>
+              {checkingBuyer ? "Checking..." : "Write a review"}
+            </Button>
           </div>
           <div className="rating-breakdown">
             {starBreakdown.map((item) => (
@@ -713,6 +729,47 @@ export default function ProductPage() {
           <ShoppingBag /> Add to Cart
         </Button>
       </div>
+
+      <Modal
+        open={buyerRestrictedOpen}
+        title="Verified Buyers Only"
+        onClose={() => setBuyerRestrictedOpen(false)}
+      >
+        <div className="space-y-4 my-2 text-left">
+          <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl flex items-start gap-3">
+            <span className="text-2xl leading-none">🛡️</span>
+            <div>
+              <p className="font-semibold text-amber-950 text-sm">
+                Authentic Customer Ratings & Reviews
+              </p>
+              <p className="text-xs text-amber-900/80 mt-1 leading-relaxed">
+                To keep our product ratings 100% genuine and trustworthy for everyone, reviews can only be submitted by customers who have purchased this product from ABAZ MART.
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-stone-600 leading-relaxed">
+            If you ordered this product under a different email or order number, please sign in with that account or request a review directly from your delivered orders on your Account page.
+          </p>
+          <div className="flex justify-end gap-2 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setBuyerRestrictedOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setBuyerRestrictedOpen(false)
+                navigate("/account")
+              }}
+            >
+              View My Orders
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={reviewModalOpen}
