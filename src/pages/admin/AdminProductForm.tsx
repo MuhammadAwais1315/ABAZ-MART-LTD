@@ -2,7 +2,11 @@ import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import { Check, Upload, Image as ImageIcon } from "lucide-react"
 import { Button, Input, Select, Toast } from "../../components/ui"
-import { categories as defaultCategories, Product, products } from "../../data/products"
+import {
+  categories as defaultCategories,
+  Product,
+  products,
+} from "../../data/products"
 import { matchCategory } from "../../utils/categoryMatcher"
 import {
   createAdminProduct,
@@ -22,7 +26,9 @@ export default function AdminProductForm() {
   const [uploading, setUploading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  const [dynamicCategories, setDynamicCategories] = useState<string[]>([...defaultCategories])
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([
+    ...defaultCategories,
+  ])
 
   // Load categories from DB
   useEffect(() => {
@@ -33,7 +39,9 @@ export default function AdminProductForm() {
         setDynamicCategories(names)
       }
     })
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const [form, setForm] = useState({
@@ -59,7 +67,9 @@ export default function AdminProductForm() {
 
       setLoading(true)
       const { data } = await getAdminProducts()
-      const found = data.find((p) => p.id === editId) || products.find((p) => p.id === editId)
+      const found =
+        data.find((p) => p.id === editId) ||
+        products.find((p) => p.id === editId)
 
       if (mounted && found) {
         const matchedCat =
@@ -109,7 +119,10 @@ export default function AdminProductForm() {
     const salePriceNum = form.salePrice ? parseFloat(form.salePrice) : null
     const stockNum = parseInt(form.stock, 10) || 0
     const parsedOptions = form.options
-      ? form.options.split(",").map((s) => s.trim()).filter(Boolean)
+      ? form.options
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
       : ["Standard"]
 
     const fallbackImage =
@@ -151,7 +164,9 @@ export default function AdminProductForm() {
   if (loading) {
     return (
       <div className="admin-page-head">
-        <p className="text-muted-foreground py-12 text-center">Loading product details...</p>
+        <p className="text-muted-foreground py-12 text-center">
+          Loading product details...
+        </p>
       </div>
     )
   }
@@ -230,7 +245,10 @@ export default function AdminProductForm() {
               }
             >
               {Array.from(
-                new Set([...dynamicCategories, ...(form.category ? [form.category] : [])]),
+                new Set([
+                  ...dynamicCategories,
+                  ...(form.category ? [form.category] : []),
+                ]),
               ).map((item) => (
                 <option key={item}>{item}</option>
               ))}
@@ -273,7 +291,9 @@ export default function AdminProductForm() {
                 className="w-16 h-16 object-cover rounded-lg border border-border/60"
               />
               <div className="text-xs text-muted-foreground truncate flex-1">
-                <span className="font-medium text-foreground block">Current image:</span>
+                <span className="font-medium text-foreground block">
+                  Current image:
+                </span>
                 <span className="truncate block">{form.image}</span>
               </div>
             </div>
@@ -297,7 +317,9 @@ export default function AdminProductForm() {
               <>
                 <ImageIcon />
                 <strong>
-                  {form.image ? "Change product image" : "Drag and drop product image"}
+                  {form.image
+                    ? "Change product image"
+                    : "Drag and drop product image"}
                 </strong>
                 <span>or click to browse · PNG, JPG up to 10MB</span>
               </>
@@ -321,7 +343,8 @@ export default function AdminProductForm() {
               onChange={(e) => setForm({ ...form, image: e.target.value })}
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Tip: You can either upload a picture using the dropzone or paste an image link directly.
+              Tip: You can either upload a picture using the dropzone or paste
+              an image link directly.
             </p>
           </div>
         </section>

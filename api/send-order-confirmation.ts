@@ -200,13 +200,21 @@ function buildHtmlReceipt(data: OrderConfirmationPayload): string {
             <div style="color: #615056; margin-top: 2px;">${customer.address}</div>
             <div style="color: #615056;">${customer.city}, ${customer.postalCode}</div>
             <div style="color: #615056;">${customer.country}</div>
-            ${customer.phone ? `<div style="color: #615056; margin-top: 4px;">Phone: ${customer.phone}</div>` : ""}
+            ${
+              customer.phone
+                ? `<div style="color: #615056; margin-top: 4px;">Phone: ${customer.phone}</div>`
+                : ""
+            }
           </td>
           <td style="width: 50%; vertical-align: top; padding-left: 12px;">
             <div style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #b83b5e; margin-bottom: 6px;">Payment Information</div>
             <div style="color: #615056;">Method: <strong style="color: #2b2024;">${paymentLabel}</strong></div>
             <div style="color: #615056; margin-top: 4px;">
-              Status: <strong style="color: ${isBankTransfer ? "#b45309" : "#15803d"};">${isBankTransfer ? "Awaiting Settlement" : "Paid in Full"}</strong>
+              Status: <strong style="color: ${
+                isBankTransfer ? "#b45309" : "#15803d"
+              };">${
+                isBankTransfer ? "Awaiting Settlement" : "Paid in Full"
+              }</strong>
             </div>
             <div style="color: #615056; margin-top: 4px;">
               Dispatched To: <strong style="color: #2b2024;">${customer.email}</strong>
@@ -315,7 +323,9 @@ function buildTextReceipt(data: OrderConfirmationPayload): string {
     `========================================`,
     `Order Number: #${order.order_number}`,
     `Date: ${order.created_at || new Date().toISOString().split("T")[0]}`,
-    `Status: ${isBankTransfer ? "Awaiting Bank Settlement" : "Payment Confirmed"}`,
+    `Status: ${
+      isBankTransfer ? "Awaiting Bank Settlement" : "Payment Confirmed"
+    }`,
     `Estimated Delivery: ${order.estimated_delivery || "Within 3-5 business days"}`,
     ``,
     `DELIVERED TO:`,
@@ -330,15 +340,13 @@ function buildTextReceipt(data: OrderConfirmationPayload): string {
 
   items.forEach((item) => {
     lines.push(
-      `- ${item.name} (${item.brand ? `${item.brand} · ` : ""}${item.option || "Standard"}) x${item.quantity}: ${formatGbp(item.price * item.quantity)}`,
+      `- ${item.name} (${
+        item.brand ? `${item.brand} · ` : ""
+      }${item.option || "Standard"}) x${item.quantity}: ${formatGbp(item.price * item.quantity)}`,
     )
   })
 
-  lines.push(
-    ``,
-    `FINANCIAL SUMMARY:`,
-    `Subtotal: ${formatGbp(order.subtotal)}`,
-  )
+  lines.push(``, `FINANCIAL SUMMARY:`, `Subtotal: ${formatGbp(order.subtotal)}`)
 
   if (order.discount > 0) {
     lines.push(`Discount: -${formatGbp(order.discount)}`)
@@ -374,7 +382,9 @@ function buildTextReceipt(data: OrderConfirmationPayload): string {
   return lines.filter(Boolean).join("\n")
 }
 
-function buildAdminOrderNotificationHtml(data: OrderConfirmationPayload): string {
+function buildAdminOrderNotificationHtml(
+  data: OrderConfirmationPayload,
+): string {
   const { order, customer, items = [], paymentMethod } = data
   const isBankTransfer = paymentMethod === "bank_transfer"
   const paymentLabel = isBankTransfer
@@ -464,7 +474,9 @@ function buildAdminOrderNotificationHtml(data: OrderConfirmationPayload): string
         </tr>
         <tr>
           <td style="padding: 4px 0; color: #7a686f;"><strong>Payment:</strong></td>
-          <td style="padding: 4px 0; color: #2b2024;">${paymentLabel} · <span style="color: #15803d; font-weight: 700;">${isBankTransfer ? "Awaiting Settlement" : "Paid (Stripe)"}</span></td>
+          <td style="padding: 4px 0; color: #2b2024;">${paymentLabel} · <span style="color: #15803d; font-weight: 700;">${
+            isBankTransfer ? "Awaiting Settlement" : "Paid (Stripe)"
+          }</span></td>
         </tr>
         <tr>
           <td style="padding: 4px 0; color: #7a686f;"><strong>Order Date:</strong></td>
@@ -506,7 +518,9 @@ function buildAdminOrderNotificationHtml(data: OrderConfirmationPayload): string
         }
         <tr>
           <td style="text-align: right; padding: 4px 0; color: #7a686f;">Shipping:</td>
-          <td style="text-align: right; padding: 4px 0;">${order.shipping === 0 ? "Free" : formatGbp(order.shipping)}</td>
+          <td style="text-align: right; padding: 4px 0;">${
+            order.shipping === 0 ? "Free" : formatGbp(order.shipping)
+          }</td>
         </tr>
         <tr style="border-top: 2px solid #b83b5e;">
           <td style="text-align: right; padding: 8px 0; font-size: 15px; font-weight: 700; color: #b83b5e;">Total Paid:</td>
@@ -726,7 +740,10 @@ function buildHtmlReviewRequest(data: any): string {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Credentials", "true")
   res.setHeader("Access-Control-Allow-Origin", "*")
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT")
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+  )
   res.setHeader(
     "Access-Control-Allow-Headers",
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version",
@@ -743,35 +760,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey || apiKey.trim() === "" || apiKey.includes("placeholder") || apiKey.includes("your_")) {
+  if (
+    !apiKey ||
+    apiKey.trim() === "" ||
+    apiKey.includes("placeholder") ||
+    apiKey.includes("your_")
+  ) {
     console.info("[Resend] Skipped: RESEND_API_KEY is not configured.")
     res.status(200).json({
       success: false,
       configured: false,
-      message: "RESEND_API_KEY environment variable is not configured. Email confirmation skipped.",
+      message:
+        "RESEND_API_KEY environment variable is not configured. Email confirmation skipped.",
     })
     return
   }
 
   try {
-    const rawBody = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
+    const rawBody =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
     const isDispatch = rawBody.action === "dispatch"
 
     if (isDispatch) {
       const dispatchPayload = rawBody as DispatchEmailPayload
-      const { order, customer, carrier, trackingNumber, trackingUrl } = dispatchPayload
+      const { order, customer, carrier, trackingNumber, trackingUrl } =
+        dispatchPayload
 
       if (!customer?.email || !order?.order_number || !trackingNumber) {
         res.status(400).json({
           success: false,
-          error: "Missing required dispatch details (customer.email, order.order_number, and trackingNumber are required).",
+          error:
+            "Missing required dispatch details (customer.email, order.order_number, and trackingNumber are required).",
         })
         return
       }
 
       const resend = new Resend(apiKey.trim())
       const fromAddress =
-        process.env.RESEND_FROM_EMAIL?.trim() || "Abaz Mart <orders@abazmart.co.uk>"
+        process.env.RESEND_FROM_EMAIL?.trim() ||
+        "Abaz Mart <orders@abazmart.co.uk>"
 
       const htmlBody = buildHtmlDispatch(dispatchPayload)
       const textBody = buildTextDispatch(dispatchPayload)
@@ -786,11 +813,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (error) {
         console.error("[Resend] Dispatch email error:", error)
-        res.status(200).json({ success: false, configured: true, error: error.message })
+        res
+          .status(200)
+          .json({ success: false, configured: true, error: error.message })
         return
       }
 
-      console.info(`[Resend] Dispatch notification for #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`)
+      console.info(
+        `[Resend] Dispatch notification for #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`,
+      )
       res.status(200).json({
         success: true,
         configured: true,
@@ -807,14 +838,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!customer?.email || !order?.order_number) {
         res.status(400).json({
           success: false,
-          error: "Missing required details (customer.email and order.order_number are required).",
+          error:
+            "Missing required details (customer.email and order.order_number are required).",
         })
         return
       }
 
       const resend = new Resend(apiKey.trim())
       const fromAddress =
-        process.env.RESEND_FROM_EMAIL?.trim() || "Abaz Mart <orders@abazmart.co.uk>"
+        process.env.RESEND_FROM_EMAIL?.trim() ||
+        "Abaz Mart <orders@abazmart.co.uk>"
 
       const reviewHtml = buildHtmlReviewRequest(rawBody)
       const reviewText = `Hello ${customer.fullName || "Customer"},\n\nYour recent Abaz Mart order #${order.order_number} has been delivered! How did you like your products?\n\nPlease leave a review: https://www.abazmart.co.uk/account?order=${encodeURIComponent(order.order_number)}&tab=orders&review=true\n\nThank you for choosing Abaz Mart.`
@@ -829,11 +862,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (error) {
         console.error("[Resend] Review request email error:", error)
-        res.status(200).json({ success: false, configured: true, error: error.message })
+        res
+          .status(200)
+          .json({ success: false, configured: true, error: error.message })
         return
       }
 
-      console.info(`[Resend] Review request for #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`)
+      console.info(
+        `[Resend] Review request for #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`,
+      )
       res.status(200).json({
         success: true,
         configured: true,
@@ -850,14 +887,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!customer?.email || !order?.order_number) {
       res.status(400).json({
         success: false,
-        error: "Missing required order details (customer.email and order.order_number are required).",
+        error:
+          "Missing required order details (customer.email and order.order_number are required).",
       })
       return
     }
 
     const resend = new Resend(apiKey.trim())
     const fromAddress =
-      process.env.RESEND_FROM_EMAIL?.trim() || "Abaz Mart <orders@abazmart.co.uk>"
+      process.env.RESEND_FROM_EMAIL?.trim() ||
+      "Abaz Mart <orders@abazmart.co.uk>"
 
     const htmlBody = buildHtmlReceipt({
       order,
@@ -877,7 +916,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data, error } = await resend.emails.send({
       from: fromAddress,
       to: [customer.email.trim()],
-      bcc: customer.email.trim().toLowerCase() !== adminEmail.toLowerCase() ? [adminEmail] : undefined,
+      bcc:
+        customer.email.trim().toLowerCase() !== adminEmail.toLowerCase()
+          ? [adminEmail]
+          : undefined,
       subject: `Official Receipt for Order #${order.order_number} · Abaz Mart`,
       html: htmlBody,
       text: textBody,
@@ -893,7 +935,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
-    console.info(`[Resend] Order receipt #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`)
+    console.info(
+      `[Resend] Order receipt #${order.order_number} sent to ${customer.email} (ID: ${data?.id})`,
+    )
 
     // Also send dedicated Store Admin Notification to abazmartltd@gmail.com
     try {
@@ -910,7 +954,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         html: adminHtml,
         text: `New order #${order.order_number} received from ${customer.fullName} (${customer.email}) for ${formatGbp(order.total)}. View in admin: https://www.abazmart.co.uk/admin/orders`,
       })
-      console.info(`[Resend] Dedicated admin notification for #${order.order_number} sent to ${adminEmail}`)
+      console.info(
+        `[Resend] Dedicated admin notification for #${order.order_number} sent to ${adminEmail}`,
+      )
     } catch (adminErr) {
       console.warn("[Resend] Admin notification notice:", adminErr)
     }
@@ -923,7 +969,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       adminNotified: adminEmail,
     })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to send order confirmation email"
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to send order confirmation email"
     console.error("[Resend] Handler exception:", message)
     res.status(500).json({ success: false, error: message })
   }

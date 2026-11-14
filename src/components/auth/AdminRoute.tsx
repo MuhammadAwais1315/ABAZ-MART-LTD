@@ -39,9 +39,13 @@ export default function AdminRoute({ children }: { children?: ReactNode }) {
           Administrator Access Required
         </h1>
         <p className="text-stone-600 max-w-md text-sm sm:text-base leading-relaxed mb-8">
-          The portal at <code className="bg-stone-200/70 px-2 py-0.5 rounded text-xs">{location.pathname}</code> is
-          restricted to store administrators. Your current account (<strong>{user.email}</strong>) does not have
-          administrator credentials.
+          The portal at{" "}
+          <code className="bg-stone-200/70 px-2 py-0.5 rounded text-xs">
+            {location.pathname}
+          </code>{" "}
+          is restricted to store administrators. Your current account (
+          <strong>{user.email}</strong>) does not have administrator
+          credentials.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link

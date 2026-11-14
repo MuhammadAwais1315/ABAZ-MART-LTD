@@ -3,7 +3,7 @@ import { Sparkles, CheckCircle2, Feather, Droplets, Info } from "lucide-react"
 
 interface Section {
   title?: string
-  bullets: Array<{ key?: string; value: string }>
+  bullets: Array<{ key?: string value: string }>
   paragraphs: string[]
 }
 
@@ -137,7 +137,11 @@ export default function ProductDescription({
   }
 
   // If text does not contain any structured markdown sections
-  if (sections.length === 1 && !sections[0].title && sections[0].bullets.length === 0) {
+  if (
+    sections.length === 1 &&
+    !sections[0].title &&
+    sections[0].bullets.length === 0
+  ) {
     return (
       <div className="space-y-4 text-left leading-relaxed text-stone-700 text-sm md:text-base">
         {description.split(/\n\s*\n/).map((para, i) => (
@@ -245,26 +249,28 @@ export default function ProductDescription({
             )}
 
             {/* General bullets (if not notes or specs) */}
-            {!isFragranceNotes && !isProductDetails && section.bullets.length > 0 && (
-              <ul className="space-y-2.5 my-3 pl-0 list-none">
-                {section.bullets.map((b, bIdx) => (
-                  <li
-                    key={bIdx}
-                    className="flex items-start gap-2.5 text-sm md:text-base text-stone-700"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#b83b5e] shrink-0 mt-2" />
-                    <span>
-                      {b.key && (
-                        <strong className="font-semibold text-ink mr-1.5">
-                          {b.key}:
-                        </strong>
-                      )}
-                      {b.value}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {!isFragranceNotes &&
+              !isProductDetails &&
+              section.bullets.length > 0 && (
+                <ul className="space-y-2.5 my-3 pl-0 list-none">
+                  {section.bullets.map((b, bIdx) => (
+                    <li
+                      key={bIdx}
+                      className="flex items-start gap-2.5 text-sm md:text-base text-stone-700"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#b83b5e] shrink-0 mt-2" />
+                      <span>
+                        {b.key && (
+                          <strong className="font-semibold text-ink mr-1.5">
+                            {b.key}:
+                          </strong>
+                        )}
+                        {b.value}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
           </div>
         )
       })}

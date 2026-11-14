@@ -8,22 +8,27 @@
  */
 export function slugify(text: string): string {
   if (!text) return ""
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove accents/diacritics
-    .replace(/&+/g, "and") // Replace '&' with 'and'
-    .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric chars with hyphen
-    .replace(/^-+|-+$/g, "") // Trim hyphens from start and end
+  return (
+    text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove accents/diacritics
+      .replace(/&+/g, "and") // Replace '&' with 'and'
+      .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric chars with hyphen
+      .replace(/^-+|-+$/g, "")
+  ) // Trim hyphens from start and end
 }
 
 /**
  * Resolves the slug for a product.
  * Uses existing `product.slug` if present; otherwise generates a clean slug from `product.name`.
  */
-export function getProductSlug(product: { slug?: string; name: string }): string {
+export function getProductSlug(product: {
+  slug?: string
+  name: string
+}): string {
   if (product.slug && product.slug.trim()) {
     return product.slug.trim()
   }

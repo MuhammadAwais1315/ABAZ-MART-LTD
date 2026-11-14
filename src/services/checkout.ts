@@ -83,7 +83,10 @@ export function getLocalStoreSettings(): StoreSettings {
 
     const parsed = JSON.parse(raw)
     return {
-      shippingFee: parseNumericSetting(parsed.shippingFee, DEFAULT_STORE_SETTINGS.shippingFee),
+      shippingFee: parseNumericSetting(
+        parsed.shippingFee,
+        DEFAULT_STORE_SETTINGS.shippingFee,
+      ),
       expeditedShippingFee: parseNumericSetting(
         parsed.expeditedShippingFee ?? localExpedited,
         fallbackExpedited,
@@ -92,10 +95,15 @@ export function getLocalStoreSettings(): StoreSettings {
         parsed.freeShippingThreshold,
         DEFAULT_STORE_SETTINGS.freeShippingThreshold,
       ),
-      taxRate: parseNumericSetting(parsed.taxRate, DEFAULT_STORE_SETTINGS.taxRate),
+      taxRate: parseNumericSetting(
+        parsed.taxRate,
+        DEFAULT_STORE_SETTINGS.taxRate,
+      ),
       currency: parsed.currency || DEFAULT_STORE_SETTINGS.currency,
-      currencySymbol: parsed.currencySymbol || DEFAULT_STORE_SETTINGS.currencySymbol,
-      defaultCountry: parsed.defaultCountry || DEFAULT_STORE_SETTINGS.defaultCountry,
+      currencySymbol:
+        parsed.currencySymbol || DEFAULT_STORE_SETTINGS.currencySymbol,
+      defaultCountry:
+        parsed.defaultCountry || DEFAULT_STORE_SETTINGS.defaultCountry,
     }
   } catch {
     return DEFAULT_STORE_SETTINGS
@@ -105,7 +113,9 @@ export function getLocalStoreSettings(): StoreSettings {
 /**
  * Save store settings locally and broadcast update to all active browser views.
  */
-export function saveLocalStoreSettings(settings: Partial<StoreSettings>): StoreSettings {
+export function saveLocalStoreSettings(
+  settings: Partial<StoreSettings>,
+): StoreSettings {
   const current = getLocalStoreSettings()
   const updated: StoreSettings = {
     ...current,
@@ -125,8 +135,13 @@ export function saveLocalStoreSettings(settings: Partial<StoreSettings>): StoreS
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem("abaz_store_settings", JSON.stringify(updated))
-      localStorage.setItem("abaz_expedited_shipping_fee", updated.expeditedShippingFee.toString())
-      window.dispatchEvent(new CustomEvent("abaz_settings_updated", { detail: updated }))
+      localStorage.setItem(
+        "abaz_expedited_shipping_fee",
+        updated.expeditedShippingFee.toString(),
+      )
+      window.dispatchEvent(
+        new CustomEvent("abaz_settings_updated", { detail: updated }),
+      )
     } catch (err) {
       console.warn("Failed to persist store settings locally:", err)
     }
@@ -178,7 +193,10 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     // Keep localStorage in sync with database values
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("abaz_store_settings", JSON.stringify(remoteSettings))
+        localStorage.setItem(
+          "abaz_store_settings",
+          JSON.stringify(remoteSettings),
+        )
         localStorage.setItem(
           "abaz_expedited_shipping_fee",
           remoteSettings.expeditedShippingFee.toString(),
@@ -199,7 +217,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 export async function validateCoupon(
   code: string,
   subtotal: number,
-): Promise<{ discount: number; error: Error | null }> {
+): Promise<{ discount: number error: Error | null }> {
   if (!code.trim() || subtotal <= 0) {
     return { discount: 0, error: null }
   }
@@ -232,13 +250,16 @@ export async function validateCoupon(
     if (discountAmount <= 0) {
       return {
         discount: 0,
-        error: new Error("Coupon code is invalid, expired, or minimum spend not met"),
+        error: new Error(
+          "Coupon code is invalid, expired, or minimum spend not met",
+        ),
       }
     }
 
     return { discount: discountAmount, error: null }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to validate coupon"
+    const message =
+      err instanceof Error ? err.message : "Failed to validate coupon"
     return { discount: 0, error: new Error(message) }
   }
 }
@@ -249,7 +270,7 @@ export async function validateCoupon(
  */
 export async function createOrderSecure(
   params: CreateOrderParams,
-): Promise<{ data: OrderResult | null; error: Error | null }> {
+): Promise<{ data: OrderResult | null error: Error | null }> {
   if (!isSupabaseConfigured()) {
     // Demo fallback order creation with stock validation
     const catalog = getEffectiveProducts(defaultProducts)
@@ -265,7 +286,10 @@ export async function createOrderSecure(
       }
     }
 
-    const subtotal = params.items.reduce((sum, item) => sum + item.quantity * 25, 0)
+    const subtotal = params.items.reduce(
+      (sum, item) => sum + item.quantity * 25,
+      0,
+    )
     let shipping =
       subtotal >= DEFAULT_STORE_SETTINGS.freeShippingThreshold
         ? 0
@@ -326,7 +350,11 @@ export async function createOrderSecure(
 
     const orderResult = data as OrderResult
     // If expedited shipping was chosen or custom shipping fee provided, adjust shipping & total
-    if (orderResult && params.shippingFee !== undefined && params.shippingFee !== orderResult.shipping) {
+    if (
+      orderResult &&
+      params.shippingFee !== undefined &&
+      params.shippingFee !== orderResult.shipping
+    ) {
       const diff = params.shippingFee - orderResult.shipping
       const newTotal = Math.max(0, orderResult.total + diff)
       orderResult.shipping = params.shippingFee
@@ -337,13 +365,17 @@ export async function createOrderSecure(
           .update({ shipping: params.shippingFee, total: newTotal })
           .eq("id", orderResult.order_id)
       } catch (patchErr) {
-        console.warn("Could not sync expedited shipping to orders row:", patchErr)
+        console.warn(
+          "Could not sync expedited shipping to orders row:",
+          patchErr,
+        )
       }
     }
 
     return { data: orderResult, error: null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to create order"
+    const message =
+      err instanceof Error ? err.message : "Failed to create order"
     return { data: null, error: new Error(message) }
   }
 }

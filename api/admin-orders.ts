@@ -16,8 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabaseUrl =
-    process.env.VITE_SUPABASE_URL ||
-    "https://twstiotnaaglptizaxkm.supabase.co"
+    process.env.VITE_SUPABASE_URL || "https://twstiotnaaglptizaxkm.supabase.co"
   // Prefer service_role key to bypass RLS for admin endpoints, fallback to anon key
   const supabaseKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -36,7 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle status update (POST or PATCH)
   if (req.method === "POST" || req.method === "PATCH") {
     try {
-      const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
+      const body =
+        typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
       const { orderId, status, carrier, trackingNumber, trackingUrl } = body
 
       if (!orderId) {
@@ -89,7 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(200).json({ success: true, order: data?.[0] })
       return
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update order"
+      const message =
+        err instanceof Error ? err.message : "Failed to update order"
       res.status(500).json({ error: message })
       return
     }
@@ -98,7 +99,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Handle GET to list all orders
   try {
     // 1. First attempt to call the RPC if available
-    const { data: rpcData, error: rpcErr } = await supabase.rpc("get_all_orders_admin")
+    const { data: rpcData, error: rpcErr } = await supabase.rpc(
+      "get_all_orders_admin",
+    )
     if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
       return res.status(200).json({ orders: rpcData, source: "rpc" })
     }
@@ -111,8 +114,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!joinErr && ordersWithItems && ordersWithItems.length > 0) {
       // Fetch customer profile emails
-      const userIds = Array.from(new Set(ordersWithItems.map((o) => o.user_id).filter(Boolean)))
-      const profileMap = new Map<string, { email: string; phone?: string | null }>()
+      const userIds = Array.from(
+        new Set(ordersWithItems.map((o) => o.user_id).filter(Boolean)),
+      )
+      const profileMap = new Map<string, {
+        email: string
+        phone?: string | null
+      }>()
       if (userIds.length > 0) {
         try {
           const { data: profs } = await supabase
@@ -131,7 +139,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const prof = profileMap.get(o.user_id)
         return {
           ...o,
-          customer_email: prof?.email || (o.shipping_name ? `${o.shipping_name.toLowerCase().replace(/\s+/g, ".")}@example.com` : "customer@example.com"),
+          customer_email:
+            prof?.email ||
+            (o.shipping_name
+              ? `${o.shipping_name.toLowerCase().replace(/\s+/g, ".")}@example.com`
+              : "customer@example.com"),
           customer_phone: o.shipping_phone || prof?.phone || "",
         }
       })

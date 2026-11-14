@@ -71,9 +71,12 @@ export async function verifyUKPostcodeLive(
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 4000)
     const encoded = encodeURIComponent(formatted.replace(/\s+/g, ""))
-    const response = await fetch(`https://api.postcodes.io/postcodes/${encoded}`, {
-      signal: controller.signal,
-    })
+    const response = await fetch(
+      `https://api.postcodes.io/postcodes/${encoded}`,
+      {
+        signal: controller.signal,
+      },
+    )
     clearTimeout(timeoutId)
 
     if (response.ok) {
@@ -81,10 +84,7 @@ export async function verifyUKPostcodeLive(
       if (data.status === 200 && data.result) {
         const result = data.result
         const cityCandidate =
-          result.admin_district ||
-          result.parish ||
-          result.region ||
-          ""
+          result.admin_district || result.parish || result.region || ""
 
         return {
           valid: true,

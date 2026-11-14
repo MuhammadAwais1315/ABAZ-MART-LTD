@@ -16,7 +16,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey || apiKey.trim() === "" || apiKey.includes("placeholder") || apiKey.includes("your_")) {
+  if (
+    !apiKey ||
+    apiKey.trim() === "" ||
+    apiKey.includes("placeholder") ||
+    apiKey.includes("your_")
+  ) {
     res.status(200).json({
       success: false,
       configured: false,
@@ -28,9 +33,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let recipient = ""
   if (req.method === "GET") {
-    recipient = (req.query.to as string) || (req.query.email as string) || ""
+    recipient = req.query.to as string || req.query.email as string || ""
   } else if (req.method === "POST") {
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
+    const body =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
     recipient = body.to || body.email || ""
   }
 
@@ -47,7 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const resend = new Resend(apiKey.trim())
     const fromAddress =
-      process.env.RESEND_FROM_EMAIL?.trim() || "Abaz Mart <orders@abazmart.co.uk>"
+      process.env.RESEND_FROM_EMAIL?.trim() ||
+      "Abaz Mart <orders@abazmart.co.uk>"
 
     const testOrderNum = `ABZ-TEST-${Math.floor(100000 + Math.random() * 900000)}`
 
@@ -102,7 +109,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       to: recipient.trim(),
     })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to send test email"
+    const message =
+      err instanceof Error ? err.message : "Failed to send test email"
     res.status(500).json({ success: false, error: message })
   }
 }

@@ -53,8 +53,7 @@ export function mapDbProductToProduct(row: ProductRow): Product {
     description: row.description,
     stock: row.stock,
     badge: row.badge || undefined,
-    options:
-      row.options && row.options.length > 0 ? row.options : ["Default"],
+    options: row.options && row.options.length > 0 ? row.options : ["Default"],
   }
 }
 
@@ -69,7 +68,9 @@ export function isProductDeleted(_idOrSlug: number | string): boolean {
  * Synchronously merge custom edits/created items from localStorage.
  * Used across customer storefront and fallback mocks.
  */
-export function getEffectiveProducts(list: Product[] = defaultProducts): Product[] {
+export function getEffectiveProducts(
+  list: Product[] = defaultProducts,
+): Product[] {
   if (typeof window === "undefined") {
     return list
   }
@@ -115,7 +116,11 @@ export function getEffectiveProducts(list: Product[] = defaultProducts): Product
             ? undefined
             : Number(edit.oldPrice)
           : p.oldPrice,
-      stock: isFromLiveDb ? p.stock : (edit.stock !== undefined ? Number(edit.stock) : p.stock),
+      stock: isFromLiveDb
+        ? p.stock
+        : edit.stock !== undefined
+          ? Number(edit.stock)
+          : p.stock,
       badge:
         edit.badge !== undefined
           ? edit.badge
@@ -133,7 +138,7 @@ export function getEffectiveProducts(list: Product[] = defaultProducts): Product
  */
 export async function getProducts(
   params: ProductQueryParams = {},
-): Promise<{ data: Product[]; total: number; error: Error | null }> {
+): Promise<{ data: Product[] total: number error: Error | null }> {
   if (!isSupabaseConfigured()) {
     return filterDefaultProducts(params)
   }
@@ -148,16 +153,22 @@ export async function getProducts(
     if (params.category && params.category !== "All") {
       const catTrim = params.category.trim()
       if (/\b(fragran|perfum|parfum)\w*\b/i.test(catTrim)) {
-        query = query.or("category_name.ilike.%fragran%,category_name.ilike.%perfum%")
+        query = query.or(
+          "category_name.ilike.%fragran%,category_name.ilike.%perfum%",
+        )
       } else {
-        query = query.or(`category_name.ilike.%${catTrim}%,category_name.ilike.${catTrim}`)
+        query = query.or(
+          `category_name.ilike.%${catTrim}%,category_name.ilike.${catTrim}`,
+        )
       }
     } else if (params.categories && params.categories.length > 0) {
       const hasFragrance = params.categories.some((c) =>
         /\b(fragran|perfum)\w*\b/i.test(c),
       )
       if (hasFragrance) {
-        query = query.or("category_name.ilike.%fragran%,category_name.ilike.%perfum%")
+        query = query.or(
+          "category_name.ilike.%fragran%,category_name.ilike.%perfum%",
+        )
       } else {
         query = query.in("category_name", params.categories)
       }
@@ -216,7 +227,9 @@ export async function getProducts(
         query = query.order("created_at", { ascending: false })
         break
       case "sale":
-        query = query.not("old_price", "is", null).order("price", { ascending: true })
+        query = query
+          .not("old_price", "is", null)
+          .order("price", { ascending: true })
         break
       case "featured":
       default:
@@ -233,7 +246,10 @@ export async function getProducts(
     const { data, count, error } = await query
 
     if (error) {
-      console.warn("Supabase products fetch failed, using fallback:", error.message)
+      console.warn(
+        "Supabase products fetch failed, using fallback:",
+        error.message,
+      )
       return filterDefaultProducts(params)
     }
 
@@ -251,7 +267,7 @@ export async function getProducts(
  */
 export async function getProductById(
   idOrSlug: number | string,
-): Promise<{ data: Product | null; error: Error | null }> {
+): Promise<{ data: Product | null error: Error | null }> {
   if (isProductDeleted(idOrSlug)) {
     return { data: null, error: new Error("Product no longer available") }
   }
@@ -267,7 +283,8 @@ export async function getProductById(
       if (isNumeric && p.id === numericId) return true
       if (p.slug && p.slug.toLowerCase() === lowerKey) return true
       if (slugify(p.name) === lowerKey) return true
-      if (p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === lowerKey) return true
+      if (p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === lowerKey)
+        return true
       return false
     }) || null
 
@@ -359,7 +376,9 @@ export async function getCategories(): Promise<string[]> {
       if (raw) {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed)) {
-          return parsed.map((item: any) => (typeof item === "string" ? item : item.name)).filter(Boolean)
+          return parsed
+            .map((item: any) => (typeof item === "string" ? item : item.name))
+            .filter(Boolean)
         }
       }
     } catch {}
@@ -421,7 +440,11 @@ export async function getBrands(category?: string): Promise<string[]> {
     fallback = fallback.filter((p) => matchCategory(p.category, category))
   }
   const fallbackBrands = Array.from(
-    new Set(fallback.map((p) => p.brand?.trim()).filter((b): b is string => Boolean(b))),
+    new Set(
+      fallback
+        .map((p) => p.brand?.trim())
+        .filter((b): b is string => Boolean(b)),
+    ),
   ).sort((a, b) => a.localeCompare(b))
 
   if (!isSupabaseConfigured()) {
@@ -429,17 +452,18 @@ export async function getBrands(category?: string): Promise<string[]> {
   }
 
   try {
-    let query = supabase
-      .from("products")
-      .select("brand")
-      .eq("is_active", true)
+    let query = supabase.from("products").select("brand").eq("is_active", true)
 
     if (category && category !== "All") {
       const catTrim = category.trim()
       if (/\b(fragran|perfum|parfum)\w*\b/i.test(catTrim)) {
-        query = query.or("category_name.ilike.%fragran%,category_name.ilike.%perfum%")
+        query = query.or(
+          "category_name.ilike.%fragran%,category_name.ilike.%perfum%",
+        )
       } else {
-        query = query.or(`category_name.ilike.%${catTrim}%,category_name.ilike.${catTrim}`)
+        query = query.or(
+          `category_name.ilike.%${catTrim}%,category_name.ilike.${catTrim}`,
+        )
       }
     }
 
@@ -479,10 +503,14 @@ function saveLocalReview(productId: number, item: ReviewItem): void {
   if (typeof window === "undefined") return
   try {
     const existing = getLocalReviews(productId)
-    const filtered = existing.filter((r) => r.id !== item.id && r.text !== item.text)
+    const filtered = existing.filter(
+      (r) => r.id !== item.id && r.text !== item.text,
+    )
     const updated = [item, ...filtered]
     localStorage.setItem(`abaz_reviews_${productId}`, JSON.stringify(updated))
-    window.dispatchEvent(new CustomEvent("abaz_review_updated", { detail: { productId } }))
+    window.dispatchEvent(
+      new CustomEvent("abaz_review_updated", { detail: { productId } }),
+    )
   } catch {}
 }
 
@@ -493,7 +521,7 @@ function saveLocalReview(productId: number, item: ReviewItem): void {
 export async function checkUserIsBuyer(
   productId: number | string,
   userId?: string,
-): Promise<{ isBuyer: boolean; reason?: string }> {
+): Promise<{ isBuyer: boolean reason?: string }> {
   if (!userId) {
     return {
       isBuyer: false,
@@ -532,9 +560,12 @@ export async function checkUserIsBuyer(
         .neq("status", "Cancelled")
 
       if (!error && Array.isArray(orders)) {
-        const found = orders.some((ord: any) =>
-          Array.isArray(ord.order_items) &&
-          ord.order_items.some((it: any) => Number(it.product_id) === numProdId),
+        const found = orders.some(
+          (ord: any) =>
+            Array.isArray(ord.order_items) &&
+            ord.order_items.some(
+              (it: any) => Number(it.product_id) === numProdId,
+            ),
         )
         if (found) {
           return { isBuyer: true }
@@ -550,11 +581,14 @@ export async function checkUserIsBuyer(
       if (localRaw) {
         const localList = JSON.parse(localRaw)
         if (Array.isArray(localList)) {
-          const foundLocal = localList.some((ord: any) =>
-            (!ord.user_id || ord.user_id === userId) &&
-            ord.status !== "Cancelled" &&
-            Array.isArray(ord.order_items) &&
-            ord.order_items.some((it: any) => Number(it.product_id) === numProdId),
+          const foundLocal = localList.some(
+            (ord: any) =>
+              (!ord.user_id || ord.user_id === userId) &&
+              ord.status !== "Cancelled" &&
+              Array.isArray(ord.order_items) &&
+              ord.order_items.some(
+                (it: any) => Number(it.product_id) === numProdId,
+              ),
           )
           if (foundLocal) {
             return { isBuyer: true }
@@ -566,7 +600,8 @@ export async function checkUserIsBuyer(
 
   return {
     isBuyer: false,
-    reason: "Verified buyers only: You can only review products you have purchased.",
+    reason:
+      "Verified buyers only: You can only review products you have purchased.",
   }
 }
 
@@ -575,7 +610,7 @@ export async function checkUserIsBuyer(
  */
 export async function getProductReviews(
   productId: number,
-): Promise<{ data: ReviewItem[]; error: Error | null }> {
+): Promise<{ data: ReviewItem[] error: Error | null }> {
   const localList = getLocalReviews(productId)
 
   if (!isSupabaseConfigured()) {
@@ -610,7 +645,9 @@ export async function getProductReviews(
 
     // Merge database reviews and locally submitted reviews
     const dbKeys = new Set(dbMapped.map((r) => `${r.title}::${r.text}`))
-    const uniqueLocals = localList.filter((r) => !dbKeys.has(`${r.title}::${r.text}`))
+    const uniqueLocals = localList.filter(
+      (r) => !dbKeys.has(`${r.title}::${r.text}`),
+    )
     const combined = [...uniqueLocals, ...dbMapped]
 
     return { data: combined, error: null }
@@ -632,7 +669,7 @@ export async function submitProductReview(
   rating: number,
   title: string,
   content: string,
-): Promise<{ data: any; error: Error | null }> {
+): Promise<{ data: any error: Error | null }> {
   const cleanTitle = title.trim()
   const cleanContent = content.trim()
   const cleanRating = Math.min(5, Math.max(1, rating))
@@ -694,7 +731,9 @@ export async function submitProductReview(
       const total = allForProd.length
       const avg =
         total > 0
-          ? Number((allForProd.reduce((a, b) => a + b.rating, 0) / total).toFixed(1))
+          ? Number(
+              (allForProd.reduce((a, b) => a + b.rating, 0) / total).toFixed(1),
+            )
           : cleanRating
       edits[productId.toString()] = {
         ...existing,

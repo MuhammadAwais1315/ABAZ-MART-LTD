@@ -1,18 +1,6 @@
-import {
-  Dispatch,
-  SetStateAction,
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
-import {
-  LayoutGrid,
-  List,
-  Search,
-  SlidersHorizontal,
-  X,
-} from "lucide-react"
+import { LayoutGrid, List, Search, SlidersHorizontal, X } from "lucide-react"
 import ProductCard from "../components/ProductCard"
 import {
   Badge,
@@ -38,7 +26,9 @@ export default function Shop() {
   const query = (params.get("q") || "").toLowerCase()
   const [sort, setSort] = useState(sortParam || "featured")
   const [view, setView] = useState<"grid" | "list">("grid")
-  const [catalog, setCatalog] = useState<Product[]>(() => getEffectiveProducts(initialProducts))
+  const [catalog, setCatalog] = useState<Product[]>(() =>
+    getEffectiveProducts(initialProducts),
+  )
   const { categories } = useCategories()
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     categoryParam ? [categoryParam] : [],
@@ -442,7 +432,9 @@ export default function Shop() {
                   ? "Our boutique catalog is currently being updated with real inventory. Items added via the Admin Portal will appear here automatically."
                   : "Try adjusting your filters or search for something else."}
               </p>
-              {catalog.length > 0 && <Button onClick={clearFilters}>Reset filters</Button>}
+              {catalog.length > 0 && (
+                <Button onClick={clearFilters}>Reset filters</Button>
+              )}
             </div>
           )}
           {!loading && filtered.length > 0 && (

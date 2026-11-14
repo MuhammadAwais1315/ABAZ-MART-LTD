@@ -79,11 +79,12 @@ export function CheckoutSummary({
             <span>
               <strong>{item.product.name}</strong>
               <small>{item.option}</small>
-              {item.product.stock !== undefined && item.quantity > item.product.stock && (
-                <small className="text-rose-600 font-semibold block text-[10px]">
-                  Exceeds stock: only {item.product.stock} available
-                </small>
-              )}
+              {item.product.stock !== undefined &&
+                item.quantity > item.product.stock && (
+                  <small className="text-rose-600 font-semibold block text-[10px]">
+                    Exceeds stock: only {item.product.stock} available
+                  </small>
+                )}
             </span>
             <b>{formatPrice(item.product.price * item.quantity)}</b>
           </div>
@@ -126,8 +127,11 @@ export default function Checkout() {
   const [orderError, setOrderError] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card")
   const [saveAddress, setSaveAddress] = useState(false)
-  const [deliveryOption, setDeliveryOption] = useState<"standard" | "expedited">("standard")
-  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
+  const [deliveryOption, setDeliveryOption] =
+    useState<"standard" | "expedited">("standard")
+  const [settings, setSettings] = useState<StoreSettings>(
+    DEFAULT_STORE_SETTINGS,
+  )
   const [couponCode, setCouponCode] = useState(() => {
     return window.sessionStorage.getItem("abaz_promo_code") || ""
   })
@@ -150,15 +154,16 @@ export default function Checkout() {
   })
 
   // Stripe State
-  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null)
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(
+    null,
+  )
   const [stripeLoading, setStripeLoading] = useState(false)
   const stripeFormRef = useRef<EmbeddedStripeFormRef>(null)
   const stripeConfigured = isStripeConfigured()
 
   // UK Postal Code Verification State
-  const [postcodeStatus, setPostcodeStatus] = useState<
-    "idle" | "verifying" | "valid" | "invalid"
-  >("idle")
+  const [postcodeStatus, setPostcodeStatus] =
+    useState<"idle" | "verifying" | "valid" | "invalid">("idle")
   const [postcodeMessage, setPostcodeMessage] = useState("")
 
   const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,7 +193,8 @@ export default function Checkout() {
     if (res.valid) {
       setPostcodeStatus("valid")
       const areaParts = [res.district, res.region].filter(Boolean)
-      const area = areaParts.length > 0 ? areaParts.join(", ") : "Royal Mail Delivery Area"
+      const area =
+        areaParts.length > 0 ? areaParts.join(", ") : "Royal Mail Delivery Area"
       const countryNote = res.country ? `${res.country} · ` : ""
       setPostcodeMessage(`Verified UK Postcode (${countryNote}${area})`)
       if (!form.city.trim() && res.city) {
@@ -285,7 +291,10 @@ export default function Checkout() {
       ? settings.expeditedShippingFee
       : standardShippingFee
   const taxAmount = orderSubtotal * settings.taxRate
-  const orderTotal = Math.max(0, orderSubtotal + shippingFee + taxAmount - couponDiscount)
+  const orderTotal = Math.max(
+    0,
+    orderSubtotal + shippingFee + taxAmount - couponDiscount,
+  )
 
   // Track Meta Pixel InitiateCheckout on checkout mount
   const initiatedRef = useRef(false)
@@ -307,7 +316,8 @@ export default function Checkout() {
   useEffect(() => {
     let isMounted = true
     async function initPaymentIntent() {
-      if (!stripeConfigured || paymentMethod !== "card" || orderTotal <= 0) return
+      if (!stripeConfigured || paymentMethod !== "card" || orderTotal <= 0)
+        return
       if (stripeClientSecret) return
 
       try {
@@ -336,7 +346,10 @@ export default function Checkout() {
         }
       } catch (err) {
         if (isMounted) {
-          console.warn("Could not initialize Stripe PaymentIntent, using fallback:", err)
+          console.warn(
+            "Could not initialize Stripe PaymentIntent, using fallback:",
+            err,
+          )
         }
       } finally {
         if (isMounted) {
@@ -352,7 +365,14 @@ export default function Checkout() {
     return () => {
       isMounted = false
     }
-  }, [step, paymentMethod, orderTotal, stripeConfigured, form.email, stripeClientSecret])
+  }, [
+    step,
+    paymentMethod,
+    orderTotal,
+    stripeConfigured,
+    form.email,
+    stripeClientSecret,
+  ])
 
   const setField = (name: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [name]: value }))
@@ -418,7 +438,8 @@ export default function Checkout() {
       const res = await performPostcodeVerification()
       if (res && !res.valid) {
         const errMsg =
-          res.error || "Please enter a valid UK postcode (e.g. SW1A 1AA, M1 1AE)."
+          res.error ||
+          "Please enter a valid UK postcode (e.g. SW1A 1AA, M1 1AE)."
         notify(errMsg)
         const el = document.getElementById("checkout-postal-code")
         el?.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -428,14 +449,19 @@ export default function Checkout() {
 
     // Verify stock availability before advancing
     for (const item of cart) {
-      const available = item.product.stock !== undefined ? item.product.stock : 99
+      const available =
+        item.product.stock !== undefined ? item.product.stock : 99
       if (available <= 0) {
-        setOrderError(`"${item.product.name}" is out of stock. Please remove it from your bag.`)
+        setOrderError(
+          `"${item.product.name}" is out of stock. Please remove it from your bag.`,
+        )
         notify(`"${item.product.name}" is out of stock`)
         return
       }
       if (item.quantity > available) {
-        setOrderError(`Only ${available} available for "${item.product.name}". You currently have ${item.quantity} in your bag.`)
+        setOrderError(
+          `Only ${available} available for "${item.product.name}". You currently have ${item.quantity} in your bag.`,
+        )
         notify(`Stock limit exceeded for "${item.product.name}"`)
         return
       }
@@ -469,15 +495,20 @@ export default function Checkout() {
 
     // Strict stock verification before payment
     for (const item of cart) {
-      const available = item.product.stock !== undefined ? item.product.stock : 99
+      const available =
+        item.product.stock !== undefined ? item.product.stock : 99
       if (available <= 0) {
-        setOrderError(`"${item.product.name}" is out of stock. Please remove it to proceed.`)
+        setOrderError(
+          `"${item.product.name}" is out of stock. Please remove it to proceed.`,
+        )
         notify(`"${item.product.name}" is out of stock`)
         setSubmittingOrder(false)
         return
       }
       if (item.quantity > available) {
-        setOrderError(`Only ${available} available for "${item.product.name}". Please adjust quantity to continue.`)
+        setOrderError(
+          `Only ${available} available for "${item.product.name}". Please adjust quantity to continue.`,
+        )
         notify(`Stock limit exceeded for "${item.product.name}"`)
         setSubmittingOrder(false)
         return
@@ -493,14 +524,17 @@ export default function Checkout() {
     if (paymentMethod === "card" && stripeConfigured && stripeClientSecret) {
       if (!stripeFormRef.current) {
         setSubmittingOrder(false)
-        setOrderError("Payment terminal is still initializing. Please wait a moment.")
+        setOrderError(
+          "Payment terminal is still initializing. Please wait a moment.",
+        )
         return
       }
       const paymentResult = await stripeFormRef.current.submitPayment()
       if (!paymentResult.success) {
         setSubmittingOrder(false)
         setOrderError(
-          paymentResult.error || "Payment was declined or cancelled. Please try again.",
+          paymentResult.error ||
+            "Payment was declined or cancelled. Please try again.",
         )
         notify(paymentResult.error || "Payment authorization failed")
         return
@@ -610,7 +644,10 @@ export default function Checkout() {
                 ? { ...c, ordersCount: (c.ordersCount || 0) + 1 }
                 : c,
             )
-            localStorage.setItem("abaz_registered_customers", JSON.stringify(updatedCust))
+            localStorage.setItem(
+              "abaz_registered_customers",
+              JSON.stringify(updatedCust),
+            )
           } catch {}
         }
 
@@ -731,7 +768,11 @@ export default function Checkout() {
             Your order <strong>#{confirmedOrder.order_number}</strong> has been
             placed.
             {form.email ? (
-              <> A confirmation receipt has been dispatched to <strong>{form.email}</strong>.</>
+              <>
+                {" "}
+                A confirmation receipt has been dispatched to{" "}
+                <strong>{form.email}</strong>.
+              </>
             ) : null}{" "}
             You can download your official PDF receipt below.
           </p>
@@ -855,7 +896,10 @@ export default function Checkout() {
                 })}
                 {checkoutField("city", "City", { placeholder: "London" })}
                 {/* UK Postal Code Verification Field */}
-                <div className="checkout-field" id="checkout-postal-code-container">
+                <div
+                  className="checkout-field"
+                  id="checkout-postal-code-container"
+                >
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-foreground">
                       UK Postal code
@@ -867,7 +911,9 @@ export default function Checkout() {
                         disabled={postcodeStatus === "verifying"}
                         className="text-[11px] font-semibold text-rose-700 hover:text-rose-800 hover:underline transition"
                       >
-                        {postcodeStatus === "verifying" ? "Checking..." : "Verify Postcode"}
+                        {postcodeStatus === "verifying"
+                          ? "Checking..."
+                          : "Verify Postcode"}
                       </button>
                     )}
                   </div>
@@ -895,7 +941,9 @@ export default function Checkout() {
                   {postcodeStatus === "verifying" && (
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-1.5 animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-600 shrink-0" />
-                      <span>Verifying UK postcode against Royal Mail database...</span>
+                      <span>
+                        Verifying UK postcode against Royal Mail database...
+                      </span>
                     </p>
                   )}
                   {postcodeStatus === "valid" && !errors.postalCode && (
@@ -925,7 +973,8 @@ export default function Checkout() {
                           United Kingdom
                         </strong>
                         <span className="text-muted-foreground text-[11px]">
-                          Exclusive domestic delivery service (England, Scotland, Wales & Northern Ireland)
+                          Exclusive domestic delivery service (England,
+                          Scotland, Wales & Northern Ireland)
                         </span>
                       </div>
                     </div>
@@ -971,7 +1020,9 @@ export default function Checkout() {
                         </span>
                       </div>
                       <span className="font-bold text-xs text-rose-700">
-                        {standardShippingFee === 0 ? "FREE" : formatPrice(settings.shippingFee)}
+                        {standardShippingFee === 0
+                          ? "FREE"
+                          : formatPrice(settings.shippingFee)}
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-2">
@@ -1007,7 +1058,8 @@ export default function Checkout() {
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-2">
-                      1–2 business days priority dispatch via DPD / Royal Mail Special
+                      1–2 business days priority dispatch via DPD / Royal Mail
+                      Special
                     </p>
                   </label>
                 </div>
@@ -1031,7 +1083,8 @@ export default function Checkout() {
                   </span>
                   <strong className="text-foreground">{form.fullName}</strong>
                   <div className="text-muted-foreground">
-                    {form.address}, {form.city}, {form.postalCode} ({form.country})
+                    {form.address}, {form.city}, {form.postalCode} (
+                    {form.country})
                   </div>
                   <div className="text-muted-foreground text-[11px] mt-0.5">
                     {form.email} · {form.phone}
@@ -1041,7 +1094,11 @@ export default function Checkout() {
                     <span>
                       {deliveryOption === "expedited"
                         ? `Expedited Next-Day Delivery (${formatPrice(settings.expeditedShippingFee)})`
-                        : `Standard Tracked Delivery (${standardShippingFee === 0 ? "Free" : formatPrice(settings.shippingFee)})`}
+                        : `Standard Tracked Delivery (${
+                            standardShippingFee === 0
+                              ? "Free"
+                              : formatPrice(settings.shippingFee)
+                          })`}
                     </span>
                   </div>
                 </div>
@@ -1074,7 +1131,8 @@ export default function Checkout() {
                       </span>
                     </div>
                     <small>
-                      Visa, Mastercard, Amex, Apple Pay & Google Pay via encrypted Stripe checkout
+                      Visa, Mastercard, Amex, Apple Pay & Google Pay via
+                      encrypted Stripe checkout
                     </small>
                   </span>
                 </label>
@@ -1111,7 +1169,10 @@ export default function Checkout() {
                         <div className="p-3 mb-3 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs flex items-center gap-2">
                           <CreditCard className="w-4 h-4 text-amber-600 flex-shrink-0" />
                           <span>
-                            <strong>Demo Mode:</strong> Live embedded Card & Apple/Google Pay will activate when Stripe API keys are configured in Vercel. You can test checkout with any sample card.
+                            <strong>Demo Mode:</strong> Live embedded Card &
+                            Apple/Google Pay will activate when Stripe API keys
+                            are configured in Vercel. You can test checkout with
+                            any sample card.
                           </span>
                         </div>
                         <div className="card-fields">
@@ -1137,7 +1198,9 @@ export default function Checkout() {
 
                 {/* 2. Direct Bank Transfer (BACS / Faster Payments) */}
                 <label
-                  className={paymentMethod === "bank_transfer" ? "is-active" : ""}
+                  className={
+                    paymentMethod === "bank_transfer" ? "is-active" : ""
+                  }
                 >
                   <input
                     type="radio"
@@ -1153,7 +1216,8 @@ export default function Checkout() {
                       </span>
                     </div>
                     <small>
-                      Transfer directly to our official UK Wise business account (Sort Code, Account No &amp; IBAN)
+                      Transfer directly to our official UK Wise business account
+                      (Sort Code, Account No &amp; IBAN)
                     </small>
                   </span>
                 </label>
@@ -1165,14 +1229,19 @@ export default function Checkout() {
                       <span>Official UK Wise Business Account Details</span>
                     </div>
                     <p className="text-amber-900/90 leading-relaxed">
-                      Please send payment to our official <strong>Wise</strong> business account using Faster Payments or BACS. An official receipt with your unique order reference will be generated immediately upon confirmation.
+                      Please send payment to our official <strong>Wise</strong>{" "}
+                      business account using Faster Payments or BACS. An
+                      official receipt with your unique order reference will be
+                      generated immediately upon confirmation.
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-white p-3.5 rounded-lg border border-amber-200 text-xs font-mono">
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
                           Bank
                         </span>
-                        <strong className="text-foreground font-sans">Wise</strong>
+                        <strong className="text-foreground font-sans">
+                          Wise
+                        </strong>
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
@@ -1186,19 +1255,25 @@ export default function Checkout() {
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
                           Sort Code
                         </span>
-                        <strong className="text-foreground font-bold text-rose-700">60-84-64</strong>
+                        <strong className="text-foreground font-bold text-rose-700">
+                          60-84-64
+                        </strong>
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
                           Account Number
                         </span>
-                        <strong className="text-foreground font-bold text-rose-700">60869680</strong>
+                        <strong className="text-foreground font-bold text-rose-700">
+                          60869680
+                        </strong>
                       </div>
                       <div className="sm:col-span-2">
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
                           IBAN
                         </span>
-                        <strong className="text-foreground break-all">GB71 TRWI 6084 6460 8696 80</strong>
+                        <strong className="text-foreground break-all">
+                          GB71 TRWI 6084 6460 8696 80
+                        </strong>
                       </div>
                       <div>
                         <span className="text-[10px] text-muted-foreground block font-sans uppercase">
@@ -1208,14 +1283,16 @@ export default function Checkout() {
                       </div>
                     </div>
                     <p className="text-[11px] text-amber-800">
-                      * Office 951 60 Tottenham Court Road, Fitzrovia, London W1T 2EW, UK
+                      * Office 951 60 Tottenham Court Road, Fitzrovia, London
+                      W1T 2EW, UK
                     </p>
                   </div>
                 )}
               </div>
 
               <p className="secure-note mt-4">
-                <LockKeyhole /> 256-bit bank-grade encryption protects your payment information.
+                <LockKeyhole /> 256-bit bank-grade encryption protects your
+                payment information.
               </p>
             </>
           )}

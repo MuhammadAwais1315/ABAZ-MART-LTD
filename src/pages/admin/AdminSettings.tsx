@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react"
-import { Check, Mail, Plus, Settings2, Tag, Trash2, ToggleLeft, ToggleRight } from "lucide-react"
+import {
+  Check,
+  Mail,
+  Plus,
+  Settings2,
+  Tag,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react"
 import { Badge, Button, Input, Modal, Toast } from "../../components/ui"
 import {
   AdminCoupon,
@@ -15,7 +24,8 @@ import {
 } from "../../services/admin"
 
 export default function AdminSettings() {
-  const [activeTab, setActiveTab] = useState<"store" | "coupons" | "newsletter">("store")
+  const [activeTab, setActiveTab] =
+    useState<"store" | "coupons" | "newsletter">("store")
   const [toastMessage, setToastMessage] = useState("")
 
   // Store Settings State
@@ -45,7 +55,9 @@ export default function AdminSettings() {
   const [savingCoupon, setSavingCoupon] = useState(false)
 
   // Newsletter State
-  const [subscribers, setSubscribers] = useState<AdminNewsletterSubscriber[]>([])
+  const [subscribers, setSubscribers] = useState<AdminNewsletterSubscriber[]>(
+    [],
+  )
   const [loadingSubscribers, setLoadingSubscribers] = useState(true)
 
   const notify = (msg: string) => {
@@ -99,9 +111,13 @@ export default function AdminSettings() {
     })
     setSavingSettings(false)
     if (error) {
-      notify(`Store settings updated locally! (Supabase note: ${error.message})`)
+      notify(
+        `Store settings updated locally! (Supabase note: ${error.message})`,
+      )
     } else {
-      notify("Store settings & shipping rates updated successfully across the storefront!")
+      notify(
+        "Store settings & shipping rates updated successfully across the storefront!",
+      )
     }
   }
 
@@ -114,7 +130,9 @@ export default function AdminSettings() {
       code: couponForm.code.trim(),
       discountPercent: parseFloat(couponForm.discountPercent) || 10,
       minSpend: parseFloat(couponForm.minSpend) || 0,
-      maxDiscount: couponForm.maxDiscount ? parseFloat(couponForm.maxDiscount) : undefined,
+      maxDiscount: couponForm.maxDiscount
+        ? parseFloat(couponForm.maxDiscount)
+        : undefined,
     })
     setSavingCoupon(false)
 
@@ -123,7 +141,12 @@ export default function AdminSettings() {
     } else if (data) {
       setCoupons((current) => [data, ...current])
       setCouponModalOpen(false)
-      setCouponForm({ code: "", discountPercent: "15", minSpend: "0", maxDiscount: "" })
+      setCouponForm({
+        code: "",
+        discountPercent: "15",
+        minSpend: "0",
+        maxDiscount: "",
+      })
       notify(`Coupon "${data.code}" created!`)
     }
   }
@@ -151,7 +174,10 @@ export default function AdminSettings() {
         <div>
           <p className="eyebrow">Administration</p>
           <h1>Settings & Promotions</h1>
-          <p>Configure storefront shipping rules, promotional coupons, and email subscribers.</p>
+          <p>
+            Configure storefront shipping rules, promotional coupons, and email
+            subscribers.
+          </p>
         </div>
       </div>
 
@@ -181,20 +207,26 @@ export default function AdminSettings() {
         <section className="admin-panel max-w-3xl">
           <h2>Storefront Defaults & Logistics</h2>
           {loadingSettings ? (
-            <p className="py-8 text-muted-foreground text-center">Loading settings...</p>
+            <p className="py-8 text-muted-foreground text-center">
+              Loading settings...
+            </p>
           ) : (
             <form onSubmit={handleSaveSettings} className="space-y-6">
               <div className="form-grid">
                 <Input
                   label="Currency Code"
                   value={settings.currency}
-                  onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                  onChange={(e) =>
+                    setSettings({ ...settings, currency: e.target.value })
+                  }
                   required
                 />
                 <Input
                   label="Currency Symbol"
                   value={settings.currencySymbol}
-                  onChange={(e) => setSettings({ ...settings, currencySymbol: e.target.value })}
+                  onChange={(e) =>
+                    setSettings({ ...settings, currencySymbol: e.target.value })
+                  }
                   required
                 />
                 <Input
@@ -203,7 +235,10 @@ export default function AdminSettings() {
                   step="0.01"
                   value={settings.shippingFee.toString()}
                   onChange={(e) =>
-                    setSettings({ ...settings, shippingFee: parseFloat(e.target.value) || 0 })
+                    setSettings({
+                      ...settings,
+                      shippingFee: parseFloat(e.target.value) || 0,
+                    })
                   }
                   required
                 />
@@ -239,7 +274,10 @@ export default function AdminSettings() {
                   step="0.001"
                   value={settings.taxRate.toString()}
                   onChange={(e) =>
-                    setSettings({ ...settings, taxRate: parseFloat(e.target.value) || 0 })
+                    setSettings({
+                      ...settings,
+                      taxRate: parseFloat(e.target.value) || 0,
+                    })
                   }
                   required
                 />
@@ -254,13 +292,21 @@ export default function AdminSettings() {
               </div>
 
               <div className="p-4 bg-blush/40 rounded-xl border border-blush text-xs text-muted-foreground">
-                <p className="font-semibold text-foreground mb-1">Live Storefront Synchronization:</p>
-                Adjusting the <strong>Free Shipping Threshold</strong> or <strong>Standard Shipping Fee</strong> automatically updates the dynamic free shipping progress bar across the cart drawer, checkout page, and order calculations for all visitors in real-time.
+                <p className="font-semibold text-foreground mb-1">
+                  Live Storefront Synchronization:
+                </p>
+                Adjusting the <strong>Free Shipping Threshold</strong> or{" "}
+                <strong>Standard Shipping Fee</strong> automatically updates the
+                dynamic free shipping progress bar across the cart drawer,
+                checkout page, and order calculations for all visitors in
+                real-time.
               </div>
 
               <div className="flex justify-end pt-2">
                 <Button type="submit" disabled={savingSettings}>
-                  {savingSettings ? "Saving Settings..." : "Save Store Settings"}
+                  {savingSettings
+                    ? "Saving Settings..."
+                    : "Save Store Settings"}
                 </Button>
               </div>
             </form>
@@ -274,7 +320,9 @@ export default function AdminSettings() {
           <div className="admin-panel-head mb-4">
             <div>
               <h2>Active Promotional Coupons</h2>
-              <p>Create and manage discount codes validated securely in the cart.</p>
+              <p>
+                Create and manage discount codes validated securely in the cart.
+              </p>
             </div>
             <Button onClick={() => setCouponModalOpen(true)}>
               <Plus /> Create Coupon
@@ -296,13 +344,19 @@ export default function AdminSettings() {
               <tbody>
                 {loadingCoupons ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <td
+                      colSpan={6}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       Loading promotional coupons...
                     </td>
                   </tr>
                 ) : coupons.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <td
+                      colSpan={6}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       No coupons created yet. Click "Create Coupon" above.
                     </td>
                   </tr>
@@ -315,22 +369,30 @@ export default function AdminSettings() {
                         </strong>
                       </td>
                       <td>
-                        <span className="font-semibold">{coupon.discountPercent}% OFF</span>
-                      </td>
-                      <td>
-                        <span className="text-xs text-muted-foreground">
-                          {coupon.minSpend > 0 ? `£${coupon.minSpend.toFixed(2)}` : "No minimum"}
+                        <span className="font-semibold">
+                          {coupon.discountPercent}% OFF
                         </span>
                       </td>
                       <td>
                         <span className="text-xs text-muted-foreground">
-                          {coupon.maxDiscount ? `£${coupon.maxDiscount.toFixed(2)}` : "None"}
+                          {coupon.minSpend > 0
+                            ? `£${coupon.minSpend.toFixed(2)}`
+                            : "No minimum"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="text-xs text-muted-foreground">
+                          {coupon.maxDiscount
+                            ? `£${coupon.maxDiscount.toFixed(2)}`
+                            : "None"}
                         </span>
                       </td>
                       <td>
                         <button
                           type="button"
-                          onClick={() => handleToggleCoupon(coupon.id, coupon.isActive)}
+                          onClick={() =>
+                            handleToggleCoupon(coupon.id, coupon.isActive)
+                          }
                           className="flex items-center gap-1.5 text-xs cursor-pointer hover:opacity-80"
                         >
                           {coupon.isActive ? (
@@ -350,7 +412,9 @@ export default function AdminSettings() {
                         <div className="table-actions">
                           <Button
                             variant="ghost"
-                            onClick={() => handleDeleteCoupon(coupon.id, coupon.code)}
+                            onClick={() =>
+                              handleDeleteCoupon(coupon.id, coupon.code)
+                            }
                             aria-label={`Delete ${coupon.code}`}
                           >
                             <Trash2 className="w-4 h-4 text-rose-600" />
@@ -372,7 +436,10 @@ export default function AdminSettings() {
           <div className="admin-panel-head mb-4">
             <div>
               <h2>Newsletter Subscribers</h2>
-              <p>Customers subscribed to receive beauty rituals, launches, and private offers.</p>
+              <p>
+                Customers subscribed to receive beauty rituals, launches, and
+                private offers.
+              </p>
             </div>
             <Badge tone="rose">{subscribers.length} Subscribers</Badge>
           </div>
@@ -389,13 +456,19 @@ export default function AdminSettings() {
               <tbody>
                 {loadingSubscribers ? (
                   <tr>
-                    <td colSpan={3} className="text-center py-8 text-muted-foreground">
+                    <td
+                      colSpan={3}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       Loading subscriber list...
                     </td>
                   </tr>
                 ) : subscribers.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-center py-8 text-muted-foreground">
+                    <td
+                      colSpan={3}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       No subscribers recorded yet.
                     </td>
                   </tr>
@@ -409,7 +482,9 @@ export default function AdminSettings() {
                         </div>
                       </td>
                       <td>
-                        <span className="text-xs text-muted-foreground">{sub.subscribedAt}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {sub.subscribedAt}
+                        </span>
                       </td>
                       <td>
                         <Badge tone="green">Subscribed</Badge>
@@ -434,7 +509,12 @@ export default function AdminSettings() {
             label="Coupon Code"
             placeholder="e.g. VIP20 or GLOW25"
             value={couponForm.code}
-            onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+            onChange={(e) =>
+              setCouponForm({
+                ...couponForm,
+                code: e.target.value.toUpperCase(),
+              })
+            }
             required
           />
           <div className="form-grid">
@@ -445,7 +525,10 @@ export default function AdminSettings() {
               max="100"
               value={couponForm.discountPercent}
               onChange={(e) =>
-                setCouponForm({ ...couponForm, discountPercent: e.target.value })
+                setCouponForm({
+                  ...couponForm,
+                  discountPercent: e.target.value,
+                })
               }
               required
             />

@@ -5,7 +5,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Credentials", "true")
   res.setHeader("Access-Control-Allow-Origin", "*")
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT")
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+  )
   res.setHeader(
     "Access-Control-Allow-Headers",
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version",
@@ -33,8 +36,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
-    const { amount, currency = "gbp", orderNumber = "", customerEmail = "" } = body
+    const body =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body || {}
+    const {
+      amount,
+      currency = "gbp",
+      orderNumber = "",
+      customerEmail = "",
+    } = body
 
     if (!amount || Number(amount) <= 0) {
       res.status(400).json({ error: "Invalid payment amount" })
@@ -65,7 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       isLive: true,
     })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to create PaymentIntent"
+    const message =
+      error instanceof Error ? error.message : "Failed to create PaymentIntent"
     console.error("Stripe error:", message)
     res.status(500).json({ error: message })
   }
