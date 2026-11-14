@@ -745,6 +745,8 @@ export async function submitProductReview(
   }
 
   if (isSupabaseConfigured()) {
+    let lastDbError: Error | null = null
+
     // Strategy 1: Attempt the RPC function
     try {
       const { data, error } = await supabase.rpc("submit_review_secure", {
@@ -759,7 +761,14 @@ export async function submitProductReview(
         syncLocalRatingOverrides(item)
         return { data: item, error: null }
       }
-    } catch {}
+      if (error) {
+        console.warn("RPC submit_review_secure failed:", error.message)
+        lastDbError = new Error(error.message)
+      }
+    } catch (err: any) {
+      console.warn("RPC call threw error:", err)
+      lastDbError = err instanceof Error ? err : new Error(String(err))
+    }
 
     // Strategy 2: Direct upsert into reviews table
     if (user?.id) {
@@ -788,7 +797,14 @@ export async function submitProductReview(
           syncLocalRatingOverrides(item)
           return { data: item, error: null }
         }
-      } catch {}
+        if (insertErr) {
+          console.warn("Direct review upsert failed:", insertErr.message)
+          lastDbError = new Error(insertErr.message)
+        }
+      } catch (err: any) {
+        console.warn("Direct upsert threw error:", err)
+        lastDbError = err instanceof Error ? err : new Error(String(err))
+      }
     }
 
     // Strategy 3: Serverless endpoint /api/submit-review
@@ -816,8 +832,19 @@ export async function submitProductReview(
           syncLocalRatingOverrides(item)
           return { data: item, error: null }
         }
+      } else {
+        const errJson = await res.json().catch(() => null)
+        if (errJson?.error) {
+          lastDbError = new Error(errJson.error)
+        }
       }
-    } catch {}
+    } catch (err: any) {
+      lastDbError = err instanceof Error ? err : new Error(String(err))
+    }
+
+    if (lastDbError) {
+      return { data: null, error: lastDbError }
+    }
   }
 
   // Strategy 4: Local persistence fallback

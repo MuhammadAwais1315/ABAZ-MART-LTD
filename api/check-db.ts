@@ -11,7 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabaseUrl =
-    process.env.VITE_SUPABASE_URL || "https://twstiotnaaglptizaxkm.supabase.co"
+    process.env.VITE_SUPABASE_URL ||
+    "https://twstiotnaaglptizaxkm.supabase.co"
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
   const supabaseKey = serviceKey || process.env.VITE_SUPABASE_ANON_KEY || ""
 
@@ -48,6 +49,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select("*, order_items(*)")
       .order("created_at", { ascending: false })
 
+    const { data: reviews, error: reviewsErr } = await supabase
+      .from("reviews")
+      .select("*")
+      .order("created_at", { ascending: false })
+
     res.status(200).json({
       configured: true,
       supabaseUrl,
@@ -64,6 +70,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       orderCount: orders?.length || 0,
       orders: orders || [],
       ordersError: ordersErr ? ordersErr.message : null,
+      reviewCount: reviews?.length || 0,
+      reviews: reviews || [],
+      reviewsError: reviewsErr ? reviewsErr.message : null,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error"

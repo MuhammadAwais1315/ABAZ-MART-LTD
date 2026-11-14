@@ -63,9 +63,10 @@ CREATE POLICY "Anyone can view reviews"
   USING (true);
 
 DROP POLICY IF EXISTS "Authenticated users can insert reviews" ON public.reviews;
-CREATE POLICY "Authenticated users can insert reviews"
+DROP POLICY IF EXISTS "Anyone can insert reviews" ON public.reviews;
+CREATE POLICY "Anyone can insert reviews"
   ON public.reviews FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Users update own reviews" ON public.reviews;
 CREATE POLICY "Users update own reviews"

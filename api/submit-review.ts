@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseKey =
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
       process.env.VITE_SUPABASE_ANON_KEY ||
-      ""
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3c3Rpb3RuYWFnbHB0aXpheGttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NjQ0MzgsImV4cCI6MjEwNzM0MDQzOH0.uWKg_pJraScnjNHyZa19Me1PUltiGgPlf3xwCU1lYXM"
 
     if (!supabaseKey) {
       res.status(500).json({ error: "Supabase configuration missing" })
