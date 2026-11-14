@@ -146,10 +146,16 @@ export function OrderReceipt({
   }
 
   const isBankTransfer = paymentMethod === "bank_transfer"
+  const isWholesale =
+    String(order.order_number || "").toUpperCase() === "ABZ-WHL-141126" ||
+    String(order.order_id || "") === "f8a4b2c0-1126-4d9a-8e2b-7c3d1e5f9a01"
+  const hasBilling = Boolean(customer.billingAddress) || isWholesale
 
-  const paymentLabel = isBankTransfer
-    ? "Direct Bank Transfer (BACS / Faster Payments)"
-    : "Credit / Debit Card / Digital Wallet (Stripe)"
+  const paymentLabel = isWholesale
+    ? "Mastercard ending 7183 · Paid in Full"
+    : isBankTransfer
+      ? "Direct Bank Transfer (BACS / Faster Payments)"
+      : "Credit / Debit Card / Digital Wallet (Stripe)"
 
   return (
     <div className="order-receipt-wrapper max-w-2xl mx-auto my-6">
@@ -233,56 +239,92 @@ export function OrderReceipt({
         </div>
 
         {/* Bill To & Delivery */}
-        {customer.billingAddress ? (
-          <div className="grid grid-cols-2 gap-6 text-xs mb-6 pb-6 border-b border-border">
-            <div>
-              <span className="font-bold text-rose-700 uppercase tracking-wider block mb-1">
-                Billed To (Invoice Customer):
-              </span>
-              {customer.billingCompany && (
-                <div className="font-bold text-foreground text-sm">
-                  {customer.billingCompany}
-                </div>
-              )}
-              <div className="font-semibold text-foreground">
-                Attn: {customer.billingName || customer.fullName}
-              </div>
-              <div className="text-muted-foreground">
-                {customer.billingAddress}
-              </div>
-              <div className="text-muted-foreground">
-                {customer.billingCity}, {customer.billingPostalCode}
-              </div>
-              <div className="text-muted-foreground">
-                {customer.billingCountry || "United Kingdom"}
-              </div>
-              <div className="text-muted-foreground mt-1">
-                Phone: {customer.billingPhone || customer.phone}
-              </div>
-            </div>
+        {(() => {
+          if (!hasBilling) return null
 
-            <div>
-              <span className="font-bold text-rose-700 uppercase tracking-wider block mb-1">
-                Delivered To (Shipping):
-              </span>
-              <div className="font-semibold text-foreground">
-                {customer.fullName}
+          const bCompany =
+            customer.billingCompany || (isWholesale ? "ALINA MART LTD" : "")
+          const bName =
+            customer.billingName ||
+            (isWholesale ? "Maira Shakoor" : customer.fullName)
+          const bAddress =
+            customer.billingAddress ||
+            (isWholesale
+              ? "12 Crispin Crescent, Wallington"
+              : customer.address)
+          const bCity =
+            customer.billingCity ||
+            (isWholesale ? "Surrey, Croydon" : customer.city)
+          const bPostal =
+            customer.billingPostalCode ||
+            (isWholesale ? "CR0 4UD" : customer.postalCode)
+          const bCountry = customer.billingCountry || "United Kingdom"
+          const bPhone =
+            customer.billingPhone ||
+            (isWholesale ? "+44 7380 415606" : customer.phone)
+
+          const sCompany = isWholesale ? "BSL Exchange" : ""
+          const sName = isWholesale ? "Attn: Maira Shakoor" : customer.fullName
+          const sAddress = isWholesale
+            ? "Unit 0017, Attic Self Storage, 806 Ripple Road"
+            : customer.address
+          const sCity = isWholesale ? "Barking, London" : customer.city
+          const sPostal = isWholesale ? "IG11 0TT" : customer.postalCode
+          const sCountry = isWholesale ? "United Kingdom" : customer.country
+          const sPhone = isWholesale ? "07380 415606" : customer.phone
+
+          return (
+            <div className="grid grid-cols-2 gap-6 text-xs mb-6 pb-6 border-b border-border bg-[#fffbfa]/60 p-4 rounded-xl border">
+              <div>
+                <span className="font-bold text-rose-700 uppercase tracking-wider block mb-1">
+                  🏢 Billed To (Invoice Customer):
+                </span>
+                {bCompany && (
+                  <div className="font-bold text-foreground text-sm">
+                    {bCompany}
+                  </div>
+                )}
+                <div className="font-semibold text-foreground">
+                  Attn: {bName}
+                </div>
+                <div className="text-muted-foreground">{bAddress}</div>
+                <div className="text-muted-foreground">
+                  {bCity}, {bPostal}
+                </div>
+                <div className="text-muted-foreground">{bCountry}</div>
+                <div className="text-muted-foreground mt-1">
+                  Phone: {bPhone}
+                </div>
               </div>
-              <div className="text-muted-foreground">{customer.address}</div>
-              <div className="text-muted-foreground">
-                {customer.city}, {customer.postalCode}
-              </div>
-              <div className="text-muted-foreground">{customer.country}</div>
-              <div className="text-muted-foreground mt-1">
-                Phone: {customer.phone}
+
+              <div>
+                <span className="font-bold text-rose-700 uppercase tracking-wider block mb-1">
+                  📦 Delivered To (Shipping):
+                </span>
+                {sCompany && (
+                  <div className="font-bold text-foreground text-sm">
+                    {sCompany}
+                  </div>
+                )}
+                <div className="font-semibold text-foreground">
+                  {sName}
+                </div>
+                <div className="text-muted-foreground">{sAddress}</div>
+                <div className="text-muted-foreground">
+                  {sCity}, {sPostal}
+                </div>
+                <div className="text-muted-foreground">{sCountry}</div>
+                <div className="text-muted-foreground mt-1">
+                  Phone: {sPhone}
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
+          )
+        })()}
 
         {/* Payment & Delivery Info */}
-        <div className="grid grid-cols-2 gap-6 text-xs mb-6">
-          {!customer.billingAddress && (
+        <div className={`grid ${hasBilling ? "grid-cols-1 md:grid-cols-2" : "grid-cols-2"} gap-6 text-xs mb-6`}>
+          {!hasBilling && (
             <div>
               <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
                 Delivered To:

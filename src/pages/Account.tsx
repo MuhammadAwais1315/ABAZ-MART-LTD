@@ -1144,21 +1144,65 @@ export default function Account() {
               }))}
               customer={{
                 fullName:
-                  receiptModalOrder.shippingAddress?.name ||
-                  authProfile?.full_name ||
-                  profile.name ||
-                  "Customer",
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "Maira Shakoor · ALINA MART LTD"
+                    : receiptModalOrder.shippingAddress?.name ||
+                      authProfile?.full_name ||
+                      profile.name ||
+                      "Customer",
                 phone:
-                  receiptModalOrder.shippingAddress?.phone ||
-                  profile.phone ||
-                  "",
-                address: receiptModalOrder.shippingAddress?.address || "",
-                city: receiptModalOrder.shippingAddress?.city || "",
-                postalCode: receiptModalOrder.shippingAddress?.postalCode || "",
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "+447380415606"
+                    : receiptModalOrder.shippingAddress?.phone ||
+                      profile.phone ||
+                      "",
+                address:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "BSL Exchange, unit 0017, attic self storage, 806 ripple road"
+                    : receiptModalOrder.shippingAddress?.address || "",
+                city:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "Barking, London"
+                    : receiptModalOrder.shippingAddress?.city || "",
+                postalCode:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "IG11 0TT"
+                    : receiptModalOrder.shippingAddress?.postalCode || "",
                 country:
                   receiptModalOrder.shippingAddress?.country ||
                   "United Kingdom",
-                email: authProfile?.email || profile.email || user?.email || "",
+                email:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "maira.shakoor@alinamart.co.uk"
+                    : authProfile?.email || profile.email || user?.email || "",
+                billingCompany:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "ALINA MART LTD"
+                    : undefined,
+                billingName:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "Maira Shakoor"
+                    : undefined,
+                billingAddress:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "12 Crispin Crescent, Wallington"
+                    : undefined,
+                billingCity:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "Surrey, Croydon"
+                    : undefined,
+                billingPostalCode:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "CR0 4UD"
+                    : undefined,
+                billingCountry:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "United Kingdom"
+                    : undefined,
+                billingPhone:
+                  receiptModalOrder.number === "ABZ-WHL-141126"
+                    ? "+447380415606"
+                    : undefined,
               }}
               paymentMethod={receiptModalOrder.paymentMethod || "card"}
             />

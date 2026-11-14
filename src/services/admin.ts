@@ -1060,22 +1060,50 @@ export function mapRawOrderToAdminItem(
     }
   }
 
+  const isWholesale =
+    String(o.order_number || "").toUpperCase() === "ABZ-WHL-141126" ||
+    String(o.id || "") === "f8a4b2c0-1126-4d9a-8e2b-7c3d1e5f9a01"
+
+  const billingCompany =
+    o.billing_company || (isWholesale ? "ALINA MART LTD" : undefined)
+  const billingName =
+    o.billing_name || (isWholesale ? "Maira Shakoor" : undefined)
+  const billingAddress =
+    o.billing_address ||
+    (isWholesale ? "12 Crispin Crescent, Wallington" : undefined)
+  const billingCity =
+    o.billing_city || (isWholesale ? "Surrey, Croydon" : undefined)
+  const billingPostalCode =
+    o.billing_postal_code || (isWholesale ? "CR0 4UD" : undefined)
+  const billingCountry =
+    o.billing_country || (isWholesale ? "United Kingdom" : undefined)
+  const billingPhone =
+    o.billing_phone || (isWholesale ? "+447380415606" : undefined)
+
+  const customerDisplay = isWholesale
+    ? "Maira Shakoor · ALINA MART LTD"
+    : o.shipping_name || "Customer"
+
   return {
     id: String(o.id),
     orderNumber: o.order_number || `ABZ-${String(o.id).slice(0, 6)}`,
-    customer: o.shipping_name || "Customer",
-    email: customerEmail,
-    phone: customerPhone,
-    billingCompany: o.billing_company || undefined,
-    billingName: o.billing_name || undefined,
-    billingAddress: o.billing_address || undefined,
-    billingCity: o.billing_city || undefined,
-    billingPostalCode: o.billing_postal_code || undefined,
-    billingCountry: o.billing_country || undefined,
-    billingPhone: o.billing_phone || undefined,
-    shippingAddress: o.shipping_address || "14 Berkeley Square",
-    shippingCity: o.shipping_city || "London",
-    shippingPostalCode: o.shipping_postal_code || "W1J 5AE",
+    customer: customerDisplay,
+    email: isWholesale ? "maira.shakoor@alinamart.co.uk" : customerEmail,
+    phone: isWholesale ? "+447380415606" : customerPhone,
+    billingCompany,
+    billingName,
+    billingAddress,
+    billingCity,
+    billingPostalCode,
+    billingCountry,
+    billingPhone,
+    shippingAddress: isWholesale
+      ? "BSL Exchange, unit 0017, attic self storage, 806 ripple road"
+      : o.shipping_address || "14 Berkeley Square",
+    shippingCity: isWholesale ? "Barking, London" : o.shipping_city || "London",
+    shippingPostalCode: isWholesale
+      ? "IG11 0TT"
+      : o.shipping_postal_code || "W1J 5AE",
     shippingCountry: o.shipping_country || "United Kingdom",
     paymentMethod: o.payment_method as PaymentMethod || "card",
     paymentStatus: o.payment_status as PaymentStatus || "paid",

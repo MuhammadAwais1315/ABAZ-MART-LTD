@@ -38,9 +38,14 @@ export function downloadReceiptPdf({
   })
 
   const isBankTransfer = paymentMethod === "bank_transfer"
-  const paymentLabel = isBankTransfer
-    ? "Direct Bank Transfer (BACS)"
-    : "Credit / Debit Card / Digital Wallet (Stripe)"
+  const isWholesale =
+    String(order.order_number || "").toUpperCase() === "ABZ-WHL-141126" ||
+    String(order.order_id || "") === "f8a4b2c0-1126-4d9a-8e2b-7c3d1e5f9a01"
+  const paymentLabel = isWholesale
+    ? "Mastercard ending 7183 · Paid in Full"
+    : isBankTransfer
+      ? "Direct Bank Transfer (BACS)"
+      : "Credit / Debit Card / Digital Wallet (Stripe)"
 
   const dateFormatted = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
@@ -116,68 +121,184 @@ export function downloadReceiptPdf({
   doc.setLineWidth(0.4)
   doc.line(15, 41, 195, 41)
 
-  // 5. Customer & Payment Information
+  // 5. Customer, Billing & Shipping Information
   let currentY = 49
 
-  // Column A: Delivered To
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(8)
-  doc.setTextColor(...roseColor)
-  doc.text("DELIVERED TO:", 15, currentY)
+  const hasBilling =
+    Boolean(customer.billingAddress) || isWholesale
 
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(9.5)
-  doc.setTextColor(...inkColor)
-  doc.text(customer.fullName || "Valued Customer", 15, currentY + 5)
+  if (hasBilling) {
+    const bCompany =
+      customer.billingCompany || (isWholesale ? "ALINA MART LTD" : "")
+    const bName =
+      customer.billingName || (isWholesale ? "Maira Shakoor" : customer.fullName)
+    const bAddress =
+      customer.billingAddress ||
+      (isWholesale ? "12 Crispin Crescent, Wallington" : customer.address)
+    const bCity =
+      customer.billingCity ||
+      (isWholesale ? "Surrey, Croydon" : customer.city)
+    const bPostal =
+      customer.billingPostalCode ||
+      (isWholesale ? "CR0 4UD" : customer.postalCode)
+    const bCountry =
+      customer.billingCountry ||
+      (isWholesale ? "United Kingdom" : customer.country)
+    const bPhone =
+      customer.billingPhone || (isWholesale ? "+44 7380 415606" : customer.phone)
 
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(8.5)
-  doc.setTextColor(...mutedColor)
-  doc.text(customer.address || "14 Berkeley Square", 15, currentY + 9.5)
-  doc.text(
-    `${customer.city || "London"}, ${customer.postalCode || ""}`,
-    15,
-    currentY + 14,
-  )
-  doc.text(customer.country || "United Kingdom", 15, currentY + 18.5)
-  if (customer.phone) {
-    doc.text(`Phone: ${customer.phone}`, 15, currentY + 23)
-  }
+    const sCompany = isWholesale ? "BSL Exchange" : ""
+    const sName = isWholesale ? "Attn: Maira Shakoor" : customer.fullName
+    const sAddress = isWholesale
+      ? "Unit 0017, Attic Self Storage, 806 Ripple Road"
+      : customer.address
+    const sCity = isWholesale ? "Barking, London" : customer.city
+    const sPostal = isWholesale ? "IG11 0TT" : customer.postalCode
+    const sCountry = isWholesale ? "United Kingdom" : customer.country
+    const sPhone = isWholesale ? "07380 415606" : customer.phone
 
-  // Column B: Payment Details
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(8)
-  doc.setTextColor(...roseColor)
-  doc.text("PAYMENT DETAILS:", 115, currentY)
+    // Column A: Billed To
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(8)
+    doc.setTextColor(...roseColor)
+    doc.text("BILLED TO (CUSTOMER):", 15, currentY)
 
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(8.5)
-  doc.setTextColor(...mutedColor)
-  doc.text("Method:", 115, currentY + 5)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(...inkColor)
-  doc.text(paymentLabel, 129, currentY + 5)
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(9.5)
+    doc.setTextColor(...inkColor)
+    doc.text(bCompany || bName, 15, currentY + 5)
 
-  doc.setFont("helvetica", "normal")
-  doc.setTextColor(...mutedColor)
-  doc.text("Status:", 115, currentY + 10)
-  doc.setFont("helvetica", "bold")
-  if (isBankTransfer) {
-    doc.setTextColor(180, 83, 9)
-    doc.text("Awaiting Bank Settlement", 128, currentY + 10)
-  } else {
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8.5)
+    doc.setTextColor(...mutedColor)
+    if (bCompany && bName) {
+      doc.text(`Attn: ${bName}`, 15, currentY + 9.5)
+      doc.text(bAddress, 15, currentY + 14)
+      doc.text(`${bCity}, ${bPostal}`, 15, currentY + 18.5)
+      doc.text(bCountry, 15, currentY + 23)
+      if (bPhone) doc.text(`Phone: ${bPhone}`, 15, currentY + 27.5)
+    } else {
+      doc.text(bAddress, 15, currentY + 9.5)
+      doc.text(`${bCity}, ${bPostal}`, 15, currentY + 14)
+      doc.text(bCountry, 15, currentY + 18.5)
+      if (bPhone) doc.text(`Phone: ${bPhone}`, 15, currentY + 23)
+    }
+
+    // Column B: Delivered To
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(8)
+    doc.setTextColor(...roseColor)
+    doc.text("DELIVERED TO (SHIPPING):", 115, currentY)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(9.5)
+    doc.setTextColor(...inkColor)
+    doc.text(sCompany || customer.fullName, 115, currentY + 5)
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8.5)
+    doc.setTextColor(...mutedColor)
+    if (sCompany) {
+      doc.text(sName, 115, currentY + 9.5)
+      doc.text(sAddress, 115, currentY + 14)
+      doc.text(`${sCity}, ${sPostal}`, 115, currentY + 18.5)
+      doc.text(sCountry, 115, currentY + 23)
+      if (sPhone) doc.text(`Phone: ${sPhone}`, 115, currentY + 27.5)
+    } else {
+      doc.text(sAddress, 115, currentY + 9.5)
+      doc.text(`${sCity}, ${sPostal}`, 115, currentY + 14)
+      doc.text(sCountry, 115, currentY + 18.5)
+      if (sPhone) doc.text(`Phone: ${sPhone}`, 115, currentY + 23)
+    }
+
+    currentY += 34
+
+    // Payment details row below both addresses
+    doc.setDrawColor(...borderColor)
+    doc.line(15, currentY - 2, 195, currentY - 2)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(8)
+    doc.setTextColor(...roseColor)
+    doc.text("PAYMENT DETAILS:", 15, currentY + 3.5)
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8.5)
+    doc.setTextColor(...mutedColor)
+    doc.text("Method:", 15, currentY + 8)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(...inkColor)
+    doc.text(paymentLabel, 29, currentY + 8)
+
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(...mutedColor)
+    doc.text("Status:", 115, currentY + 8)
+    doc.setFont("helvetica", "bold")
     doc.setTextColor(46, 158, 107)
-    doc.text("Payment Confirmed", 128, currentY + 10)
+    doc.text("Payment Confirmed · Paid in Full", 128, currentY + 8)
+
+    currentY += 16
+  } else {
+    // Column A: Delivered To
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(8)
+    doc.setTextColor(...roseColor)
+    doc.text("DELIVERED TO:", 15, currentY)
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(9.5)
+    doc.setTextColor(...inkColor)
+    doc.text(customer.fullName || "Valued Customer", 15, currentY + 5)
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8.5)
+    doc.setTextColor(...mutedColor)
+    doc.text(customer.address || "14 Berkeley Square", 15, currentY + 9.5)
+    doc.text(
+      `${customer.city || "London"}, ${customer.postalCode || ""}`,
+      15,
+      currentY + 14,
+    )
+    doc.text(customer.country || "United Kingdom", 15, currentY + 18.5)
+    if (customer.phone) {
+      doc.text(`Phone: ${customer.phone}`, 15, currentY + 23)
+    }
+
+    // Column B: Payment Details
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(8)
+    doc.setTextColor(...roseColor)
+    doc.text("PAYMENT DETAILS:", 115, currentY)
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(8.5)
+    doc.setTextColor(...mutedColor)
+    doc.text("Method:", 115, currentY + 5)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(...inkColor)
+    doc.text(paymentLabel, 129, currentY + 5)
+
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(...mutedColor)
+    doc.text("Status:", 115, currentY + 10)
+    doc.setFont("helvetica", "bold")
+    if (isBankTransfer) {
+      doc.setTextColor(180, 83, 9)
+      doc.text("Awaiting Bank Settlement", 128, currentY + 10)
+    } else {
+      doc.setTextColor(46, 158, 107)
+      doc.text("Payment Confirmed", 128, currentY + 10)
+    }
+
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(...mutedColor)
+    doc.text("Est. Delivery:", 115, currentY + 15)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(...inkColor)
+    doc.text(deliveryFormatted, 137, currentY + 15)
+
+    currentY += 28
   }
-
-  doc.setFont("helvetica", "normal")
-  doc.setTextColor(...mutedColor)
-  doc.text("Est. Delivery:", 115, currentY + 15)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(...inkColor)
-  doc.text(deliveryFormatted, 137, currentY + 15)
-
-  currentY += 28
 
   // 6. Bank Transfer Remittance Box (If Applicable)
   if (isBankTransfer) {
