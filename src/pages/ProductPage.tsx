@@ -539,7 +539,29 @@ export default function ProductPage() {
         <div className="detail-copy">
           <p className="eyebrow">{product.brand}</p>
           <h1>{product.name}</h1>
-          <RatingStars rating={Number(averageRating)} count={totalReviews} />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setDetailTab("Reviews")
+                const elem = document.querySelector(".product-notes")
+                if (elem) elem.scrollIntoView({ behavior: "smooth" })
+              }}
+              className="inline-flex items-center gap-2 cursor-pointer hover:opacity-80 transition py-0.5 text-left border-0 bg-transparent p-0"
+              title="View customer reviews"
+            >
+              <RatingStars
+                rating={Number(averageRating)}
+                count={totalReviews}
+                showNumber={true}
+              />
+              <span className="text-xs text-[#b83b5e] font-semibold underline underline-offset-2">
+                {totalReviews > 0
+                  ? `(${totalReviews} ${totalReviews === 1 ? "review" : "reviews"})`
+                  : "Be the first to review"}
+              </span>
+            </button>
+          </div>
           <div className="detail-price">
             {formatPrice(product.price)}{" "}
             {product.oldPrice && <del>{formatPrice(product.oldPrice)}</del>}

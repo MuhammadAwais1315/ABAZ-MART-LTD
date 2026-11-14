@@ -18,6 +18,7 @@ import { useAuth } from "../../context/AuthContext"
 import { Product, products as initialProducts } from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
 import { getProductUrl } from "../../utils/slugify"
+import { matchesSearchQuery } from "../../utils/searchMatcher"
 import { useCategories } from "../../hooks/useProducts"
 import { getProducts } from "../../services/products"
 import { getStoreSettings } from "../../services/checkout"
@@ -64,24 +65,28 @@ export default function Navbar({
 
   useEffect(() => {
     let mounted = true
-    getProducts({ limit: 50 }).then((res) => {
-      if (mounted && res.data && res.data.length > 0) {
-        setCatalog(res.data)
-      }
-    })
+    const loadCatalog = () => {
+      getProducts({ limit: 100 }).then((res) => {
+        if (mounted && res.data && res.data.length > 0) {
+          setCatalog(res.data)
+        }
+      })
+    }
+    loadCatalog()
+
+    window.addEventListener("abaz_catalog_updated", loadCatalog)
+    window.addEventListener("storage", loadCatalog)
     return () => {
       mounted = false
+      window.removeEventListener("abaz_catalog_updated", loadCatalog)
+      window.removeEventListener("storage", loadCatalog)
     }
   }, [])
 
   const suggestions = query.trim()
     ? catalog
-        .filter((product) =>
-          `${product.name} ${product.brand} ${product.category}`
-            .toLowerCase()
-            .includes(query.trim().toLowerCase()),
-        )
-        .slice(0, 5)
+        .filter((product) => matchesSearchQuery(product, query))
+        .slice(0, 6)
     : []
 
   const search = (event: FormEvent) => {

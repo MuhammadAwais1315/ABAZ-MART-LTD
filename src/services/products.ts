@@ -47,8 +47,14 @@ export function mapDbProductToProduct(row: ProductRow): Product {
     category: row.category_name as Product["category"],
     price: Number(row.price),
     oldPrice: row.old_price !== null ? Number(row.old_price) : undefined,
-    rating: Number(row.rating),
-    reviewCount: row.review_count,
+    rating:
+      row.rating !== null && row.rating !== undefined
+        ? Number(row.rating)
+        : 5.0,
+    reviewCount:
+      row.review_count !== null && row.review_count !== undefined
+        ? Number(row.review_count)
+        : 0,
     image: row.image,
     description: row.description,
     stock: row.stock,
@@ -179,12 +185,30 @@ export async function getProducts(
       query = query.in("brand", params.brands)
     }
 
-    // Search query filter (search across name, brand, description)
+    // Search query filter (search across name, brand, description, category)
     if (params.query && params.query.trim()) {
-      const q = params.query.trim()
-      query = query.or(
-        `name.ilike.%${q}%,brand.ilike.%${q}%,description.ilike.%${q}%,category_name.ilike.%${q}%`,
-      )
+      let q = params.query.trim()
+      const cleanQ = q
+        .replace(/\babazmart\b/gi, "")
+        .replace(/\babaz\s+mart\b/gi, "")
+        .replace(/\babaz\b/gi, "")
+        .trim()
+      if (cleanQ) q = cleanQ
+
+      const words = q.split(/\s+/).filter((w) => w.length > 1)
+      if (words.length > 1) {
+        const orClauses = words.flatMap((w) => [
+          `name.ilike.%${w}%`,
+          `brand.ilike.%${w}%`,
+          `description.ilike.%${w}%`,
+          `category_name.ilike.%${w}%`,
+        ])
+        query = query.or(orClauses.join(","))
+      } else {
+        query = query.or(
+          `name.ilike.%${q}%,brand.ilike.%${q}%,description.ilike.%${q}%,category_name.ilike.%${q}%`,
+        )
+      }
     }
 
     // Price range filter

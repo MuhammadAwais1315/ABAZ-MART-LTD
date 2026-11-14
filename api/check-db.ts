@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { data: products, error: prodErr } = await supabase
       .from("products")
-      .select("id, name, price, stock, is_active, category_name, created_at")
+      .select("id, name, price, stock, is_active, category_name, rating, review_count, created_at")
       .order("id", { ascending: false })
 
     const { data: categories, error: catErr } = await supabase

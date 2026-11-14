@@ -15,6 +15,7 @@ import { useStore } from "../context/StoreContext"
 import { Product, products as initialProducts } from "../data/products"
 import { formatPrice } from "../utils/formatPrice"
 import { matchCategory } from "../utils/categoryMatcher"
+import { matchesSearchQuery } from "../utils/searchMatcher"
 import { useCategories } from "../hooks/useProducts"
 import { getEffectiveProducts, getProducts } from "../services/products"
 
@@ -173,13 +174,7 @@ export default function Shop() {
           (product) =>
             product.price <= maxPrice && product.rating >= minimumRating,
         )
-        .filter(
-          (product) =>
-            !query ||
-            `${product.name} ${product.brand} ${product.category}`
-              .toLowerCase()
-              .includes(query),
-        )
+        .filter((product) => matchesSearchQuery(product, query))
         .filter((product) =>
           sort === "sale"
             ? Boolean(product.oldPrice && product.oldPrice > product.price)

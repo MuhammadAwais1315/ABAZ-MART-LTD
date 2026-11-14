@@ -70,7 +70,7 @@ export default function Home() {
   useEffect(() => {
     let mounted = true
     const loadProducts = () => {
-      getProducts({ limit: 16 }).then((res) => {
+      getProducts({ limit: 50, sort: "new" }).then((res) => {
         if (mounted && res.data) {
           setCatalog(res.data)
         }
@@ -96,19 +96,20 @@ export default function Home() {
     }
   }, [])
 
-  const newArrivals = catalog.slice(0, 8).map((product) => ({
-    ...product,
-    oldPrice: product.oldPrice ?? Math.ceil(product.price * 1.18),
-  }))
-  const bestSellers =
-    catalog.length >= 4
-      ? [
-          catalog[0],
-          catalog[4] || catalog[1],
-          catalog[8] || catalog[2],
-          catalog[12] || catalog[3],
-        ]
-      : catalog.slice(0, 4)
+  const newArrivals = [...catalog]
+    .sort((a, b) => b.id - a.id)
+    .slice(0, 8)
+    .map((product) => ({
+      ...product,
+      oldPrice: product.oldPrice ?? Math.ceil(product.price * 1.18),
+    }))
+
+  const bestSellers = [...catalog]
+    .sort(
+      (a, b) =>
+        (b.reviewCount || 0) - (a.reviewCount || 0) || b.rating - a.rating,
+    )
+    .slice(0, 8)
 
   return (
     <>

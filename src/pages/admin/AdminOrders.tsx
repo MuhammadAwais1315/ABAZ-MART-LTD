@@ -56,6 +56,7 @@ export default function AdminOrders() {
   )
   const [toastMessage, setToastMessage] = useState("")
   const [copiedAddress, setCopiedAddress] = useState(false)
+  const [copiedBillingAddress, setCopiedBillingAddress] = useState(false)
 
   // Dispatch Tracking Modal State
   const [dispatchModalOrder, setDispatchModalOrder] =
@@ -301,6 +302,14 @@ export default function AdminOrders() {
     setCopiedAddress(true)
     showToast("Shipping address copied to clipboard")
     window.setTimeout(() => setCopiedAddress(false), 2500)
+  }
+
+  const handleCopyBillingAddress = (order: AdminOrderItem) => {
+    const fullBilling = `${order.billingCompany || order.customer}\n${order.billingName ? `Attn: ${order.billingName}\n` : ""}${order.billingAddress || order.shippingAddress}\n${order.billingCity || order.shippingCity}, ${order.billingPostalCode || order.shippingPostalCode}\n${order.billingCountry || order.shippingCountry}\nPhone: ${order.billingPhone || order.phone || "N/A"}`
+    navigator.clipboard.writeText(fullBilling)
+    setCopiedBillingAddress(true)
+    showToast("Billing address copied to clipboard")
+    window.setTimeout(() => setCopiedBillingAddress(false), 2500)
   }
 
   const handleRequestCustomerReview = async (order: AdminOrderItem) => {
@@ -951,8 +960,8 @@ export default function AdminOrders() {
                 </div>
               ) : null}
 
-              {/* Customer & Shipping Summary Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Customer, Billing, Shipping & Payment Summary Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Customer Contact */}
                 <div className="p-4 bg-light/70 rounded-xl border border-border">
                   <div className="flex items-center gap-2 text-ink font-semibold text-xs mb-3">
@@ -987,6 +996,56 @@ export default function AdminOrders() {
                       "No phone provided"
                     )}
                   </p>
+                </div>
+
+                {/* Billing Address */}
+                <div className="p-4 bg-light/70 rounded-xl border border-border flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-ink font-semibold text-xs mb-3">
+                      <span className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-rose" />
+                        <span>Billing Address</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBillingAddress(selectedOrder)}
+                        className="text-rose hover:text-rose-700 text-[11px] font-medium flex items-center gap-1 cursor-pointer"
+                        title="Copy billing address"
+                      >
+                        {copiedBillingAddress ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                        <span>{copiedBillingAddress ? "Copied" : "Copy"}</span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-ink font-medium leading-relaxed">
+                      {selectedOrder.billingCompany && (
+                        <strong className="block text-ink font-bold">
+                          {selectedOrder.billingCompany}
+                        </strong>
+                      )}
+                      {selectedOrder.billingName && (
+                        <span className="block text-muted text-[11px]">
+                          Attn: {selectedOrder.billingName}
+                        </span>
+                      )}
+                      {selectedOrder.billingAddress || selectedOrder.shippingAddress}
+                      <br />
+                      {selectedOrder.billingCity || selectedOrder.shippingCity},{" "}
+                      {selectedOrder.billingPostalCode ||
+                        selectedOrder.shippingPostalCode}
+                      <br />
+                      {selectedOrder.billingCountry ||
+                        selectedOrder.shippingCountry}
+                      {selectedOrder.billingPhone && (
+                        <span className="block text-[11px] text-muted mt-1">
+                          Tel: {selectedOrder.billingPhone}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Delivery Address */}
@@ -1202,6 +1261,13 @@ export default function AdminOrders() {
                   postalCode: selectedOrder.shippingPostalCode,
                   country: selectedOrder.shippingCountry,
                   email: selectedOrder.email,
+                  billingCompany: selectedOrder.billingCompany,
+                  billingName: selectedOrder.billingName,
+                  billingAddress: selectedOrder.billingAddress,
+                  billingCity: selectedOrder.billingCity,
+                  billingPostalCode: selectedOrder.billingPostalCode,
+                  billingCountry: selectedOrder.billingCountry,
+                  billingPhone: selectedOrder.billingPhone,
                 }}
                 paymentMethod={selectedOrder.paymentMethod}
               />

@@ -14,6 +14,13 @@ interface DownloadReceiptPdfParams {
     city: string
     postalCode: string
     country: string
+    billingCompany?: string
+    billingName?: string
+    billingAddress?: string
+    billingCity?: string
+    billingPostalCode?: string
+    billingCountry?: string
+    billingPhone?: string
   }
   paymentMethod: PaymentMethod
 }

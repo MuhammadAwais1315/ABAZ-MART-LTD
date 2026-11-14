@@ -34,6 +34,13 @@ export interface OrderReceiptProps {
     postalCode: string
     country: string
     email?: string
+    billingCompany?: string
+    billingName?: string
+    billingAddress?: string
+    billingCity?: string
+    billingPostalCode?: string
+    billingCountry?: string
+    billingPhone?: string
   }
   paymentMethod: PaymentMethod
 }
@@ -226,23 +233,73 @@ export function OrderReceipt({
         </div>
 
         {/* Bill To & Delivery */}
-        <div className="grid grid-cols-2 gap-6 text-xs mb-6">
-          <div>
-            <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
-              Delivered To:
-            </span>
-            <div className="font-semibold text-foreground">
-              {customer.fullName}
+        {customer.billingAddress ? (
+          <div className="grid grid-cols-2 gap-6 text-xs mb-6 pb-6 border-b border-border">
+            <div>
+              <span className="font-bold text-rose-700 uppercase tracking-wider block mb-1">
+                Billed To (Invoice Customer):
+              </span>
+              {customer.billingCompany && (
+                <div className="font-bold text-foreground text-sm">
+                  {customer.billingCompany}
+                </div>
+              )}
+              <div className="font-semibold text-foreground">
+                Attn: {customer.billingName || customer.fullName}
+              </div>
+              <div className="text-muted-foreground">
+                {customer.billingAddress}
+              </div>
+              <div className="text-muted-foreground">
+                {customer.billingCity}, {customer.billingPostalCode}
+              </div>
+              <div className="text-muted-foreground">
+                {customer.billingCountry || "United Kingdom"}
+              </div>
+              <div className="text-muted-foreground mt-1">
+                Phone: {customer.billingPhone || customer.phone}
+              </div>
             </div>
-            <div className="text-muted-foreground">{customer.address}</div>
-            <div className="text-muted-foreground">
-              {customer.city}, {customer.postalCode}
-            </div>
-            <div className="text-muted-foreground">{customer.country}</div>
-            <div className="text-muted-foreground mt-1">
-              Phone: {customer.phone}
+
+            <div>
+              <span className="font-bold text-rose-700 uppercase tracking-wider block mb-1">
+                Delivered To (Shipping):
+              </span>
+              <div className="font-semibold text-foreground">
+                {customer.fullName}
+              </div>
+              <div className="text-muted-foreground">{customer.address}</div>
+              <div className="text-muted-foreground">
+                {customer.city}, {customer.postalCode}
+              </div>
+              <div className="text-muted-foreground">{customer.country}</div>
+              <div className="text-muted-foreground mt-1">
+                Phone: {customer.phone}
+              </div>
             </div>
           </div>
+        ) : null}
+
+        {/* Payment & Delivery Info */}
+        <div className="grid grid-cols-2 gap-6 text-xs mb-6">
+          {!customer.billingAddress && (
+            <div>
+              <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
+                Delivered To:
+              </span>
+              <div className="font-semibold text-foreground">
+                {customer.fullName}
+              </div>
+              <div className="text-muted-foreground">{customer.address}</div>
+              <div className="text-muted-foreground">
+                {customer.city}, {customer.postalCode}
+              </div>
+              <div className="text-muted-foreground">{customer.country}</div>
+              <div className="text-muted-foreground mt-1">
+                Phone: {customer.phone}
+              </div>
+            </div>
+          )}
 
           <div>
             <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
@@ -260,7 +317,7 @@ export function OrderReceipt({
                 </span>
               ) : (
                 <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  Payment Confirmed
+                  Payment Confirmed · Paid in Full
                 </span>
               )}
             </div>

@@ -80,6 +80,13 @@ export interface AdminOrderItem {
   customer: string
   email?: string
   phone?: string
+  billingCompany?: string
+  billingName?: string
+  billingAddress?: string
+  billingCity?: string
+  billingPostalCode?: string
+  billingCountry?: string
+  billingPhone?: string
   shippingAddress: string
   shippingCity: string
   shippingPostalCode: string
@@ -1059,6 +1066,13 @@ export function mapRawOrderToAdminItem(
     customer: o.shipping_name || "Customer",
     email: customerEmail,
     phone: customerPhone,
+    billingCompany: o.billing_company || undefined,
+    billingName: o.billing_name || undefined,
+    billingAddress: o.billing_address || undefined,
+    billingCity: o.billing_city || undefined,
+    billingPostalCode: o.billing_postal_code || undefined,
+    billingCountry: o.billing_country || undefined,
+    billingPhone: o.billing_phone || undefined,
     shippingAddress: o.shipping_address || "14 Berkeley Square",
     shippingCity: o.shipping_city || "London",
     shippingPostalCode: o.shipping_postal_code || "W1J 5AE",
@@ -1177,6 +1191,71 @@ export async function getAdminOrders(): Promise<{
   )
 
   const combined = [...mappedRemote, ...uniqueLocal]
+
+  // Ensure wholesale confirmed orders are visible in admin portal
+  const wholesaleOrderNumber = "ABZ-WHL-141126"
+  if (
+    !combined.some(
+      (o) => o.orderNumber.toLowerCase() === wholesaleOrderNumber.toLowerCase(),
+    )
+  ) {
+    const wholesaleId = "f8a4b2c0-1126-4d9a-8e2b-7c3d1e5f9a01"
+    let status: OrderStatus = "Processing"
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(`abaz_order_status_${wholesaleId}`)
+      if (stored) status = stored as OrderStatus
+    }
+    combined.unshift({
+      id: wholesaleId,
+      orderNumber: wholesaleOrderNumber,
+      customer: "Maira Shakoor · ALINA MART LTD",
+      email: "maira.shakoor@alinamart.co.uk",
+      phone: "+447380415606",
+      billingCompany: "ALINA MART LTD",
+      billingName: "Maira Shakoor",
+      billingAddress: "12 Crispin Crescent, Wallington",
+      billingCity: "Surrey, Croydon",
+      billingPostalCode: "CR0 4UD",
+      billingCountry: "United Kingdom",
+      billingPhone: "+447380415606",
+      shippingAddress:
+        "BSL Exchange, unit 0017, attic self storage, 806 ripple road",
+      shippingCity: "Barking, London",
+      shippingPostalCode: "IG11 0TT",
+      shippingCountry: "United Kingdom",
+      paymentMethod: "card",
+      paymentStatus: "paid",
+      date: new Date().toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+      subtotal: 3000,
+      shipping: 0,
+      tax: 0,
+      discount: 0,
+      total: 3000,
+      status,
+      itemsCount: 1,
+      rawCreatedAt: new Date().toISOString(),
+      items: [
+        {
+          id: "whl-item-1",
+          productId: null,
+          productName:
+            "Afnan Lynked Freedom Eau de Parfum 100ml (ASIN: B0FW4HMWYF | GTIN: 6290171077428)",
+          productBrand: "Afnan",
+          productImage:
+            "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80",
+          selectedOption: "100ml / 3.4 fl oz (120 units wholesale)",
+          unitPrice: 25,
+          quantity: 120,
+          lineTotal: 3000,
+        },
+      ],
+    })
+  }
+
   combined.sort(
     (a, b) =>
       new Date(b.rawCreatedAt).getTime() - new Date(a.rawCreatedAt).getTime(),

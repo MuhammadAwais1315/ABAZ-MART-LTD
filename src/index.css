@@ -315,8 +315,8 @@ h2 { font-size: clamp(2rem, 3vw, 3rem); line-height: 1.1; }
 .rating-breakdown i { display: block; height: 100%; background: linear-gradient(90deg, #d4af37 0%, #f59e0b 100%); border-radius: inherit; transition: width 0.4s ease-out; }
 .review-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-top: 24px; }
 .review-list article { background: white; padding: 24px 26px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(43,32,36,0.02); display: flex; flex-direction: column; justify-content: space-between; }
-.review-list article > div.review-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.review-list article > div.review-header span.review-date { color: var(--muted); font-size: .72rem; }
+.review-list article .review-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.review-list article .review-header span.review-date { color: var(--muted); font-size: .72rem; }
 .review-list h3 { font-family: "Playfair Display", serif; font-size: 1.08rem; color: var(--ink); margin: 0 0 10px 0; font-weight: 600; line-height: 1.35; }
 .review-list p { color: #5a4b51; font-size: .84rem; line-height: 1.65; margin: 0 0 16px 0; white-space: pre-wrap; }
 .review-list .review-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f2e9ec; padding-top: 12px; margin-top: auto; }

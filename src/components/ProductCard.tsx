@@ -56,6 +56,7 @@ export default function ProductCard({
         <RatingStars
           rating={product.rating}
           count={product.reviewCount}
+          showNumber={Boolean(product.reviewCount && product.reviewCount > 0)}
           compact
         />
         <div className="price-row">
