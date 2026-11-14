@@ -53,7 +53,9 @@ export default function RootLayout() {
         }
         // Fallback for legacy format where only { id, quantity, option } was saved
         if (entry && entry.id) {
-          const found = getEffectiveProducts(products).find((p) => p.id === entry.id)
+          const found = getEffectiveProducts(products).find(
+            (p) => p.id === entry.id,
+          )
           if (found) {
             return [
               {
@@ -106,7 +108,9 @@ export default function RootLayout() {
     } catch {}
 
     const handleCatalogUpdate = () => {
-      setCart((current) => current.filter((item) => !isProductDeleted(item.product.id)))
+      setCart((current) =>
+        current.filter((item) => !isProductDeleted(item.product.id)),
+      )
       setWishlist((current) => current.filter((id) => !isProductDeleted(id)))
     }
     window.addEventListener("abaz_catalog_updated", handleCatalogUpdate)
@@ -205,7 +209,8 @@ export default function RootLayout() {
     setCart((current) =>
       current.map((item) => {
         if (item.product.id !== id) return item
-        const maxStock = item.product.stock !== undefined ? item.product.stock : 99
+        const maxStock =
+          item.product.stock !== undefined ? item.product.stock : 99
         if (quantity > maxStock) {
           notify(`Only ${maxStock} available in stock for ${item.product.name}`)
           return { ...item, quantity: Math.max(1, maxStock) }

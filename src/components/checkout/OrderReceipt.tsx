@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react"
-import { Download, Building2, CheckCircle2, Mail, Loader2, Check } from "lucide-react"
+import {
+  Download,
+  Building2,
+  CheckCircle2,
+  Mail,
+  Loader2,
+  Check,
+} from "lucide-react"
 import { Button } from "../ui"
 import { formatPrice } from "../../utils/formatPrice"
 import { OrderResult } from "../../services/checkout"
@@ -38,13 +45,19 @@ export function OrderReceipt({
   paymentMethod,
 }: OrderReceiptProps) {
   const [sendingEmail, setSendingEmail] = useState(false)
-  const [emailStatus, setEmailStatus] = useState<{ sent: boolean; message: string } | null>(null)
+  const [emailStatus, setEmailStatus] = useState<{
+    sent: boolean
+    message: string
+  } | null>(null)
 
   // Guarantee that Meta Pixel Purchase is fired whenever this official receipt renders
   useEffect(() => {
     if (order && order.order_number && order.total > 0) {
       const key = `abaz_pixel_purchase_${order.order_number}`
-      if (typeof window !== "undefined" && !window.sessionStorage.getItem(key)) {
+      if (
+        typeof window !== "undefined" &&
+        !window.sessionStorage.getItem(key)
+      ) {
         window.sessionStorage.setItem(key, "1")
         metaPixel.purchase({
           order_number: order.order_number,
@@ -61,7 +74,10 @@ export function OrderReceipt({
 
   const handleSendEmail = async () => {
     if (!customer.email) {
-      setEmailStatus({ sent: false, message: "No email address found for this order." })
+      setEmailStatus({
+        sent: false,
+        message: "No email address found for this order.",
+      })
       return
     }
 
@@ -97,14 +113,26 @@ export function OrderReceipt({
 
       const data = await res.json()
       if (data.success) {
-        setEmailStatus({ sent: true, message: `Receipt emailed to ${customer.email}` })
+        setEmailStatus({
+          sent: true,
+          message: `Receipt emailed to ${customer.email}`,
+        })
       } else if (data.configured === false) {
-        setEmailStatus({ sent: false, message: "Resend not yet configured. Please download PDF." })
+        setEmailStatus({
+          sent: false,
+          message: "Resend not yet configured. Please download PDF.",
+        })
       } else {
-        setEmailStatus({ sent: false, message: data.error || "Could not dispatch email." })
+        setEmailStatus({
+          sent: false,
+          message: data.error || "Could not dispatch email.",
+        })
       }
     } catch {
-      setEmailStatus({ sent: false, message: "Failed to connect to email service." })
+      setEmailStatus({
+        sent: false,
+        message: "Failed to connect to email service.",
+      })
     } finally {
       setSendingEmail(false)
     }
@@ -123,7 +151,8 @@ export function OrderReceipt({
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>
-            {emailStatus?.message || "Official order receipt generated. You can download or email your receipt."}
+            {emailStatus?.message ||
+              "Official order receipt generated. You can download or email your receipt."}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -141,7 +170,11 @@ export function OrderReceipt({
               ) : (
                 <Mail className="w-3.5 h-3.5 text-rose-600" />
               )}
-              {sendingEmail ? "Sending..." : emailStatus?.sent ? "Emailed" : "Email Receipt"}
+              {sendingEmail
+                ? "Sending..."
+                : emailStatus?.sent
+                  ? "Emailed"
+                  : "Email Receipt"}
             </Button>
           )}
           <Button onClick={handleDownloadPdf} className="text-xs gap-2">
@@ -182,7 +215,12 @@ export function OrderReceipt({
               #{order.order_number}
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Date: {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+              Date:{" "}
+              {new Date().toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
             </div>
           </div>
         </div>
@@ -193,20 +231,27 @@ export function OrderReceipt({
             <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
               Delivered To:
             </span>
-            <div className="font-semibold text-foreground">{customer.fullName}</div>
+            <div className="font-semibold text-foreground">
+              {customer.fullName}
+            </div>
             <div className="text-muted-foreground">{customer.address}</div>
             <div className="text-muted-foreground">
               {customer.city}, {customer.postalCode}
             </div>
             <div className="text-muted-foreground">{customer.country}</div>
-            <div className="text-muted-foreground mt-1">Phone: {customer.phone}</div>
+            <div className="text-muted-foreground mt-1">
+              Phone: {customer.phone}
+            </div>
           </div>
 
           <div>
             <span className="font-bold text-foreground uppercase tracking-wider block mb-1">
               Payment Details:
             </span>
-            <div className="text-muted-foreground">Method: <strong className="text-foreground">{paymentLabel}</strong></div>
+            <div className="text-muted-foreground">
+              Method:{" "}
+              <strong className="text-foreground">{paymentLabel}</strong>
+            </div>
             <div className="text-muted-foreground mt-1">
               Status:{" "}
               {isBankTransfer ? (
@@ -222,7 +267,8 @@ export function OrderReceipt({
             <div className="text-muted-foreground mt-1">
               Est. Delivery:{" "}
               <span className="font-medium text-foreground">
-                {order.estimated_delivery && /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery)
+                {order.estimated_delivery &&
+                /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery)
                   ? (() => {
                       const [y, m, d] = order.estimated_delivery.split("-")
                       const dt = new Date(Number(y), Number(m) - 1, Number(d))
@@ -248,40 +294,67 @@ export function OrderReceipt({
               <span>Please Complete Your Bank Transfer:</span>
             </div>
             <p className="mb-3 text-amber-900/90 leading-relaxed">
-              To complete your order, please transfer <strong>{formatPrice(order.total)}</strong> to our official Wise business account using your order reference code below:
+              To complete your order, please transfer{" "}
+              <strong>{formatPrice(order.total)}</strong> to our official Wise
+              business account using your order reference code below:
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white p-3.5 rounded-lg border border-amber-200/80 font-mono text-xs">
               <div>
-                <span className="text-[10px] text-muted-foreground block uppercase font-sans">Bank</span>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">
+                  Bank
+                </span>
                 <strong className="text-foreground font-sans">Wise</strong>
               </div>
               <div>
-                <span className="text-[10px] text-muted-foreground block uppercase font-sans">Account Holder</span>
-                <strong className="text-foreground font-sans">Abaz Mart Ltd</strong>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">
+                  Account Holder
+                </span>
+                <strong className="text-foreground font-sans">
+                  Abaz Mart Ltd
+                </strong>
               </div>
               <div>
-                <span className="text-[10px] text-muted-foreground block uppercase font-sans">Sort Code</span>
-                <strong className="text-foreground font-bold text-rose-700">60-84-64</strong>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">
+                  Sort Code
+                </span>
+                <strong className="text-foreground font-bold text-rose-700">
+                  60-84-64
+                </strong>
               </div>
               <div>
-                <span className="text-[10px] text-muted-foreground block uppercase font-sans">Account No</span>
-                <strong className="text-foreground font-bold text-rose-700">60869680</strong>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">
+                  Account No
+                </span>
+                <strong className="text-foreground font-bold text-rose-700">
+                  60869680
+                </strong>
               </div>
               <div>
-                <span className="text-[10px] text-muted-foreground block uppercase font-sans">SWIFT / BIC</span>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">
+                  SWIFT / BIC
+                </span>
                 <strong className="text-foreground">TRWIGB2LXXX</strong>
               </div>
               <div>
-                <span className="text-[10px] text-muted-foreground block uppercase font-sans">Reference</span>
-                <strong className="text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-bold">{order.order_number}</strong>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">
+                  Reference
+                </span>
+                <strong className="text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-bold">
+                  {order.order_number}
+                </strong>
               </div>
               <div className="col-span-2 sm:col-span-3 border-t border-amber-100 pt-2 mt-1">
-                <span className="text-[10px] text-muted-foreground block uppercase font-sans">IBAN</span>
-                <strong className="text-foreground text-[11px] break-all">GB71 TRWI 6084 6460 8696 80</strong>
+                <span className="text-[10px] text-muted-foreground block uppercase font-sans">
+                  IBAN
+                </span>
+                <strong className="text-foreground text-[11px] break-all">
+                  GB71 TRWI 6084 6460 8696 80
+                </strong>
               </div>
             </div>
             <p className="mt-2 text-[11px] text-amber-800">
-              * Office 951 60 Tottenham Court Road, Fitzrovia, London W1T 2EW · Dispatched upon clearance.
+              * Office 951 60 Tottenham Court Road, Fitzrovia, London W1T 2EW ·
+              Dispatched upon clearance.
             </p>
           </div>
         )}
@@ -301,9 +374,12 @@ export function OrderReceipt({
               {items.map((item, idx) => (
                 <tr key={`${item.id ?? idx}-${idx}`}>
                   <td className="py-3">
-                    <div className="font-semibold text-foreground">{item.name}</div>
+                    <div className="font-semibold text-foreground">
+                      {item.name}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">
-                      {item.brand ? `${item.brand} · ` : ""}{item.option || "Standard"}
+                      {item.brand ? `${item.brand} · ` : ""}
+                      {item.option || "Standard"}
                     </div>
                   </td>
                   <td className="py-3 text-center">{item.quantity}</td>
@@ -332,7 +408,9 @@ export function OrderReceipt({
             )}
             <div className="flex justify-between text-muted-foreground">
               <span>Standard Shipping:</span>
-              <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>
+              <span>
+                {order.shipping === 0 ? "Free" : formatPrice(order.shipping)}
+              </span>
             </div>
             <div className="flex justify-between text-muted-foreground">
               <span>VAT (Included):</span>
@@ -347,7 +425,8 @@ export function OrderReceipt({
 
         {/* Footer Guarantee */}
         <div className="border-t border-border mt-8 pt-4 text-center text-[11px] text-muted-foreground">
-          Thank you for choosing Abaz Mart · 30-Day Happiness Guarantee · Questions? Email care@abazmart.co.uk · +4402034322415
+          Thank you for choosing Abaz Mart · 30-Day Happiness Guarantee ·
+          Questions? Email care@abazmart.co.uk · +4402034322415
         </div>
       </div>
     </div>

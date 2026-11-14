@@ -1,18 +1,9 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | {
+  [key: string]: Json | undefined
+} | Json[]
 
 export type UserRole = "customer" | "admin"
-export type OrderStatus =
-  | "Pending"
-  | "Processing"
-  | "Shipped"
-  | "Delivered"
-  | "Cancelled"
+export type OrderStatus = "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled"
 export type PaymentMethod = "card" | "cod" | "paypal" | "bank_transfer"
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded"
 
@@ -567,9 +558,7 @@ export interface Database {
         }
       }
     }
-    Views: {
-      [_ in never]: never
-    }
+    Views: { [_ in never]: never }
     Functions: {
       is_admin: {
         Args: Record<PropertyKey, never>

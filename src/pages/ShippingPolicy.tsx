@@ -32,22 +32,38 @@ export default function ShippingPolicy() {
               </thead>
               <tbody className="divide-y divide-border">
                 <tr>
-                  <td className="p-3 font-semibold">UK Standard Tracked (Royal Mail 48 / Evri)</td>
-                  <td className="p-3 text-muted-foreground">2 – 3 Business Days</td>
+                  <td className="p-3 font-semibold">
+                    UK Standard Tracked (Royal Mail 48 / Evri)
+                  </td>
+                  <td className="p-3 text-muted-foreground">
+                    2 – 3 Business Days
+                  </td>
                   <td className="p-3 font-semibold">£6.00</td>
-                  <td className="p-3 text-muted-foreground">Orders under £50.00</td>
+                  <td className="p-3 text-muted-foreground">
+                    Orders under £50.00
+                  </td>
                 </tr>
                 <tr className="bg-emerald-50/50">
-                  <td className="p-3 font-semibold text-emerald-800">Free UK Tracked Delivery</td>
+                  <td className="p-3 font-semibold text-emerald-800">
+                    Free UK Tracked Delivery
+                  </td>
                   <td className="p-3 text-emerald-800">2 – 3 Business Days</td>
                   <td className="p-3 font-semibold text-emerald-700">FREE</td>
-                  <td className="p-3 font-semibold text-emerald-700">Orders £50.00 and above</td>
+                  <td className="p-3 font-semibold text-emerald-700">
+                    Orders £50.00 and above
+                  </td>
                 </tr>
                 <tr>
-                  <td className="p-3 font-semibold">Express Next-Day Tracked (Royal Mail 24 / DPD)</td>
-                  <td className="p-3 text-muted-foreground">1 Business Day (Order before 1pm)</td>
+                  <td className="p-3 font-semibold">
+                    Express Next-Day Tracked (Royal Mail 24 / DPD)
+                  </td>
+                  <td className="p-3 text-muted-foreground">
+                    1 Business Day (Order before 1pm)
+                  </td>
                   <td className="p-3 font-semibold">£8.50</td>
-                  <td className="p-3 text-muted-foreground">Available at checkout</td>
+                  <td className="p-3 text-muted-foreground">
+                    Available at checkout
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -60,7 +76,10 @@ export default function ShippingPolicy() {
             2. Order Processing &amp; Dispatch Schedule
           </h2>
           <p className="text-muted-foreground">
-            All orders placed Monday to Friday are processed and dispatched within <strong>24 to 48 hours</strong>. Orders placed on Saturdays, Sundays, or UK Bank Holidays will be processed on the following business day.
+            All orders placed Monday to Friday are processed and dispatched
+            within <strong>24 to 48 hours</strong>. Orders placed on Saturdays,
+            Sundays, or UK Bank Holidays will be processed on the following
+            business day.
           </p>
         </section>
 
@@ -69,7 +88,17 @@ export default function ShippingPolicy() {
             3. Parcel Tracking
           </h2>
           <p className="text-muted-foreground">
-            Once your parcel is dispatched from our fulfillment facility, you will receive an automated dispatch notification email containing your carrier tracking reference. You can also view live fulfillment status at any time in your <Link to="/account" className="text-rose-600 hover:underline font-medium">Customer Account</Link>.
+            Once your parcel is dispatched from our fulfillment facility, you
+            will receive an automated dispatch notification email containing
+            your carrier tracking reference. You can also view live fulfillment
+            status at any time in your{" "}
+            <Link
+              to="/account"
+              className="text-rose-600 hover:underline font-medium"
+            >
+              Customer Account
+            </Link>
+            .
           </p>
         </section>
 
@@ -79,7 +108,18 @@ export default function ShippingPolicy() {
             4. Damaged or Lost Shipments
           </h2>
           <p className="text-muted-foreground">
-            All ABAZ MART parcels are fully insured during transit. In the rare event that your shipment arrives damaged or is delayed beyond 7 business days, please email our customer care team at <a href="mailto:care@abazmart.co.uk" className="text-rose-600 hover:underline">care@abazmart.co.uk</a> with your order reference (e.g. <code>#ABZ-10842</code>). We will investigate with the courier and issue an immediate replacement or full refund.
+            All ABAZ MART parcels are fully insured during transit. In the rare
+            event that your shipment arrives damaged or is delayed beyond 7
+            business days, please email our customer care team at{" "}
+            <a
+              href="mailto:care@abazmart.co.uk"
+              className="text-rose-600 hover:underline"
+            >
+              care@abazmart.co.uk
+            </a>{" "}
+            with your order reference (e.g. <code>#ABZ-10842</code>). We will
+            investigate with the courier and issue an immediate replacement or
+            full refund.
           </p>
         </section>
       </div>

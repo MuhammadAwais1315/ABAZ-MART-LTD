@@ -48,13 +48,18 @@ export default function AdminOrders() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("All")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrderItem | null>(null)
-  const [activeModalTab, setActiveModalTab] = useState<"details" | "receipt">("details")
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrderItem | null>(
+    null,
+  )
+  const [activeModalTab, setActiveModalTab] = useState<"details" | "receipt">(
+    "details",
+  )
   const [toastMessage, setToastMessage] = useState("")
   const [copiedAddress, setCopiedAddress] = useState(false)
 
   // Dispatch Tracking Modal State
-  const [dispatchModalOrder, setDispatchModalOrder] = useState<AdminOrderItem | null>(null)
+  const [dispatchModalOrder, setDispatchModalOrder] =
+    useState<AdminOrderItem | null>(null)
   const [selectedCarrier, setSelectedCarrier] = useState<string>("Royal Mail")
   const [customCarrier, setCustomCarrier] = useState<string>("")
   const [trackingNumberInput, setTrackingNumberInput] = useState<string>("")
@@ -85,11 +90,15 @@ export default function AdminOrders() {
       if (detail?.orderId && detail?.status) {
         setOrders((current) =>
           current.map((item) =>
-            item.id === detail.orderId ? { ...item, status: detail.status as OrderStatus } : item,
+            item.id === detail.orderId
+              ? { ...item, status: detail.status as OrderStatus }
+              : item,
           ),
         )
         setSelectedOrder((prev) =>
-          prev && prev.id === detail.orderId ? { ...prev, status: detail.status as OrderStatus } : prev,
+          prev && prev.id === detail.orderId
+            ? { ...prev, status: detail.status as OrderStatus }
+            : prev,
         )
       }
     }
@@ -114,7 +123,11 @@ export default function AdminOrders() {
     setDispatchModalOrder(order)
     const isKnownCarrier = CARRIER_OPTIONS.some((c) => c.name === order.carrier)
     setSelectedCarrier(
-      order.carrier ? (isKnownCarrier ? order.carrier : "Other / Custom Carrier") : "Royal Mail",
+      order.carrier
+        ? isKnownCarrier
+          ? order.carrier
+          : "Other / Custom Carrier"
+        : "Royal Mail",
     )
     setCustomCarrier(order.carrier && !isKnownCarrier ? order.carrier : "")
     setTrackingNumberInput(order.trackingNumber || "")
@@ -122,7 +135,10 @@ export default function AdminOrders() {
     setDispatchError("")
   }
 
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  const handleStatusChange = async (
+    orderId: string,
+    newStatus: OrderStatus,
+  ) => {
     // Intercept "Shipped" status update to require tracking number & carrier
     if (newStatus === "Shipped") {
       const target =
@@ -147,7 +163,9 @@ export default function AdminOrders() {
         ),
       )
       if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
+        setSelectedOrder((prev) =>
+          prev ? { ...prev, status: newStatus } : null,
+        )
       }
       showToast(`Order status updated to "${newStatus}"`)
     }
@@ -172,13 +190,19 @@ export default function AdminOrders() {
       } else {
         setOrders((current) =>
           current.map((item) =>
-            item.id === order.id ? { ...item, status: "Cancelled" as OrderStatus } : item,
+            item.id === order.id
+              ? { ...item, status: "Cancelled" as OrderStatus }
+              : item,
           ),
         )
         if (selectedOrder && selectedOrder.id === order.id) {
-          setSelectedOrder((prev) => (prev ? { ...prev, status: "Cancelled" as OrderStatus } : null))
+          setSelectedOrder((prev) =>
+            prev ? { ...prev, status: "Cancelled" as OrderStatus } : null,
+          )
         }
-        showToast(`Order ${order.orderNumber} cancelled and stock restored to inventory`)
+        showToast(
+          `Order ${order.orderNumber} cancelled and stock restored to inventory`,
+        )
       }
     }
   }
@@ -192,7 +216,9 @@ export default function AdminOrders() {
     const trimmedTracking = trackingNumberInput.trim()
 
     if (!trimmedTracking) {
-      setDispatchError("Tracking number is required to mark an order as Shipped.")
+      setDispatchError(
+        "Tracking number is required to mark an order as Shipped.",
+      )
       return
     }
 
@@ -200,11 +226,15 @@ export default function AdminOrders() {
     setDispatchError("")
 
     const trackingUrl = getCarrierTrackingUrl(effectiveCarrier, trimmedTracking)
-    const { error } = await updateOrderStatus(dispatchModalOrder.id, "Shipped", {
-      carrier: effectiveCarrier,
-      trackingNumber: trimmedTracking,
-      trackingUrl,
-    })
+    const { error } = await updateOrderStatus(
+      dispatchModalOrder.id,
+      "Shipped",
+      {
+        carrier: effectiveCarrier,
+        trackingNumber: trimmedTracking,
+        trackingUrl,
+      },
+    )
 
     setSubmittingDispatch(false)
 
@@ -253,7 +283,9 @@ export default function AdminOrders() {
               country: dispatchModalOrder.shippingCountry,
             },
           }),
-        }).catch((err) => console.warn("Dispatch email notification note:", err))
+        }).catch((err) =>
+          console.warn("Dispatch email notification note:", err),
+        )
       } catch {}
     }
 
@@ -306,7 +338,9 @@ export default function AdminOrders() {
       })
 
       if (res.ok) {
-        showToast(`Review request sent to ${customerEmail || "customer"} & review link copied!`)
+        showToast(
+          `Review request sent to ${customerEmail || "customer"} & review link copied!`,
+        )
       } else {
         showToast("Review request link copied to clipboard!")
       }
@@ -318,7 +352,8 @@ export default function AdminOrders() {
   // Filter logic
   const filteredOrders = orders.filter((order) => {
     const matchesStatus =
-      statusFilter === "All" || order.status.toLowerCase() === statusFilter.toLowerCase()
+      statusFilter === "All" ||
+      order.status.toLowerCase() === statusFilter.toLowerCase()
     const query = search.toLowerCase().trim()
     const matchesSearch =
       !query ||
@@ -334,7 +369,9 @@ export default function AdminOrders() {
   // KPI calculations
   const totalOrdersCount = orders.length
   const pendingCount = orders.filter((o) => o.status === "Pending").length
-  const processingCount = orders.filter((o) => o.status === "Processing" || o.status === "Shipped").length
+  const processingCount = orders.filter(
+    (o) => o.status === "Processing" || o.status === "Shipped",
+  ).length
   const deliveredCount = orders.filter((o) => o.status === "Delivered").length
   const totalRevenue = orders
     .filter((o) => o.status !== "Cancelled")
@@ -347,8 +384,8 @@ export default function AdminOrders() {
           <p className="eyebrow">Fulfillment & Operations</p>
           <h1>Orders Management</h1>
           <p>
-            Track live customer orders, manage fulfillment stages, view official invoices,
-            and dispatch customer confirmation receipts.
+            Track live customer orders, manage fulfillment stages, view official
+            invoices, and dispatch customer confirmation receipts.
           </p>
         </div>
         <Button
@@ -370,7 +407,9 @@ export default function AdminOrders() {
             <Package className="w-4 h-4 text-rose" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-serif font-bold text-ink">{totalOrdersCount}</span>
+            <span className="text-2xl font-serif font-bold text-ink">
+              {totalOrdersCount}
+            </span>
             <p className="text-[11px] text-muted mt-1">Recorded transactions</p>
           </div>
         </div>
@@ -381,7 +420,9 @@ export default function AdminOrders() {
             <Clock className="w-4 h-4 text-amber-500" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-serif font-bold text-amber-600">{pendingCount}</span>
+            <span className="text-2xl font-serif font-bold text-amber-600">
+              {pendingCount}
+            </span>
             <p className="text-[11px] text-muted mt-1">Awaiting dispatch</p>
           </div>
         </div>
@@ -392,7 +433,9 @@ export default function AdminOrders() {
             <Truck className="w-4 h-4 text-blue-500" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-serif font-bold text-blue-600">{processingCount}</span>
+            <span className="text-2xl font-serif font-bold text-blue-600">
+              {processingCount}
+            </span>
             <p className="text-[11px] text-muted mt-1">Processing or shipped</p>
           </div>
         </div>
@@ -406,7 +449,9 @@ export default function AdminOrders() {
             <span className="text-2xl font-serif font-bold text-emerald-700">
               {formatPrice(totalRevenue)}
             </span>
-            <p className="text-[11px] text-muted mt-1">Delivered & active orders</p>
+            <p className="text-[11px] text-muted mt-1">
+              Delivered & active orders
+            </p>
           </div>
         </div>
       </div>
@@ -418,10 +463,22 @@ export default function AdminOrders() {
           {[
             { id: "All", label: "All Orders", count: totalOrdersCount },
             { id: "Pending", label: "Pending", count: pendingCount },
-            { id: "Processing", label: "Processing", count: orders.filter((o) => o.status === "Processing").length },
-            { id: "Shipped", label: "Shipped", count: orders.filter((o) => o.status === "Shipped").length },
+            {
+              id: "Processing",
+              label: "Processing",
+              count: orders.filter((o) => o.status === "Processing").length,
+            },
+            {
+              id: "Shipped",
+              label: "Shipped",
+              count: orders.filter((o) => o.status === "Shipped").length,
+            },
             { id: "Delivered", label: "Delivered", count: deliveredCount },
-            { id: "Cancelled", label: "Cancelled", count: orders.filter((o) => o.status === "Cancelled").length },
+            {
+              id: "Cancelled",
+              label: "Cancelled",
+              count: orders.filter((o) => o.status === "Cancelled").length,
+            },
           ].map((tab) => {
             const isActive = statusFilter.toLowerCase() === tab.id.toLowerCase()
             return (
@@ -489,26 +546,41 @@ export default function AdminOrders() {
               ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-muted">
-                    <p className="text-base font-serif text-ink">No orders found</p>
-                    <p className="text-xs mt-1">Try adjusting your search query or status filter.</p>
+                    <p className="text-base font-serif text-ink">
+                      No orders found
+                    </p>
+                    <p className="text-xs mt-1">
+                      Try adjusting your search query or status filter.
+                    </p>
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-light/50 transition-colors">
+                  <tr
+                    key={order.id}
+                    className="hover:bg-light/50 transition-colors"
+                  >
                     {/* Order Number & Date */}
                     <td>
                       <div>
-                        <strong className="text-ink font-semibold">{order.orderNumber}</strong>
-                        <small className="text-muted block mt-0.5">{order.date}</small>
+                        <strong className="text-ink font-semibold">
+                          {order.orderNumber}
+                        </strong>
+                        <small className="text-muted block mt-0.5">
+                          {order.date}
+                        </small>
                       </div>
                     </td>
 
                     {/* Customer */}
                     <td>
                       <div>
-                        <strong className="text-ink block">{order.customer}</strong>
-                        <small className="text-muted block">{order.email || "No email"}</small>
+                        <strong className="text-ink block">
+                          {order.customer}
+                        </strong>
+                        <small className="text-muted block">
+                          {order.email || "No email"}
+                        </small>
                       </div>
                     </td>
 
@@ -517,12 +589,15 @@ export default function AdminOrders() {
                       <div>
                         <span className="inline-flex items-center gap-1.5 font-medium text-xs text-ink">
                           <Package className="w-3.5 h-3.5 text-rose" />
-                          {order.itemsCount} {order.itemsCount === 1 ? "item" : "items"}
+                          {order.itemsCount}{" "}
+                          {order.itemsCount === 1 ? "item" : "items"}
                         </span>
                         {order.items && order.items.length > 0 && (
                           <small className="text-muted block truncate max-w-[180px]">
                             {order.items[0].productName}
-                            {order.items.length > 1 ? ` +${order.items.length - 1} more` : ""}
+                            {order.items.length > 1
+                              ? ` +${order.items.length - 1} more`
+                              : ""}
                           </small>
                         )}
                       </div>
@@ -537,7 +612,8 @@ export default function AdminOrders() {
                           ) : (
                             <CreditCard className="w-3.5 h-3.5 text-blue-600" />
                           )}
-                          {PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod}
+                          {PAYMENT_METHOD_LABELS[order.paymentMethod] ||
+                            order.paymentMethod}
                         </span>
                         <small className="block mt-0.5">
                           <Badge
@@ -575,7 +651,10 @@ export default function AdminOrders() {
                         value={order.status}
                         disabled={updatingId === order.id}
                         onChange={(event) =>
-                          handleStatusChange(order.id, event.target.value as OrderStatus)
+                          handleStatusChange(
+                            order.id,
+                            event.target.value as OrderStatus,
+                          )
                         }
                       >
                         <option value="Pending">Pending</option>
@@ -610,8 +689,12 @@ export default function AdminOrders() {
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText(order.trackingNumber!)
-                              showToast(`Tracking code ${order.trackingNumber} copied!`)
+                              navigator.clipboard.writeText(
+                                order.trackingNumber!,
+                              )
+                              showToast(
+                                `Tracking code ${order.trackingNumber} copied!`,
+                              )
                             }}
                             className="text-muted hover:text-ink cursor-pointer p-0.5"
                             title="Copy tracking code"
@@ -694,7 +777,8 @@ export default function AdminOrders() {
                 tone={
                   selectedOrder.status === "Delivered"
                     ? "green"
-                    : selectedOrder.status === "Pending" || selectedOrder.status === "Processing"
+                    : selectedOrder.status === "Pending" ||
+                        selectedOrder.status === "Processing"
                       ? "gold"
                       : "rose"
                 }
@@ -705,12 +789,17 @@ export default function AdminOrders() {
 
             {/* Quick Status Update in Modal */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted font-medium">Update Status:</span>
+              <span className="text-xs text-muted font-medium">
+                Update Status:
+              </span>
               <Select
                 value={selectedOrder.status}
                 disabled={updatingId === selectedOrder.id}
                 onChange={(e) =>
-                  handleStatusChange(selectedOrder.id, e.target.value as OrderStatus)
+                  handleStatusChange(
+                    selectedOrder.id,
+                    e.target.value as OrderStatus,
+                  )
                 }
               >
                 <option value="Pending">Pending</option>
@@ -779,7 +868,8 @@ export default function AdminOrders() {
                         <Badge tone="green">Delivered</Badge>
                       </div>
                       <p className="text-xs text-ink font-medium mt-0.5">
-                        Request verified customer review for #{selectedOrder.orderNumber}
+                        Request verified customer review for #
+                        {selectedOrder.orderNumber}
                       </p>
                     </div>
                   </div>
@@ -811,7 +901,10 @@ export default function AdminOrders() {
                       </p>
                       {selectedOrder.shippedAt && (
                         <p className="text-[11px] text-muted mt-0.5">
-                          Dispatched on {new Date(selectedOrder.shippedAt).toLocaleString("en-GB")}
+                          Dispatched on{" "}
+                          {new Date(selectedOrder.shippedAt).toLocaleString(
+                            "en-GB",
+                          )}
                         </p>
                       )}
                     </div>
@@ -837,12 +930,14 @@ export default function AdminOrders() {
                     </Button>
                   </div>
                 </div>
-              ) : selectedOrder.status === "Processing" || selectedOrder.status === "Pending" ? (
+              ) : selectedOrder.status === "Processing" ||
+                selectedOrder.status === "Pending" ? (
                 <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2 text-amber-900">
                     <Clock className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>
-                      Order is <strong>{selectedOrder.status}</strong> and ready for packing.
+                      Order is <strong>{selectedOrder.status}</strong> and ready
+                      for packing.
                     </span>
                   </div>
                   <Button
@@ -864,7 +959,9 @@ export default function AdminOrders() {
                     <Mail className="w-4 h-4 text-rose" />
                     <span>Customer Contact</span>
                   </div>
-                  <p className="text-sm font-semibold text-ink">{selectedOrder.customer}</p>
+                  <p className="text-sm font-semibold text-ink">
+                    {selectedOrder.customer}
+                  </p>
                   <p className="text-xs text-muted mt-1">
                     {selectedOrder.email ? (
                       <a
@@ -906,14 +1003,19 @@ export default function AdminOrders() {
                         className="text-rose hover:text-rose-700 text-[11px] font-medium flex items-center gap-1 cursor-pointer"
                         title="Copy full shipping label"
                       >
-                        {copiedAddress ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        {copiedAddress ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
                         <span>{copiedAddress ? "Copied" : "Copy"}</span>
                       </button>
                     </div>
                     <p className="text-xs text-ink font-medium leading-relaxed">
                       {selectedOrder.shippingAddress}
                       <br />
-                      {selectedOrder.shippingCity}, {selectedOrder.shippingPostalCode}
+                      {selectedOrder.shippingCity},{" "}
+                      {selectedOrder.shippingPostalCode}
                       <br />
                       {selectedOrder.shippingCountry}
                     </p>
@@ -927,7 +1029,8 @@ export default function AdminOrders() {
                     <span>Payment Information</span>
                   </div>
                   <p className="text-xs text-ink font-medium">
-                    {PAYMENT_METHOD_LABELS[selectedOrder.paymentMethod] || selectedOrder.paymentMethod}
+                    {PAYMENT_METHOD_LABELS[selectedOrder.paymentMethod] ||
+                      selectedOrder.paymentMethod}
                   </p>
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-[11px] text-muted">Status:</span>
@@ -970,7 +1073,9 @@ export default function AdminOrders() {
                           className="w-12 h-14 object-cover rounded-lg border border-border"
                         />
                         <div>
-                          <p className="text-xs font-semibold text-ink">{item.productName}</p>
+                          <p className="text-xs font-semibold text-ink">
+                            {item.productName}
+                          </p>
                           <small className="text-[11px] text-muted block mt-0.5">
                             {item.productBrand} • Option: {item.selectedOption}
                           </small>
@@ -997,7 +1102,9 @@ export default function AdminOrders() {
                   <div className="flex justify-between text-muted">
                     <span>Shipping:</span>
                     <span>
-                      {selectedOrder.shipping === 0 ? "FREE" : formatPrice(selectedOrder.shipping)}
+                      {selectedOrder.shipping === 0
+                        ? "FREE"
+                        : formatPrice(selectedOrder.shipping)}
                     </span>
                   </div>
                   {selectedOrder.discount > 0 && (
@@ -1014,7 +1121,9 @@ export default function AdminOrders() {
                   )}
                   <div className="flex justify-between text-base font-serif font-bold text-ink border-t border-border pt-2 mt-2">
                     <span>Total Amount:</span>
-                    <span className="text-rose">{formatPrice(selectedOrder.total)}</span>
+                    <span className="text-rose">
+                      {formatPrice(selectedOrder.total)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1042,7 +1151,10 @@ export default function AdminOrders() {
                     </Button>
                   )}
                 </div>
-                <Button variant="primary" onClick={() => setSelectedOrder(null)}>
+                <Button
+                  variant="primary"
+                  onClick={() => setSelectedOrder(null)}
+                >
                   Close
                 </Button>
               </div>
@@ -1054,7 +1166,8 @@ export default function AdminOrders() {
             <div className="space-y-4">
               <div className="bg-light/60 p-3.5 rounded-xl border border-border text-xs text-muted flex items-center justify-between">
                 <span>
-                  Official vector invoice ready for printing, download, or customer dispatch.
+                  Official vector invoice ready for printing, download, or
+                  customer dispatch.
                 </span>
                 <span className="font-semibold text-ink">
                   {selectedOrder.orderNumber}
@@ -1109,13 +1222,20 @@ export default function AdminOrders() {
             <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-start gap-3">
               <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-blue-950">Courier Tracking Required</p>
+                <p className="font-semibold text-blue-950">
+                  Courier Tracking Required
+                </p>
                 <p className="mt-0.5 text-blue-800 leading-relaxed">
-                  Moving this order to <strong>Shipped</strong> requires an active parcel tracking number and carrier name so the customer can track delivery in real time.
+                  Moving this order to <strong>Shipped</strong> requires an
+                  active parcel tracking number and carrier name so the customer
+                  can track delivery in real time.
                 </p>
                 <div className="mt-2 pt-2 border-t border-blue-200/60 text-[11px] text-blue-800">
                   <span>Destination: </span>
-                  <strong>{dispatchModalOrder.customer}</strong> · {dispatchModalOrder.shippingCity}, {dispatchModalOrder.shippingPostalCode} ({dispatchModalOrder.shippingCountry})
+                  <strong>{dispatchModalOrder.customer}</strong> ·{" "}
+                  {dispatchModalOrder.shippingCity},{" "}
+                  {dispatchModalOrder.shippingPostalCode} (
+                  {dispatchModalOrder.shippingCountry})
                 </div>
               </div>
             </div>
@@ -1162,7 +1282,9 @@ export default function AdminOrders() {
                     Tracking Number / Consignment Reference *
                   </label>
                   <span className="text-[11px] text-muted">
-                    Format: {CARRIER_OPTIONS.find((c) => c.name === selectedCarrier)?.example || "Carrier code"}
+                    Format:{" "}
+                    {CARRIER_OPTIONS.find((c) => c.name === selectedCarrier)
+                      ?.example || "Carrier code"}
                   </span>
                 </div>
                 <Input
@@ -1242,7 +1364,9 @@ export default function AdminOrders() {
               >
                 <Truck className="w-4 h-4" />
                 <span>
-                  {submittingDispatch ? "Updating..." : "Confirm & Mark as Shipped"}
+                  {submittingDispatch
+                    ? "Updating..."
+                    : "Confirm & Mark as Shipped"}
                 </span>
               </Button>
             </div>

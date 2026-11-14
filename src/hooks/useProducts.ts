@@ -58,7 +58,9 @@ export function useProducts(options: UseProductsOptions = {}) {
       setProducts(result.data)
       setTotal(result.total)
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load products"))
+      setError(
+        err instanceof Error ? err : new Error("Failed to load products"),
+      )
     } finally {
       setLoading(false)
     }

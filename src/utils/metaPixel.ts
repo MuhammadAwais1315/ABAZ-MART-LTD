@@ -86,7 +86,7 @@ export const metaPixel = {
    * 4. AddToCart - Triggered when an item is added to the bag
    */
   addToCart: (
-    product: { id: string | number; name: string; price: number },
+    product: { id: string | number name: string price: number },
     quantity = 1,
   ) => {
     fbqTrack("AddToCart", {
@@ -101,7 +101,11 @@ export const metaPixel = {
   /**
    * 5. AddToWishlist - Triggered when a product is saved to wishlist
    */
-  addToWishlist: (product: { id: string | number; name: string; price: number }) => {
+  addToWishlist: (product: {
+    id: string | number
+    name: string
+    price: number
+  }) => {
     fbqTrack("AddToWishlist", {
       content_name: product.name,
       content_ids: [String(product.id)],
@@ -115,7 +119,7 @@ export const metaPixel = {
    * 6. InitiateCheckout - Triggered when entering checkout
    */
   initiateCheckout: (
-    items: { id: string | number; price?: number; quantity?: number }[],
+    items: { id: string | number price?: number quantity?: number }[],
     total: number,
   ) => {
     fbqTrack("InitiateCheckout", {
@@ -144,10 +148,11 @@ export const metaPixel = {
   purchase: (order: {
     order_number?: string
     total: number
-    items?: { id?: string | number; product_id?: string | number }[]
+    items?: { id?: string | number product_id?: string | number }[]
   }) => {
     const contentIds =
-      order.items?.map((i) => String(i.id || i.product_id)).filter(Boolean) || []
+      order.items?.map((i) => String(i.id || i.product_id)).filter(Boolean) ||
+      []
     fbqTrack("Purchase", {
       content_type: "product",
       content_ids: contentIds,

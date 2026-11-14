@@ -105,7 +105,7 @@ export function RatingStars({
 export function Breadcrumb({
   items,
 }: {
-  items: { label: string; href?: string }[]
+  items: { label: string href?: string }[]
 }) {
   return (
     <nav className="breadcrumb" aria-label="Breadcrumb">

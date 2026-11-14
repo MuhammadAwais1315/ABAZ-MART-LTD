@@ -98,8 +98,8 @@ export default function Navbar({
   return (
     <>
       <div className="announcement">
-        <Sparkles size={14} /> Free shipping on orders over {currencySymbol}{shippingThreshold}{" "}
-        <span> · Easy 30-day returns</span>
+        <Sparkles size={14} /> Free shipping on orders over {currencySymbol}
+        {shippingThreshold} <span> · Easy 30-day returns</span>
       </div>
       <header className="navbar">
         <div className="nav-main shell">
@@ -180,8 +180,12 @@ export default function Navbar({
             )}
             <Link
               to={user ? "/account" : "/login"}
-              aria-label={user ? (profile?.full_name || "My Account") : "Sign in / Register"}
-              title={user ? (profile?.full_name || "My Account") : "Sign in / Register"}
+              aria-label={
+                user ? profile?.full_name || "My Account" : "Sign in / Register"
+              }
+              title={
+                user ? profile?.full_name || "My Account" : "Sign in / Register"
+              }
               className="inline-flex items-center justify-center"
             >
               {profile?.avatar_url ? (

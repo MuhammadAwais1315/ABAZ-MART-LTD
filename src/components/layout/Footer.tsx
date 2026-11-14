@@ -5,7 +5,11 @@ import { Button } from "../ui"
 import { subscribeNewsletter } from "../../services/admin"
 import { metaPixel } from "../../utils/metaPixel"
 
-export default function Footer({ notify }: { notify: (message: string) => void }) {
+export default function Footer({
+  notify,
+}: {
+  notify: (message: string) => void
+}) {
   const [email, setEmail] = useState("")
   const [subscribing, setSubscribing] = useState(false)
 
@@ -30,7 +34,11 @@ export default function Footer({ notify }: { notify: (message: string) => void }
     <footer className="footer">
       <div className="shell footer-grid">
         <div>
-          <Link to="/" className="footer-brand block" aria-label="Abaz Mart Home">
+          <Link
+            to="/"
+            className="footer-brand block"
+            aria-label="Abaz Mart Home"
+          >
             <img
               src="/logo-horizontal-light.png"
               alt="Abaz Mart"
@@ -98,7 +106,23 @@ export default function Footer({ notify }: { notify: (message: string) => void }
         <div className="space-y-1 text-xs">
           <div>© 2026 Abaz Mart Ltd. All rights reserved.</div>
           <div className="text-[11px] text-muted-foreground">
-            Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW · Co. No. 17094173 · <Link to="/privacy" className="hover:underline">Privacy</Link> · <Link to="/terms" className="hover:underline">Terms</Link> · <Link to="/shipping" className="hover:underline">Shipping</Link> · <Link to="/returns" className="hover:underline">Returns</Link>
+            Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW · Co.
+            No. 17094173 ·{" "}
+            <Link to="/privacy" className="hover:underline">
+              Privacy
+            </Link>{" "}
+            ·{" "}
+            <Link to="/terms" className="hover:underline">
+              Terms
+            </Link>{" "}
+            ·{" "}
+            <Link to="/shipping" className="hover:underline">
+              Shipping
+            </Link>{" "}
+            ·{" "}
+            <Link to="/returns" className="hover:underline">
+              Returns
+            </Link>
           </div>
         </div>
         <div className="payments">

@@ -43,7 +43,10 @@ export function downloadReceiptPdf({
 
   // Format delivery date nicely (e.g. 2026-10-25 -> 25 October 2026)
   let deliveryFormatted = order.estimated_delivery || "Within 3-5 business days"
-  if (order.estimated_delivery && /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery)) {
+  if (
+    order.estimated_delivery &&
+    /^\d{4}-\d{2}-\d{2}$/.test(order.estimated_delivery)
+  ) {
     const [y, m, d] = order.estimated_delivery.split("-")
     const dateObj = new Date(Number(y), Number(m) - 1, Number(d))
     if (!isNaN(dateObj.getTime())) {
@@ -75,7 +78,11 @@ export function downloadReceiptPdf({
   doc.setFontSize(8.5)
   doc.setTextColor(...mutedColor)
   doc.text("Abaz Mart Ltd · Luxury Skincare & Beauty", 15, 25.5)
-  doc.text("Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW", 15, 29.5)
+  doc.text(
+    "Office 951, 60 Tottenham Court Road, Fitzrovia, London W1T 2EW",
+    15,
+    29.5,
+  )
   doc.text("Registered in England & Wales · Company No. 17094173", 15, 33.5)
   doc.text("care@abazmart.co.uk · +4402034322415", 15, 37.5)
 
@@ -120,7 +127,11 @@ export function downloadReceiptPdf({
   doc.setFontSize(8.5)
   doc.setTextColor(...mutedColor)
   doc.text(customer.address || "14 Berkeley Square", 15, currentY + 9.5)
-  doc.text(`${customer.city || "London"}, ${customer.postalCode || ""}`, 15, currentY + 14)
+  doc.text(
+    `${customer.city || "London"}, ${customer.postalCode || ""}`,
+    15,
+    currentY + 14,
+  )
   doc.text(customer.country || "United Kingdom", 15, currentY + 18.5)
   if (customer.phone) {
     doc.text(`Phone: ${customer.phone}`, 15, currentY + 23)
@@ -170,7 +181,11 @@ export function downloadReceiptPdf({
     doc.setFont("helvetica", "bold")
     doc.setFontSize(8.5)
     doc.setTextColor(120, 53, 15)
-    doc.text("Please Complete Your Bank Transfer (BACS / Faster Payments / IBAN):", 20, currentY + 6)
+    doc.text(
+      "Please Complete Your Bank Transfer (BACS / Faster Payments / IBAN):",
+      20,
+      currentY + 6,
+    )
 
     doc.setFont("helvetica", "normal")
     doc.setFontSize(7.5)
@@ -213,10 +228,15 @@ export function downloadReceiptPdf({
     // Wrap product name into lines fitting within itemDescriptionWidth
     doc.setFont("helvetica", "bold")
     doc.setFontSize(8.5)
-    const nameLines: string[] = doc.splitTextToSize(item.name, itemDescriptionWidth)
+    const nameLines: string[] = doc.splitTextToSize(
+      item.name,
+      itemDescriptionWidth,
+    )
     const nameHeight = nameLines.length * 3.8
 
-    const brandOption = `${item.brand ? `${item.brand} · ` : ""}${item.option || "Standard"}`
+    const brandOption = `${
+      item.brand ? `${item.brand} · ` : ""
+    }${item.option || "Standard"}`
     const totalRowHeight = Math.max(12, nameHeight + 6.5)
 
     // Page overflow guard
@@ -266,7 +286,9 @@ export function downloadReceiptPdf({
   doc.setFontSize(8.5)
   doc.setTextColor(...mutedColor)
   doc.text("Subtotal:", summaryLabelX, currentY)
-  doc.text(formatPrice(order.subtotal), summaryValueX, currentY, { align: "right" })
+  doc.text(formatPrice(order.subtotal), summaryValueX, currentY, {
+    align: "right",
+  })
 
   if (order.discount > 0) {
     currentY += 5
@@ -302,7 +324,9 @@ export function downloadReceiptPdf({
   doc.setFontSize(10.5)
   doc.setTextColor(...roseColor)
   doc.text("Total Paid:", summaryLabelX, currentY + 5)
-  doc.text(formatPrice(order.total), summaryValueX, currentY + 5, { align: "right" })
+  doc.text(formatPrice(order.total), summaryValueX, currentY + 5, {
+    align: "right",
+  })
 
   // 10. Footer Note
   doc.setFont("helvetica", "normal")
@@ -314,9 +338,14 @@ export function downloadReceiptPdf({
     278,
     { align: "center" },
   )
-  doc.text("Questions regarding your order? Email care@abazmart.co.uk · +4402034322415", 105, 282.5, {
-    align: "center",
-  })
+  doc.text(
+    "Questions regarding your order? Email care@abazmart.co.uk · +4402034322415",
+    105,
+    282.5,
+    {
+      align: "center",
+    },
+  )
 
   // 11. Trigger Download
   doc.save(`Abaz-Mart-Receipt-${order.order_number}.pdf`)

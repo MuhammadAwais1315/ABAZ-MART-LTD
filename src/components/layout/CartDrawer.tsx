@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react"
-import { ArrowRight, Minus, Plus, ShoppingBag, Sparkles, Trash2, X } from "lucide-react"
+import {
+  ArrowRight,
+  Minus,
+  Plus,
+  ShoppingBag,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react"
 import { Link } from "react-router"
 import { Button } from "../ui"
 import { CartItem } from "../../context/StoreContext"
@@ -24,7 +32,9 @@ export default function CartDrawer({
   updateQuantity: (id: number, quantity: number) => void
   removeFromCart: (id: number) => void
 }) {
-  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS)
+  const [settings, setSettings] = useState<StoreSettings>(
+    DEFAULT_STORE_SETTINGS,
+  )
 
   useEffect(() => {
     const loadSettings = () => {

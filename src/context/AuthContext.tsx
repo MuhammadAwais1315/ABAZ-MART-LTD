@@ -24,7 +24,7 @@ export interface AuthContextType {
     email: string,
     password: string,
     fullName: string,
-  ) => Promise<{ error: Error | null; user: User | null }>
+  ) => Promise<{ error: Error | null user: User | null }>
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<{ error: Error | null }>
   resetPassword: (email: string) => Promise<{ error: Error | null }>
@@ -35,7 +35,7 @@ export interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>
   uploadAvatar: (
     file: File,
-  ) => Promise<{ url: string | null; error: Error | null }>
+  ) => Promise<{ url: string | null error: Error | null }>
   refreshProfile: () => Promise<void>
 }
 
@@ -50,41 +50,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const configured = isSupabaseConfigured()
 
-  const fetchProfile = useCallback(async (userId: string, userEmail?: string) => {
-    if (!configured) return
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle()
-
-      if (error) {
-        console.warn("Could not load profile:", error.message)
-        return
-      }
-
-      if (data) {
-        setProfile(data)
-      } else {
-        // In case handle_new_user trigger has not fired yet, create a client profile row
-        const newProfile: Partial<Profile> = {
-          id: userId,
-          email: userEmail || "",
-          full_name: "",
-          role: "customer",
-        }
-        const { data: created } = await supabase
+  const fetchProfile = useCallback(
+    async (userId: string, userEmail?: string) => {
+      if (!configured) return
+      try {
+        const { data, error } = await supabase
           .from("profiles")
-          .insert(newProfile as Profile)
-          .select()
+          .select("*")
+          .eq("id", userId)
           .maybeSingle()
-        if (created) setProfile(created)
+
+        if (error) {
+          console.warn("Could not load profile:", error.message)
+          return
+        }
+
+        if (data) {
+          setProfile(data)
+        } else {
+          // In case handle_new_user trigger has not fired yet, create a client profile row
+          const newProfile: Partial<Profile> = {
+            id: userId,
+            email: userEmail || "",
+            full_name: "",
+            role: "customer",
+          }
+          const { data: created } = await supabase
+            .from("profiles")
+            .insert(newProfile as Profile)
+            .select()
+            .maybeSingle()
+          if (created) setProfile(created)
+        }
+      } catch (err) {
+        console.warn("Error fetching profile:", err)
       }
-    } catch (err) {
-      console.warn("Error fetching profile:", err)
-    }
-  }, [configured])
+    },
+    [configured],
+  )
 
   // Initialize auth state
   useEffect(() => {
@@ -229,10 +232,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const updated = [
           customerEntry,
-          ...list.filter((c: any) => c.email.toLowerCase() !== email.toLowerCase()),
+          ...list.filter(
+            (c: any) => c.email.toLowerCase() !== email.toLowerCase(),
+          ),
         ]
-        window.localStorage.setItem("abaz_registered_customers", JSON.stringify(updated))
-        window.dispatchEvent(new CustomEvent("abaz_customer_registered", { detail: customerEntry }))
+        window.localStorage.setItem(
+          "abaz_registered_customers",
+          JSON.stringify(updated),
+        )
+        window.dispatchEvent(
+          new CustomEvent("abaz_customer_registered", {
+            detail: customerEntry,
+          }),
+        )
       } catch {}
 
       return { error: null, user: demoUser }
@@ -264,10 +276,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const updated = [
           customerEntry,
-          ...list.filter((c: any) => c.email.toLowerCase() !== email.toLowerCase()),
+          ...list.filter(
+            (c: any) => c.email.toLowerCase() !== email.toLowerCase(),
+          ),
         ]
-        window.localStorage.setItem("abaz_registered_customers", JSON.stringify(updated))
-        window.dispatchEvent(new CustomEvent("abaz_customer_registered", { detail: customerEntry }))
+        window.localStorage.setItem(
+          "abaz_registered_customers",
+          JSON.stringify(updated),
+        )
+        window.dispatchEvent(
+          new CustomEvent("abaz_customer_registered", {
+            detail: customerEntry,
+          }),
+        )
       } catch {}
     }
 
@@ -393,15 +414,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile((prev) => (prev ? { ...prev, avatar_url: publicUrl } : null))
       return { url: publicUrl, error: null }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to upload avatar"
+      const message =
+        err instanceof Error ? err.message : "Failed to upload avatar"
       return { url: null, error: new Error(message) }
     }
   }
 
   const isAdmin =
     profile?.role === "admin" ||
-    (user?.app_metadata as Record<string, unknown> | undefined)?.role === "admin" ||
-    (user?.user_metadata as Record<string, unknown> | undefined)?.role === "admin"
+    (user?.app_metadata as Record<string, unknown> | undefined)?.role ===
+      "admin" ||
+    (user?.user_metadata as Record<string, unknown> | undefined)?.role ===
+      "admin"
 
   return (
     <AuthContext.Provider

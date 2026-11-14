@@ -107,12 +107,27 @@ export default function AdminDashboard() {
   }, [validOrdersCount, liveRevenue])
 
   const pendingDispatchCount = useMemo(() => {
-    return orders.filter((o) => o.status === "Pending" || o.status === "Processing").length
+    return orders.filter(
+      (o) => o.status === "Pending" || o.status === "Processing",
+    ).length
   }, [orders])
 
   // Build real dynamic monthly sales chart from actual orders over the last 6 months
   const salesData = useMemo(() => {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ]
     const now = new Date()
     const months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
@@ -125,7 +140,9 @@ export default function AdminDashboard() {
 
     orders.forEach((o) => {
       if (o.status !== "Cancelled") {
-        const orderDate = o.rawCreatedAt ? new Date(o.rawCreatedAt) : new Date(o.date)
+        const orderDate = o.rawCreatedAt
+          ? new Date(o.rawCreatedAt)
+          : new Date(o.date)
         if (!isNaN(orderDate.getTime())) {
           const key = `${orderDate.getFullYear()}-${orderDate.getMonth()}`
           const bucket = months.find((m) => m.key === key)
@@ -144,17 +161,14 @@ export default function AdminDashboard() {
 
   // Compute top selling products from real customer orders
   const topSellingProducts = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        name: string
-        brand?: string
-        image?: string
-        price: number
-        units: number
-        revenue: number
-      }
-    >()
+    const map = new Map<string, {
+      name: string
+      brand?: string
+      image?: string
+      price: number
+      units: number
+      revenue: number
+    }>()
 
     orders.forEach((order) => {
       if (order.status !== "Cancelled" && order.items) {
@@ -199,7 +213,10 @@ export default function AdminDashboard() {
     {
       label: "Registered Customers",
       value: customerCount.toString(),
-      change: customerCount > 0 ? `${customerCount} active accounts` : "No accounts yet",
+      change:
+        customerCount > 0
+          ? `${customerCount} active accounts`
+          : "No accounts yet",
       note: "database",
     },
     {
@@ -222,7 +239,9 @@ export default function AdminDashboard() {
         <div>
           <p className="eyebrow">Overview</p>
           <h1>Dashboard</h1>
-          <p>Welcome back, Admin. Real-time store metrics and customer activity.</p>
+          <p>
+            Welcome back, Admin. Real-time store metrics and customer activity.
+          </p>
         </div>
         <span>{todayFormatted}</span>
       </div>
@@ -252,9 +271,12 @@ export default function AdminDashboard() {
           <div className="chart-wrap">
             {liveRevenue === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
-                <p className="text-sm font-medium text-foreground">No customer sales recorded yet</p>
+                <p className="text-sm font-medium text-foreground">
+                  No customer sales recorded yet
+                </p>
                 <p className="text-xs mt-1.5 max-w-sm">
-                  As soon as real customer orders are placed, monthly revenue trends will dynamically graph here.
+                  As soon as real customer orders are placed, monthly revenue
+                  trends will dynamically graph here.
                 </p>
               </div>
             ) : (
@@ -281,10 +303,7 @@ export default function AdminDashboard() {
                     tickFormatter={(value) => `£${value}`}
                   />
                   <Tooltip
-                    formatter={(value) => [
-                      formatPrice(Number(value)),
-                      "Sales",
-                    ]}
+                    formatter={(value) => [formatPrice(Number(value)), "Sales"]}
                     contentStyle={{ borderRadius: 12, borderColor: "#eadfe2" }}
                   />
                   <Line
@@ -311,15 +330,23 @@ export default function AdminDashboard() {
           </div>
           {topSellingProducts.length === 0 ? (
             <div className="py-12 px-4 text-center text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">No product purchases yet</p>
+              <p className="font-medium text-foreground">
+                No product purchases yet
+              </p>
               <p className="mt-1">
-                Your highest-performing products will automatically rank here as customers complete checkout.
+                Your highest-performing products will automatically rank here as
+                customers complete checkout.
               </p>
             </div>
           ) : (
             topSellingProducts.map((product, index) => (
-              <div key={product.name} className="flex items-center gap-3 py-2 border-b border-border/40 last:border-0">
-                <b className="w-5 text-center text-xs text-muted-foreground">{index + 1}</b>
+              <div
+                key={product.name}
+                className="flex items-center gap-3 py-2 border-b border-border/40 last:border-0"
+              >
+                <b className="w-5 text-center text-xs text-muted-foreground">
+                  {index + 1}
+                </b>
                 {product.image && (
                   <img
                     src={product.image}
@@ -328,9 +355,12 @@ export default function AdminDashboard() {
                   />
                 )}
                 <span className="flex-1 min-w-0">
-                  <strong className="block text-xs truncate text-foreground">{product.name}</strong>
+                  <strong className="block text-xs truncate text-foreground">
+                    {product.name}
+                  </strong>
                   <small className="text-muted-foreground text-[11px]">
-                    {product.units} {product.units === 1 ? "unit" : "units"} sold
+                    {product.units} {product.units === 1 ? "unit" : "units"}{" "}
+                    sold
                   </small>
                 </span>
                 <em className="font-semibold text-xs text-foreground not-italic">
@@ -378,15 +408,26 @@ export default function AdminDashboard() {
             <tbody>
               {loadingOrders ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-muted-foreground text-xs">
+                  <td
+                    colSpan={5}
+                    className="text-center py-8 text-muted-foreground text-xs"
+                  >
                     Loading live orders...
                   </td>
                 </tr>
               ) : recentOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-10 text-muted-foreground text-xs">
-                    <p className="font-medium text-foreground text-sm">No customer orders placed yet</p>
-                    <p className="mt-1">When customers place orders, they will appear here in real time.</p>
+                  <td
+                    colSpan={5}
+                    className="text-center py-10 text-muted-foreground text-xs"
+                  >
+                    <p className="font-medium text-foreground text-sm">
+                      No customer orders placed yet
+                    </p>
+                    <p className="mt-1">
+                      When customers place orders, they will appear here in real
+                      time.
+                    </p>
                   </td>
                 </tr>
               ) : (

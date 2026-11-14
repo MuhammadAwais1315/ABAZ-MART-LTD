@@ -52,7 +52,10 @@ export default function ProductPage() {
 
   const isDeleted = rawIdentifier ? isProductDeleted(rawIdentifier) : false
 
-  const findMatchingProduct = (list: Product[], key: string): Product | null => {
+  const findMatchingProduct = (
+    list: Product[],
+    key: string,
+  ): Product | null => {
     if (!key) return null
     const lower = key.toLowerCase()
     const isNum = /^\d+$/.test(key)
@@ -63,7 +66,8 @@ export default function ProductPage() {
         if (isNum && item.id === num) return true
         if (item.slug && item.slug.toLowerCase() === lower) return true
         if (getProductSlug(item).toLowerCase() === lower) return true
-        if (item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === lower) return true
+        if (item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === lower)
+          return true
         return false
       }) || null
     )
@@ -77,7 +81,9 @@ export default function ProductPage() {
   const { categories: storeCategories } = useCategories()
   const navigate = useNavigate()
   const [quantity, setQuantity] = useState(1)
-  const [option, setOption] = useState(initialProduct?.options?.[0] || "Default")
+  const [option, setOption] = useState(
+    initialProduct?.options?.[0] || "Default",
+  )
   const [detailTab, setDetailTab] = useState("Description")
   const [activeImage, setActiveImage] = useState(initialProduct?.image || "")
   const [productLoading, setProductLoading] = useState(true)
@@ -91,11 +97,15 @@ export default function ProductPage() {
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
 
-  const totalReviews = reviewsList.length > 0 ? reviewsList.length : (product?.reviewCount || 0)
+  const totalReviews =
+    reviewsList.length > 0 ? reviewsList.length : product?.reviewCount || 0
 
   const averageRating = useMemo(() => {
     if (reviewsList.length > 0) {
-      const sum = reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0)
+      const sum = reviewsList.reduce(
+        (acc, r) => acc + (Number(r.rating) || 5),
+        0,
+      )
       return (sum / reviewsList.length).toFixed(1)
     }
     return (product?.rating || 5.0).toFixed(1)
@@ -110,7 +120,8 @@ export default function ProductPage() {
     const total = reviewsList.length
     return [5, 4, 3, 2, 1].map((stars) => {
       const count = counts[stars] || 0
-      const pct = total > 0 ? Math.round((count / total) * 100) : stars === 5 ? 100 : 0
+      const pct =
+        total > 0 ? Math.round((count / total) * 100) : stars === 5 ? 100 : 0
       return { stars, count, pct }
     })
   }, [reviewsList])
@@ -183,7 +194,10 @@ export default function ProductPage() {
   useEffect(() => {
     if (product && /^\d+$/.test(rawIdentifier)) {
       const canonicalSlugUrl = getProductUrl(product)
-      if (canonicalSlugUrl && canonicalSlugUrl !== `/product/${rawIdentifier}`) {
+      if (
+        canonicalSlugUrl &&
+        canonicalSlugUrl !== `/product/${rawIdentifier}`
+      ) {
         navigate(canonicalSlugUrl, { replace: true })
       }
     }
@@ -397,7 +411,8 @@ export default function ProductPage() {
             <strong>{averageRating}</strong>
             <RatingStars rating={Number(averageRating)} />
             <span>
-              Based on {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
+              Based on {totalReviews}{" "}
+              {totalReviews === 1 ? "review" : "reviews"}
             </span>
             <Button onClick={handleOpenReview} disabled={checkingBuyer}>
               {checkingBuyer ? "Checking..." : "Write a review"}
@@ -418,11 +433,15 @@ export default function ProductPage() {
         <div className="review-list">
           {reviewsList.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted col-span-full bg-white rounded-xl border border-border">
-              No reviews yet. Be the first to share your experience with this product!
+              No reviews yet. Be the first to share your experience with this
+              product!
             </div>
           ) : (
             reviewsList.map((review, idx) => {
-              const initial = (review.name || "C").trim().charAt(0).toUpperCase()
+              const initial = (review.name || "C")
+                .trim()
+                .charAt(0)
+                .toUpperCase()
               return (
                 <article key={review.id ?? idx}>
                   <div>
@@ -440,7 +459,8 @@ export default function ProductPage() {
                     </div>
                     {review.verified && (
                       <span className="verified-badge">
-                        <Check className="w-3 h-3 text-emerald-600 inline" /> Verified buyer
+                        <Check className="w-3 h-3 text-emerald-600 inline" />{" "}
+                        Verified buyer
                       </span>
                     )}
                   </div>
@@ -637,7 +657,9 @@ export default function ProductPage() {
               <Button
                 variant="ghost"
                 disabled={quantity >= product.stock || product.stock <= 0}
-                onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                onClick={() =>
+                  setQuantity((q) => Math.min(product.stock, q + 1))
+                }
                 aria-label="Increase quantity"
               >
                 <Plus />
@@ -743,12 +765,16 @@ export default function ProductPage() {
                 Authentic Customer Ratings & Reviews
               </p>
               <p className="text-xs text-amber-900/80 mt-1 leading-relaxed">
-                To keep our product ratings 100% genuine and trustworthy for everyone, reviews can only be submitted by customers who have purchased this product from ABAZ MART.
+                To keep our product ratings 100% genuine and trustworthy for
+                everyone, reviews can only be submitted by customers who have
+                purchased this product from ABAZ MART.
               </p>
             </div>
           </div>
           <p className="text-xs text-stone-600 leading-relaxed">
-            If you ordered this product under a different email or order number, please sign in with that account or request a review directly from your delivered orders on your Account page.
+            If you ordered this product under a different email or order number,
+            please sign in with that account or request a review directly from
+            your delivered orders on your Account page.
           </p>
           <div className="flex justify-end gap-2 pt-3">
             <Button
@@ -776,7 +802,10 @@ export default function ProductPage() {
         title={`Review ${product.name}`}
         onClose={() => setReviewModalOpen(false)}
       >
-        <form onSubmit={handleSubmitReview} className="space-y-4 my-2 text-left">
+        <form
+          onSubmit={handleSubmitReview}
+          className="space-y-4 my-2 text-left"
+        >
           {reviewError && (
             <div
               className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-xs mb-3"

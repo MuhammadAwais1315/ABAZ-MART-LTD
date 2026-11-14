@@ -1,6 +1,12 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Product, products } from "../data/products"
-import { Database, OrderStatus, PaymentMethod, PaymentStatus, UserRole } from "../types/database"
+import {
+  Database,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  UserRole,
+} from "../types/database"
 import { matchCategory } from "../utils/categoryMatcher"
 import {
   getLocalStoreSettings,
@@ -31,10 +37,17 @@ export const CARRIER_OPTIONS = [
   { id: "parcelforce", name: "Parcelforce", example: "PB1234567890" },
   { id: "dhl", name: "DHL Express", example: "10-digit waybill number" },
   { id: "fedex", name: "FedEx", example: "12-digit tracking number" },
-  { id: "other", name: "Other / Custom Carrier", example: "Tracking reference" },
+  {
+    id: "other",
+    name: "Other / Custom Carrier",
+    example: "Tracking reference",
+  },
 ] as const
 
-export function getCarrierTrackingUrl(carrier: string, trackingNumber: string): string {
+export function getCarrierTrackingUrl(
+  carrier: string,
+  trackingNumber: string,
+): string {
   const code = encodeURIComponent(trackingNumber.trim())
   const c = carrier.toLowerCase()
   if (c.includes("royal mail")) {
@@ -165,7 +178,10 @@ const CATEGORY_ID_MAP: Record<string, number> = {
 // PRODUCTS
 // ----------------------------------------------------------------------------
 
-export async function syncLocalProductsToSupabase(): Promise<{ synced: number; error: Error | null }> {
+export async function syncLocalProductsToSupabase(): Promise<{
+  synced: number
+  error: Error | null
+}> {
   if (!isSupabaseConfigured() || typeof window === "undefined") {
     return { synced: 0, error: null }
   }
@@ -174,7 +190,8 @@ export async function syncLocalProductsToSupabase(): Promise<{ synced: number; e
     const raw = localStorage.getItem("abaz_custom_created_products")
     if (!raw) return { synced: 0, error: null }
     const localList: Product[] = JSON.parse(raw)
-    if (!Array.isArray(localList) || localList.length === 0) return { synced: 0, error: null }
+    if (!Array.isArray(localList) || localList.length === 0)
+      return { synced: 0, error: null }
 
     let count = 0
     const remaining: Product[] = []
@@ -190,7 +207,10 @@ export async function syncLocalProductsToSupabase(): Promise<{ synced: number; e
         if (cat?.id) categoryId = Number(cat.id)
       } catch {}
 
-      const baseSlug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+      const baseSlug = p.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")
       const slug = `${baseSlug}-${Date.now().toString().slice(-6)}`
 
       const { data, error } = await supabase
@@ -221,7 +241,10 @@ export async function syncLocalProductsToSupabase(): Promise<{ synced: number; e
       }
     }
 
-    localStorage.setItem("abaz_custom_created_products", JSON.stringify(remaining))
+    localStorage.setItem(
+      "abaz_custom_created_products",
+      JSON.stringify(remaining),
+    )
     return { synced: count, error: null }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Sync failed"
@@ -249,15 +272,22 @@ export async function getAdminProducts(): Promise<{
   let customCreated: Product[] = []
   if (typeof window !== "undefined") {
     try {
-      storedEdits = JSON.parse(localStorage.getItem("abaz_custom_product_edits") || "{}")
-      const rawCreated = JSON.parse(localStorage.getItem("abaz_custom_created_products") || "[]")
+      storedEdits = JSON.parse(
+        localStorage.getItem("abaz_custom_product_edits") || "{}",
+      )
+      const rawCreated = JSON.parse(
+        localStorage.getItem("abaz_custom_created_products") || "[]",
+      )
       if (Array.isArray(rawCreated)) customCreated = rawCreated
     } catch {}
   }
 
   const applyEditsAndFilter = (list: Product[]): Product[] => {
     const existingIds = new Set(list.map((p) => p.id))
-    const merged = [...customCreated.filter((p) => !existingIds.has(p.id)), ...list]
+    const merged = [
+      ...customCreated.filter((p) => !existingIds.has(p.id)),
+      ...list,
+    ]
 
     return merged.map((p) => {
       const edit = storedEdits[p.id.toString()]
@@ -270,7 +300,10 @@ export async function getAdminProducts(): Promise<{
         brand: edit.brand ?? p.brand,
         category: edit.category ?? p.category,
         price: edit.price ?? p.price,
-        oldPrice: edit.oldPrice !== undefined ? (edit.oldPrice ?? undefined) : p.oldPrice,
+        oldPrice:
+          edit.oldPrice !== undefined
+            ? (edit.oldPrice ?? undefined)
+            : p.oldPrice,
         stock: isFromLiveDb ? p.stock : (edit.stock ?? p.stock),
         badge: edit.badge !== undefined ? (edit.badge ?? undefined) : p.badge,
       }
@@ -289,7 +322,10 @@ export async function getAdminProducts(): Promise<{
       .order("id", { ascending: true })
 
     if (error) {
-      console.warn("Failed to load admin products from Supabase:", error.message)
+      console.warn(
+        "Failed to load admin products from Supabase:",
+        error.message,
+      )
       return { data: applyEditsAndFilter(products), error: null }
     }
 
@@ -325,7 +361,7 @@ export async function getAdminProducts(): Promise<{
 
 export async function createAdminProduct(
   payload: AdminProductPayload,
-): Promise<{ data: Product | null; error: Error | null }> {
+): Promise<{ data: Product | null error: Error | null }> {
   const fakeProduct: Product = {
     id: Date.now(),
     name: payload.name,
@@ -346,10 +382,19 @@ export async function createAdminProduct(
   const registerLocalCreate = (item: Product) => {
     if (typeof window !== "undefined") {
       try {
-        const createdList = JSON.parse(localStorage.getItem("abaz_custom_created_products") || "[]")
+        const createdList = JSON.parse(
+          localStorage.getItem("abaz_custom_created_products") || "[]",
+        )
         createdList.unshift(item)
-        localStorage.setItem("abaz_custom_created_products", JSON.stringify(createdList))
-        window.dispatchEvent(new CustomEvent("abaz_catalog_updated", { detail: { createdId: item.id } }))
+        localStorage.setItem(
+          "abaz_custom_created_products",
+          JSON.stringify(createdList),
+        )
+        window.dispatchEvent(
+          new CustomEvent("abaz_catalog_updated", {
+            detail: { createdId: item.id },
+          }),
+        )
       } catch {}
     }
   }
@@ -429,7 +474,11 @@ export async function createAdminProduct(
     }
 
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("abaz_catalog_updated", { detail: { createdId: created.id } }))
+      window.dispatchEvent(
+        new CustomEvent("abaz_catalog_updated", {
+          detail: { createdId: created.id },
+        }),
+      )
     }
 
     return { data: created, error: null }
@@ -446,10 +495,14 @@ export async function updateAdminProduct(
   // Always cache locally so edits persist immediately
   if (typeof window !== "undefined") {
     try {
-      const stored = JSON.parse(localStorage.getItem("abaz_custom_product_edits") || "{}")
+      const stored = JSON.parse(
+        localStorage.getItem("abaz_custom_product_edits") || "{}",
+      )
       stored[id.toString()] = { ...(stored[id.toString()] || {}), ...payload }
       localStorage.setItem("abaz_custom_product_edits", JSON.stringify(stored))
-      window.dispatchEvent(new CustomEvent("abaz_catalog_updated", { detail: { updatedId: id } }))
+      window.dispatchEvent(
+        new CustomEvent("abaz_catalog_updated", { detail: { updatedId: id } }),
+      )
     } catch {}
   }
 
@@ -507,31 +560,50 @@ export async function updateAdminProduct(
 
 export async function deleteAdminProduct(
   id: number,
-): Promise<{ error: Error | null; archived?: boolean }> {
+): Promise<{ error: Error | null archived?: boolean }> {
   const registerLocalDelete = () => {
     if (typeof window !== "undefined") {
       try {
-        const deleted = JSON.parse(localStorage.getItem("abaz_deleted_product_ids") || "[]")
+        const deleted = JSON.parse(
+          localStorage.getItem("abaz_deleted_product_ids") || "[]",
+        )
         if (!deleted.includes(id)) {
           deleted.push(id)
-          localStorage.setItem("abaz_deleted_product_ids", JSON.stringify(deleted))
+          localStorage.setItem(
+            "abaz_deleted_product_ids",
+            JSON.stringify(deleted),
+          )
         }
 
         // Clean up any custom created products
-        const customCreated = JSON.parse(localStorage.getItem("abaz_custom_created_products") || "[]")
+        const customCreated = JSON.parse(
+          localStorage.getItem("abaz_custom_created_products") || "[]",
+        )
         if (Array.isArray(customCreated)) {
           const filtered = customCreated.filter((p: Product) => p.id !== id)
-          localStorage.setItem("abaz_custom_created_products", JSON.stringify(filtered))
+          localStorage.setItem(
+            "abaz_custom_created_products",
+            JSON.stringify(filtered),
+          )
         }
 
         // Clean up any custom edits
-        const customEdits = JSON.parse(localStorage.getItem("abaz_custom_product_edits") || "{}")
+        const customEdits = JSON.parse(
+          localStorage.getItem("abaz_custom_product_edits") || "{}",
+        )
         if (customEdits[id.toString()]) {
           delete customEdits[id.toString()]
-          localStorage.setItem("abaz_custom_product_edits", JSON.stringify(customEdits))
+          localStorage.setItem(
+            "abaz_custom_product_edits",
+            JSON.stringify(customEdits),
+          )
         }
 
-        window.dispatchEvent(new CustomEvent("abaz_catalog_updated", { detail: { deletedId: id } }))
+        window.dispatchEvent(
+          new CustomEvent("abaz_catalog_updated", {
+            detail: { deletedId: id },
+          }),
+        )
       } catch {}
     }
   }
@@ -587,7 +659,9 @@ export async function deleteAdminProduct(
   }
 }
 
-export async function clearAllAdminProducts(): Promise<{ error: Error | null }> {
+export async function clearAllAdminProducts(): Promise<{
+  error: Error | null
+}> {
   if (typeof window !== "undefined") {
     try {
       localStorage.removeItem("abaz_custom_created_products")
@@ -618,7 +692,10 @@ export async function clearAllAdminProducts(): Promise<{ error: Error | null }> 
 
     const { error } = await supabase.from("products").delete().neq("id", 0)
     if (error) {
-      await supabase.from("products").update({ is_active: false, stock: 0 }).neq("id", 0)
+      await supabase
+        .from("products")
+        .update({ is_active: false, stock: 0 })
+        .neq("id", 0)
     }
 
     if (typeof window !== "undefined") {
@@ -636,7 +713,7 @@ export async function clearAllAdminProducts(): Promise<{ error: Error | null }> 
  * and Supabase database. Dispatches 'abaz_stock_updated' and 'abaz_catalog_updated' events.
  */
 export async function decrementProductStock(
-  items: { productId: number | string | null; quantity: number }[],
+  items: { productId: number | string | null quantity: number }[],
 ): Promise<void> {
   if (!items || items.length === 0) return
 
@@ -650,32 +727,44 @@ export async function decrementProductStock(
           let modified = false
           for (const item of items) {
             if (!item.productId) continue
-            const target = parsedCreated.find((p) => String(p.id) === String(item.productId))
+            const target = parsedCreated.find(
+              (p) => String(p.id) === String(item.productId),
+            )
             if (target && target.stock !== undefined) {
               target.stock = Math.max(0, target.stock - item.quantity)
               modified = true
             }
           }
           if (modified) {
-            localStorage.setItem("abaz_custom_created_products", JSON.stringify(parsedCreated))
+            localStorage.setItem(
+              "abaz_custom_created_products",
+              JSON.stringify(parsedCreated),
+            )
           }
         }
       }
 
       const rawEdits = localStorage.getItem("abaz_custom_product_edits")
       if (rawEdits) {
-        const parsedEdits: Record<string, Partial<AdminProductPayload>> = JSON.parse(rawEdits)
+        const parsedEdits: Record<string, Partial<AdminProductPayload>> =
+          JSON.parse(rawEdits)
         let modified = false
         for (const item of items) {
           if (!item.productId) continue
           const key = String(item.productId)
           if (parsedEdits[key] && parsedEdits[key].stock !== undefined) {
-            parsedEdits[key].stock = Math.max(0, Number(parsedEdits[key].stock) - item.quantity)
+            parsedEdits[key].stock = Math.max(
+              0,
+              Number(parsedEdits[key].stock) - item.quantity,
+            )
             modified = true
           }
         }
         if (modified) {
-          localStorage.setItem("abaz_custom_product_edits", JSON.stringify(parsedEdits))
+          localStorage.setItem(
+            "abaz_custom_product_edits",
+            JSON.stringify(parsedEdits),
+          )
         }
       }
     } catch (localErr) {
@@ -723,7 +812,7 @@ export async function decrementProductStock(
  * Restock inventory when an order is cancelled
  */
 export async function restockProductStock(
-  items: { productId: number | string | null; quantity: number }[],
+  items: { productId: number | string | null quantity: number }[],
 ): Promise<void> {
   if (!items || items.length === 0) return
 
@@ -736,32 +825,42 @@ export async function restockProductStock(
           let modified = false
           for (const item of items) {
             if (!item.productId) continue
-            const target = parsedCreated.find((p) => String(p.id) === String(item.productId))
+            const target = parsedCreated.find(
+              (p) => String(p.id) === String(item.productId),
+            )
             if (target && target.stock !== undefined) {
               target.stock = target.stock + item.quantity
               modified = true
             }
           }
           if (modified) {
-            localStorage.setItem("abaz_custom_created_products", JSON.stringify(parsedCreated))
+            localStorage.setItem(
+              "abaz_custom_created_products",
+              JSON.stringify(parsedCreated),
+            )
           }
         }
       }
 
       const rawEdits = localStorage.getItem("abaz_custom_product_edits")
       if (rawEdits) {
-        const parsedEdits: Record<string, Partial<AdminProductPayload>> = JSON.parse(rawEdits)
+        const parsedEdits: Record<string, Partial<AdminProductPayload>> =
+          JSON.parse(rawEdits)
         let modified = false
         for (const item of items) {
           if (!item.productId) continue
           const key = String(item.productId)
           if (parsedEdits[key] && parsedEdits[key].stock !== undefined) {
-            parsedEdits[key].stock = Number(parsedEdits[key].stock) + item.quantity
+            parsedEdits[key].stock =
+              Number(parsedEdits[key].stock) + item.quantity
             modified = true
           }
         }
         if (modified) {
-          localStorage.setItem("abaz_custom_product_edits", JSON.stringify(parsedEdits))
+          localStorage.setItem(
+            "abaz_custom_product_edits",
+            JSON.stringify(parsedEdits),
+          )
         }
       }
     } catch {}
@@ -800,7 +899,7 @@ export async function restockProductStock(
 
 export async function uploadProductImage(
   file: File,
-): Promise<{ url: string | null; error: Error | null }> {
+): Promise<{ url: string | null error: Error | null }> {
   if (!isSupabaseConfigured()) {
     return {
       url: URL.createObjectURL(file),
@@ -823,9 +922,12 @@ export async function uploadProductImage(
     if (uploadError) {
       if (uploadError.message?.toLowerCase().includes("bucket not found")) {
         try {
-          const { error: createErr } = await supabase.storage.createBucket("product-images", {
-            public: true,
-          })
+          const { error: createErr } = await supabase.storage.createBucket(
+            "product-images",
+            {
+              public: true,
+            },
+          )
           if (!createErr) {
             const { error: retryErr } = await supabase.storage
               .from("product-images")
@@ -868,7 +970,7 @@ export async function uploadProductImage(
 
 export function mapRawOrderToAdminItem(
   o: any,
-  profileMap?: Map<string, { email: string; phone?: string | null }>,
+  profileMap?: Map<string, { email: string phone?: string | null }>,
 ): AdminOrderItem {
   const createdDate = new Date(o.created_at || Date.now())
   const formattedDate = createdDate.toLocaleDateString("en-GB", {
@@ -885,10 +987,7 @@ export function mapRawOrderToAdminItem(
       ? `${o.shipping_name.toLowerCase().replace(/\s+/g, ".")}@example.com`
       : "customer@example.com")
   const customerPhone =
-    o.customer_phone ||
-    o.shipping_phone ||
-    prof?.phone ||
-    "+4402034322415"
+    o.customer_phone || o.shipping_phone || prof?.phone || "+4402034322415"
 
   const items: AdminOrderLineItem[] =
     Array.isArray(o.order_items) && o.order_items.length > 0
@@ -944,7 +1043,7 @@ export function mapRawOrderToAdminItem(
     trackingUrl = getCarrierTrackingUrl(carrier, trackingNumber)
   }
 
-  let orderStatus = (o.status as OrderStatus) || "Pending"
+  let orderStatus = o.status as OrderStatus || "Pending"
   if (typeof window !== "undefined") {
     const storedStatus = localStorage.getItem(
       `abaz_order_status_${o.id}`,
@@ -964,8 +1063,8 @@ export function mapRawOrderToAdminItem(
     shippingCity: o.shipping_city || "London",
     shippingPostalCode: o.shipping_postal_code || "W1J 5AE",
     shippingCountry: o.shipping_country || "United Kingdom",
-    paymentMethod: (o.payment_method as PaymentMethod) || "card",
-    paymentStatus: (o.payment_status as PaymentStatus) || "paid",
+    paymentMethod: o.payment_method as PaymentMethod || "card",
+    paymentStatus: o.payment_status as PaymentStatus || "paid",
     date: formattedDate,
     subtotal: Number(o.subtotal) || Number(o.total) || 0,
     shipping: Number(o.shipping) || 0,
@@ -1021,7 +1120,9 @@ export async function getAdminOrders(): Promise<{
   // 2. Try Supabase RPC get_all_orders_admin
   if (fetchedOrders.length === 0 && isSupabaseConfigured()) {
     try {
-      const { data: rpcOrders, error: rpcErr } = await supabase.rpc("get_all_orders_admin")
+      const { data: rpcOrders, error: rpcErr } = await supabase.rpc(
+        "get_all_orders_admin",
+      )
       if (!rpcErr && Array.isArray(rpcOrders) && rpcOrders.length > 0) {
         fetchedOrders = rpcOrders
       }
@@ -1077,7 +1178,8 @@ export async function getAdminOrders(): Promise<{
 
   const combined = [...mappedRemote, ...uniqueLocal]
   combined.sort(
-    (a, b) => new Date(b.rawCreatedAt).getTime() - new Date(a.rawCreatedAt).getTime(),
+    (a, b) =>
+      new Date(b.rawCreatedAt).getTime() - new Date(a.rawCreatedAt).getTime(),
   )
 
   return { data: combined, error: null }
@@ -1089,7 +1191,8 @@ export interface OrderDispatchInfo {
   trackingUrl?: string
 }
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function updateOrderStatus(
   orderId: string,
@@ -1101,7 +1204,9 @@ export async function updateOrderStatus(
     try {
       localStorage.setItem(`abaz_order_status_${orderId}`, status)
       window.dispatchEvent(
-        new CustomEvent("abaz_order_status_changed", { detail: { orderId, status } }),
+        new CustomEvent("abaz_order_status_changed", {
+          detail: { orderId, status },
+        }),
       )
       if (dispatchInfo) {
         localStorage.setItem(
@@ -1112,7 +1217,10 @@ export async function updateOrderStatus(
             trackingUrl:
               dispatchInfo.trackingUrl ||
               (dispatchInfo.carrier && dispatchInfo.trackingNumber
-                ? getCarrierTrackingUrl(dispatchInfo.carrier, dispatchInfo.trackingNumber)
+                ? getCarrierTrackingUrl(
+                    dispatchInfo.carrier,
+                    dispatchInfo.trackingNumber,
+                  )
                 : undefined),
             shippedAt: new Date().toISOString(),
           }),
@@ -1129,11 +1237,15 @@ export async function updateOrderStatus(
   try {
     const payload: Record<string, unknown> = { status }
     if (dispatchInfo?.carrier) payload.carrier = dispatchInfo.carrier
-    if (dispatchInfo?.trackingNumber) payload.tracking_number = dispatchInfo.trackingNumber
+    if (dispatchInfo?.trackingNumber)
+      payload.tracking_number = dispatchInfo.trackingNumber
     if (dispatchInfo?.trackingUrl) {
       payload.tracking_url = dispatchInfo.trackingUrl
     } else if (dispatchInfo?.carrier && dispatchInfo?.trackingNumber) {
-      payload.tracking_url = getCarrierTrackingUrl(dispatchInfo.carrier, dispatchInfo.trackingNumber)
+      payload.tracking_url = getCarrierTrackingUrl(
+        dispatchInfo.carrier,
+        dispatchInfo.trackingNumber,
+      )
     }
     if (status === "Shipped") {
       payload.shipped_at = new Date().toISOString()
@@ -1144,7 +1256,10 @@ export async function updateOrderStatus(
       try {
         await supabase.rpc("cancel_order_secure", { p_order_id: orderId })
       } catch (rpcErr) {
-        console.warn("cancel_order_secure RPC fallback to direct update:", rpcErr)
+        console.warn(
+          "cancel_order_secure RPC fallback to direct update:",
+          rpcErr,
+        )
       }
     }
 
@@ -1167,7 +1282,11 @@ export async function updateOrderStatus(
     }).catch(() => {})
 
     // If update failed due to unknown columns carrier/tracking_number/tracking_url, fallback to status only
-    if (error && (error.message?.includes("carrier") || error.message?.includes("tracking"))) {
+    if (
+      error &&
+      (error.message?.includes("carrier") ||
+        error.message?.includes("tracking"))
+    ) {
       const retry = await supabase
         .from("orders")
         .update({ status })
@@ -1176,19 +1295,25 @@ export async function updateOrderStatus(
     }
 
     if (error) {
-      console.warn("Supabase order status update notice (persisted locally):", error.message)
+      console.warn(
+        "Supabase order status update notice (persisted locally):",
+        error.message,
+      )
     }
 
     return { error: null }
   } catch (err: unknown) {
-    console.warn("Failed to update order status in Supabase (persisted locally):", err)
+    console.warn(
+      "Failed to update order status in Supabase (persisted locally):",
+      err,
+    )
     return { error: null }
   }
 }
 
 export async function cancelAdminOrder(
   orderId: string,
-  items?: { productId: number | string | null; quantity: number }[],
+  items?: { productId: number | string | null quantity: number }[],
 ): Promise<{ error: Error | null }> {
   if (items && items.length > 0) {
     try {
@@ -1224,7 +1349,9 @@ export async function getAdminCategories(): Promise<{
     const list = [...baseList]
     for (const local of localCategories) {
       const existingIdx = list.findIndex(
-        (c) => c.name.toLowerCase() === local.name.toLowerCase() || c.id === local.id,
+        (c) =>
+          c.name.toLowerCase() === local.name.toLowerCase() ||
+          c.id === local.id,
       )
       if (existingIdx >= 0) {
         list[existingIdx] = { ...list[existingIdx], ...local }
@@ -1271,11 +1398,14 @@ export async function createAdminCategory(category: {
   name: string
   description?: string
   displayOrder?: number
-}): Promise<{ data: AdminCategory | null; error: Error | null }> {
+}): Promise<{ data: AdminCategory | null error: Error | null }> {
   const newCat: AdminCategory = {
     id: Date.now(),
     name: category.name,
-    slug: category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+    slug: category.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, ""),
     description: category.description || null,
     displayOrder: category.displayOrder || 1,
     productCount: 0,
@@ -1288,7 +1418,11 @@ export async function createAdminCategory(category: {
         const list: AdminCategory[] = raw ? JSON.parse(raw) : []
         list.push(cat)
         localStorage.setItem("abaz_custom_categories", JSON.stringify(list))
-        window.dispatchEvent(new CustomEvent("abaz_categories_updated", { detail: { category: cat } }))
+        window.dispatchEvent(
+          new CustomEvent("abaz_categories_updated", {
+            detail: { category: cat },
+          }),
+        )
         window.dispatchEvent(new CustomEvent("abaz_catalog_updated"))
       } catch {}
     }
@@ -1300,7 +1434,10 @@ export async function createAdminCategory(category: {
   }
 
   try {
-    const slug = category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+    const slug = category.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
     const { data, error } = await supabase
       .from("categories")
       .insert({
@@ -1336,7 +1473,7 @@ export async function createAdminCategory(category: {
 
 export async function updateAdminCategory(
   id: number,
-  category: Partial<{ name: string; description: string; displayOrder: number }>,
+  category: Partial<{ name: string description: string displayOrder: number }>,
 ): Promise<{ error: Error | null }> {
   if (typeof window !== "undefined") {
     try {
@@ -1355,20 +1492,31 @@ export async function updateAdminCategory(
     const updates: Record<string, unknown> = {}
     if (category.name !== undefined) {
       updates.name = category.name
-      updates.slug = category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+      updates.slug = category.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")
     }
-    if (category.description !== undefined) updates.description = category.description
-    if (category.displayOrder !== undefined) updates.display_order = category.displayOrder
+    if (category.description !== undefined)
+      updates.description = category.description
+    if (category.displayOrder !== undefined)
+      updates.display_order = category.displayOrder
 
-    const { error } = await supabase.from("categories").update(updates).eq("id", id)
+    const { error } = await supabase
+      .from("categories")
+      .update(updates)
+      .eq("id", id)
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update category"
+    const message =
+      err instanceof Error ? err.message : "Failed to update category"
     return { error: new Error(message) }
   }
 }
 
-export async function deleteAdminCategory(id: number): Promise<{ error: Error | null }> {
+export async function deleteAdminCategory(
+  id: number,
+): Promise<{ error: Error | null }> {
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("abaz_custom_categories")
@@ -1390,7 +1538,8 @@ export async function deleteAdminCategory(id: number): Promise<{ error: Error | 
     const { error } = await supabase.from("categories").delete().eq("id", id)
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete category"
+    const message =
+      err instanceof Error ? err.message : "Failed to delete category"
     return { error: new Error(message) }
   }
 }
@@ -1415,7 +1564,10 @@ export async function getAdminCustomers(): Promise<{
             localCustomers.push({
               id: c.id || `local-${Math.random()}`,
               email: c.email || "",
-              fullName: c.fullName || c.name || (c.email ? c.email.split("@")[0] : "Customer"),
+              fullName:
+                c.fullName ||
+                c.name ||
+                (c.email ? c.email.split("@")[0] : "Customer"),
               phone: c.phone || null,
               avatarUrl: c.avatarUrl || null,
               role: c.role || "customer",
@@ -1438,7 +1590,10 @@ export async function getAdminCustomers(): Promise<{
         const parsedDemo = JSON.parse(rawDemo)
         if (
           parsedDemo?.profile?.email &&
-          !localCustomers.some((c) => c.email.toLowerCase() === parsedDemo.profile.email.toLowerCase())
+          !localCustomers.some(
+            (c) =>
+              c.email.toLowerCase() === parsedDemo.profile.email.toLowerCase(),
+          )
         ) {
           localCustomers.push({
             id: parsedDemo.profile.id,
@@ -1461,11 +1616,18 @@ export async function getAdminCustomers(): Promise<{
   if (typeof window !== "undefined") {
     try {
       const apiRes = await fetch("/api/admin-customers").then((r) => r.json())
-      if (apiRes && Array.isArray(apiRes.customers) && apiRes.customers.length > 0) {
+      if (
+        apiRes &&
+        Array.isArray(apiRes.customers) &&
+        apiRes.customers.length > 0
+      ) {
         const apiMapped: AdminCustomer[] = apiRes.customers.map((c: any) => ({
           id: c.id,
           email: c.email,
-          fullName: c.full_name || c.fullName || (c.email ? c.email.split("@")[0] : "Customer"),
+          fullName:
+            c.full_name ||
+            c.fullName ||
+            (c.email ? c.email.split("@")[0] : "Customer"),
           phone: c.phone || null,
           avatarUrl: c.avatar_url || c.avatarUrl || null,
           role: c.role || "customer",
@@ -1480,14 +1642,21 @@ export async function getAdminCustomers(): Promise<{
         }))
 
         // Merge with local
-        const existingEmails = new Set(apiMapped.map((c) => c.email.toLowerCase()))
+        const existingEmails = new Set(
+          apiMapped.map((c) => c.email.toLowerCase()),
+        )
         const merged = [
           ...apiMapped,
-          ...localCustomers.filter((c) => !existingEmails.has(c.email.toLowerCase())),
+          ...localCustomers.filter(
+            (c) => !existingEmails.has(c.email.toLowerCase()),
+          ),
         ]
 
         try {
-          localStorage.setItem("abaz_registered_customers", JSON.stringify(merged))
+          localStorage.setItem(
+            "abaz_registered_customers",
+            JSON.stringify(merged),
+          )
         } catch {}
 
         return { data: merged, error: null }
@@ -1505,7 +1674,9 @@ export async function getAdminCustomers(): Promise<{
     let profilesData: any[] | null = null
 
     // Try RPC get_all_customers_admin
-    const { data: rpcData, error: rpcErr } = await supabase.rpc("get_all_customers_admin")
+    const { data: rpcData, error: rpcErr } = await supabase.rpc(
+      "get_all_customers_admin",
+    )
     if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
       profilesData = rpcData.map((r: any) => ({
         id: r.id,
@@ -1526,7 +1697,11 @@ export async function getAdminCustomers(): Promise<{
         .select("*, orders(id)")
         .order("created_at", { ascending: false })
 
-      if (!resWithOrders.error && resWithOrders.data && resWithOrders.data.length > 0) {
+      if (
+        !resWithOrders.error &&
+        resWithOrders.data &&
+        resWithOrders.data.length > 0
+      ) {
         profilesData = resWithOrders.data
       } else {
         // Fallback: direct select if orders join was blocked by RLS or schema
@@ -1571,7 +1746,9 @@ export async function getAdminCustomers(): Promise<{
     const existingEmails = new Set(mapped.map((c) => c.email.toLowerCase()))
     const merged = [
       ...mapped,
-      ...localCustomers.filter((c) => !existingEmails.has(c.email.toLowerCase())),
+      ...localCustomers.filter(
+        (c) => !existingEmails.has(c.email.toLowerCase()),
+      ),
     ]
 
     try {
@@ -1580,7 +1757,8 @@ export async function getAdminCustomers(): Promise<{
 
     return { data: merged, error: null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load customers"
+    const message =
+      err instanceof Error ? err.message : "Failed to load customers"
     return { data: localCustomers, error: new Error(message) }
   }
 }
@@ -1674,15 +1852,18 @@ export async function updateAdminStoreSettings(
 
   try {
     const updates: Record<string, unknown> = {}
-    if (settings.currencySymbol !== undefined) updates.currency_symbol = settings.currencySymbol
+    if (settings.currencySymbol !== undefined)
+      updates.currency_symbol = settings.currencySymbol
     if (settings.currency !== undefined) updates.currency = settings.currency
-    if (settings.shippingFee !== undefined) updates.shipping_fee = settings.shippingFee
+    if (settings.shippingFee !== undefined)
+      updates.shipping_fee = settings.shippingFee
     if (settings.expeditedShippingFee !== undefined)
       updates.expedited_shipping_fee = settings.expeditedShippingFee
     if (settings.freeShippingThreshold !== undefined)
       updates.free_shipping_threshold = settings.freeShippingThreshold
     if (settings.taxRate !== undefined) updates.tax_rate = settings.taxRate
-    if (settings.defaultCountry !== undefined) updates.default_country = settings.defaultCountry
+    if (settings.defaultCountry !== undefined)
+      updates.default_country = settings.defaultCountry
 
     let { error } = await supabase
       .from("store_settings")
@@ -1701,7 +1882,8 @@ export async function updateAdminStoreSettings(
 
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update settings"
+    const message =
+      err instanceof Error ? err.message : "Failed to update settings"
     return { error: new Error(message) }
   }
 }
@@ -1754,7 +1936,7 @@ export async function createAdminCoupon(coupon: {
   discountPercent: number
   minSpend?: number
   maxDiscount?: number
-}): Promise<{ data: AdminCoupon | null; error: Error | null }> {
+}): Promise<{ data: AdminCoupon | null error: Error | null }> {
   if (!isSupabaseConfigured()) {
     return {
       data: {
@@ -1801,7 +1983,8 @@ export async function createAdminCoupon(coupon: {
       error: null,
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to create coupon"
+    const message =
+      err instanceof Error ? err.message : "Failed to create coupon"
     return { data: null, error: new Error(message) }
   }
 }
@@ -1820,19 +2003,23 @@ export async function toggleCouponActive(
 
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to toggle coupon"
+    const message =
+      err instanceof Error ? err.message : "Failed to toggle coupon"
     return { error: new Error(message) }
   }
 }
 
-export async function deleteAdminCoupon(id: number): Promise<{ error: Error | null }> {
+export async function deleteAdminCoupon(
+  id: number,
+): Promise<{ error: Error | null }> {
   if (!isSupabaseConfigured()) return { error: null }
 
   try {
     const { error } = await supabase.from("coupons").delete().eq("id", id)
     return { error: error ? new Error(error.message) : null }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete coupon"
+    const message =
+      err instanceof Error ? err.message : "Failed to delete coupon"
     return { error: new Error(message) }
   }
 }
@@ -1843,7 +2030,7 @@ export async function deleteAdminCoupon(id: number): Promise<{ error: Error | nu
 
 export async function subscribeNewsletter(
   email: string,
-): Promise<{ success: boolean; error: Error | null }> {
+): Promise<{ success: boolean error: Error | null }> {
   if (!isSupabaseConfigured()) {
     return { success: true, error: null }
   }
@@ -1939,7 +2126,8 @@ function getFallbackCategories(): AdminCategory[] {
       id: 3,
       name: "Haircare",
       slug: "haircare",
-      description: "Nourishing botanical oils, restorative masks, and gentle washes.",
+      description:
+        "Nourishing botanical oils, restorative masks, and gentle washes.",
       displayOrder: 3,
       productCount: 5,
     },
@@ -1947,7 +2135,8 @@ function getFallbackCategories(): AdminCategory[] {
       id: 4,
       name: "Fragrance",
       slug: "fragrance",
-      description: "Artisanal eau de parfums crafted with rare botanical notes.",
+      description:
+        "Artisanal eau de parfums crafted with rare botanical notes.",
       displayOrder: 4,
       productCount: 3,
     },

@@ -32,7 +32,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS & caching headers (revalidate product pages every 60 seconds)
   res.setHeader("Access-Control-Allow-Origin", "*")
   res.setHeader("Content-Type", "text/html; charset=utf-8")
-  res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300")
+  res.setHeader(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300",
+  )
 
   const rawId = req.query.id as string || ""
   const productId = rawId.trim()
@@ -124,7 +127,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (baseHtml) {
       res.status(200).send(baseHtml)
     } else {
-      res.status(404).send("<!doctype html><html><body><h1>Product Not Found</h1></body></html>")
+      res
+        .status(404)
+        .send(
+          "<!doctype html><html><body><h1>Product Not Found</h1></body></html>",
+        )
     }
     return
   }
@@ -152,28 +159,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const schemaLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "name": productName,
-    "image": [productImg],
-    "description": productDesc,
-    "brand": {
+    name: productName,
+    image: [productImg],
+    description: productDesc,
+    brand: {
       "@type": "Brand",
-      "name": productBrand,
+      name: productBrand,
     },
-    "category": productCategory,
-    "offers": {
+    category: productCategory,
+    offers: {
       "@type": "Offer",
-      "url": canonicalUrl,
-      "priceCurrency": "GBP",
-      "price": productPrice.toFixed(2),
-      "priceValidUntil": "2027-12-31",
-      "availability": isAvailable
+      url: canonicalUrl,
+      priceCurrency: "GBP",
+      price: productPrice.toFixed(2),
+      priceValidUntil: "2027-12-31",
+      availability: isAvailable
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
-      "itemCondition": "https://schema.org/NewCondition",
-      "seller": {
+      itemCondition: "https://schema.org/NewCondition",
+      seller: {
         "@type": "Organization",
-        "name": "Abaz Mart Ltd",
-        "url": "https://www.abazmart.co.uk",
+        name: "Abaz Mart Ltd",
+        url: "https://www.abazmart.co.uk",
       },
     },
   }
@@ -220,7 +227,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               ? "background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;"
               : "background-color: #fff1f2; color: #be123c; border: 1px solid #fecdd3;"
           }">
-            ${isAvailable ? `In Stock (${productStock} units available)` : "Currently Out of Stock"}
+            ${
+              isAvailable
+                ? `In Stock (${productStock} units available)`
+                : "Currently Out of Stock"
+            }
           </div>
 
           <div style="font-size: 14.5px; line-height: 1.7; color: #5a4b51; margin-bottom: 28px;">
@@ -261,7 +272,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   `
 
   // 3. Inject SEO metadata and pre-rendered content into baseHtml
-  let rendered = baseHtml || `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body><div id="root"></div></body></html>`
+  let rendered =
+    baseHtml ||
+    `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title></title></head><body><div id="root"></div></body></html>`
 
   // Replace Title
   rendered = rendered.replace(
@@ -280,11 +293,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Remove generic meta descriptions & og tags to replace with product-specific ones
   rendered = rendered.replace(/<meta\s+name=["']description["'][^>]*>/gi, "")
   rendered = rendered.replace(/<meta\s+property=["']og:title["'][^>]*>/gi, "")
-  rendered = rendered.replace(/<meta\s+property=["']og:description["'][^>]*>/gi, "")
+  rendered = rendered.replace(
+    /<meta\s+property=["']og:description["'][^>]*>/gi,
+    "",
+  )
   rendered = rendered.replace(/<meta\s+property=["']og:image["'][^>]*>/gi, "")
   rendered = rendered.replace(/<meta\s+property=["']og:url["'][^>]*>/gi, "")
   rendered = rendered.replace(/<meta\s+name=["']twitter:title["'][^>]*>/gi, "")
-  rendered = rendered.replace(/<meta\s+name=["']twitter:description["'][^>]*>/gi, "")
+  rendered = rendered.replace(
+    /<meta\s+name=["']twitter:description["'][^>]*>/gi,
+    "",
+  )
   rendered = rendered.replace(/<meta\s+name=["']twitter:image["'][^>]*>/gi, "")
 
   // Build product-specific meta tags
@@ -298,7 +317,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     <meta property="og:image" content="${escapeHtml(productImg)}" />
     <meta property="product:price:amount" content="${productPrice.toFixed(2)}" />
     <meta property="product:price:currency" content="GBP" />
-    <meta property="product:availability" content="${isAvailable ? "in stock" : "out of stock"}" />
+    <meta property="product:availability" content="${
+      isAvailable ? "in stock" : "out of stock"
+    }" />
     <meta property="product:brand" content="${escapeHtml(productBrand)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(pageTitle)}" />

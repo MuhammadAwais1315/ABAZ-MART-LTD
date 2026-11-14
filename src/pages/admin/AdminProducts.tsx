@@ -10,7 +10,11 @@ import {
   Sparkles,
 } from "lucide-react"
 import { Badge, Button, Input, Modal, Select, Toast } from "../../components/ui"
-import { categories as defaultCategories, Product, products } from "../../data/products"
+import {
+  categories as defaultCategories,
+  Product,
+  products,
+} from "../../data/products"
 import { formatPrice } from "../../utils/formatPrice"
 import { matchCategory } from "../../utils/categoryMatcher"
 import {
@@ -32,7 +36,9 @@ export default function AdminProducts() {
   const [syncing, setSyncing] = useState(false)
   const [localPendingCount, setLocalPendingCount] = useState(0)
   const [toastMessage, setToastMessage] = useState("")
-  const [dynamicCategories, setDynamicCategories] = useState<string[]>([...defaultCategories])
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([
+    ...defaultCategories,
+  ])
 
   // Quick Edit State
   const [quickEditProduct, setQuickEditProduct] = useState<Product | null>(null)
@@ -76,7 +82,10 @@ export default function AdminProducts() {
       mounted = false
       window.removeEventListener("abaz_stock_updated", handleStockOrOrderUpdate)
       window.removeEventListener("abaz_order_placed", handleStockOrOrderUpdate)
-      window.removeEventListener("abaz_catalog_updated", handleStockOrOrderUpdate)
+      window.removeEventListener(
+        "abaz_catalog_updated",
+        handleStockOrOrderUpdate,
+      )
       window.removeEventListener("storage", handleStockOrOrderUpdate)
     }
   }, [])
@@ -89,7 +98,9 @@ export default function AdminProducts() {
         setDynamicCategories(data.map((c) => c.name))
       }
     })
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const checkPendingLocal = () => {
@@ -117,7 +128,9 @@ export default function AdminProducts() {
     if (error) {
       alert(`Supabase live publish error: ${error.message}`)
     } else {
-      showToast(`${synced} product(s) successfully published live to your cloud store!`)
+      showToast(
+        `${synced} product(s) successfully published live to your cloud store!`,
+      )
       checkPendingLocal()
       const { data } = await getAdminProducts()
       setCatalog(data)
@@ -262,28 +275,36 @@ export default function AdminProducts() {
       </div>
 
       {localPendingCount > 0 && (
-        <div style={{
-          backgroundColor: "#fffbeb",
-          border: "1px solid #fde68a",
-          borderRadius: "12px",
-          padding: "16px 20px",
-          marginBottom: "20px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "16px",
-          color: "#92400e"
-        }}>
+        <div
+          style={{
+            backgroundColor: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: "12px",
+            padding: "16px 20px",
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "16px",
+            color: "#92400e",
+          }}
+        >
           <div>
             <strong style={{ display: "block", fontSize: "0.95rem" }}>
-              Action Needed: {localPendingCount} product(s) saved in local draft only
+              Action Needed: {localPendingCount} product(s) saved in local draft
+              only
             </strong>
             <span style={{ fontSize: "0.82rem", color: "#b45309" }}>
-              Click Publish to push this product to your live Supabase cloud database so customers can see it.
+              Click Publish to push this product to your live Supabase cloud
+              database so customers can see it.
             </span>
           </div>
           <Button
-            style={{ backgroundColor: "#d97768", color: "#fff", whiteSpace: "nowrap" }}
+            style={{
+              backgroundColor: "#d97768",
+              color: "#fff",
+              whiteSpace: "nowrap",
+            }}
             onClick={handleSyncToLive}
             disabled={syncing}
           >
@@ -308,9 +329,7 @@ export default function AdminProducts() {
               <option key={item}>{item}</option>
             ))}
           </Select>
-          <span>
-            {loading ? "Loading..." : `${visible.length} products`}
-          </span>
+          <span>{loading ? "Loading..." : `${visible.length} products`}</span>
         </div>
         <div className="table-scroll">
           <table className="admin-table-element products-admin-table">
@@ -450,7 +469,9 @@ export default function AdminProducts() {
                 className="w-12 h-14 object-cover rounded-lg border border-border"
               />
               <div className="text-xs">
-                <p className="font-semibold text-ink">{quickEditProduct.name}</p>
+                <p className="font-semibold text-ink">
+                  {quickEditProduct.name}
+                </p>
                 <p className="text-muted">{quickEditProduct.brand}</p>
                 <Link
                   to={`/admin/products/new?edit=${quickEditProduct.id}`}

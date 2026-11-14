@@ -62,7 +62,9 @@ const galleryImages = [
 
 export default function Home() {
   const { addToCart, wishlist, toggleWishlist, notify } = useStore()
-  const [catalog, setCatalog] = useState<Product[]>(() => getEffectiveProducts(initialProducts))
+  const [catalog, setCatalog] = useState<Product[]>(() =>
+    getEffectiveProducts(initialProducts),
+  )
   const { categories } = useCategories()
 
   useEffect(() => {
@@ -100,7 +102,12 @@ export default function Home() {
   }))
   const bestSellers =
     catalog.length >= 4
-      ? [catalog[0], catalog[4] || catalog[1], catalog[8] || catalog[2], catalog[12] || catalog[3]]
+      ? [
+          catalog[0],
+          catalog[4] || catalog[1],
+          catalog[8] || catalog[2],
+          catalog[12] || catalog[3],
+        ]
       : catalog.slice(0, 4)
 
   return (
@@ -142,9 +149,13 @@ export default function Home() {
         <div className="product-grid">
           {newArrivals.length === 0 ? (
             <div className="col-span-full py-12 text-center text-muted-foreground text-sm">
-              <p className="font-serif text-lg text-ink">New Collection Coming Soon</p>
+              <p className="font-serif text-lg text-ink">
+                New Collection Coming Soon
+              </p>
               <p className="mt-1 text-xs max-w-md mx-auto text-muted">
-                Our boutique is currently curating luxury beauty essentials. Real products added in the Admin Portal will automatically appear here.
+                Our boutique is currently curating luxury beauty essentials.
+                Real products added in the Admin Portal will automatically
+                appear here.
               </p>
             </div>
           ) : (
@@ -172,7 +183,10 @@ export default function Home() {
           </Link>
         </div>
         <img
-          src={catalog[2]?.image || "https://images.unsplash.com/photo-1694742971702-3887ed069538?auto=format&fit=crop&w=800&q=80"}
+          src={
+            catalog[2]?.image ||
+            "https://images.unsplash.com/photo-1694742971702-3887ed069538?auto=format&fit=crop&w=800&q=80"
+          }
           alt="Skincare essentials on sale"
         />
       </section>
@@ -189,9 +203,12 @@ export default function Home() {
         <div className="product-grid">
           {bestSellers.length === 0 ? (
             <div className="col-span-full py-12 text-center text-muted-foreground text-sm">
-              <p className="font-serif text-lg text-ink">Bestsellers Coming Soon</p>
+              <p className="font-serif text-lg text-ink">
+                Bestsellers Coming Soon
+              </p>
               <p className="mt-1 text-xs max-w-md mx-auto text-muted">
-                Products will automatically feature here as customers make purchases.
+                Products will automatically feature here as customers make
+                purchases.
               </p>
             </div>
           ) : (

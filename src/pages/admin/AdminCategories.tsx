@@ -107,7 +107,9 @@ export default function AdminCategories() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <span>{loading ? "Loading..." : `${filtered.length} categories`}</span>
+          <span>
+            {loading ? "Loading..." : `${filtered.length} categories`}
+          </span>
         </div>
 
         <div className="table-scroll">
@@ -125,13 +127,19 @@ export default function AdminCategories() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <td
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     Loading categories...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <td
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No categories found.
                   </td>
                 </tr>
@@ -158,7 +166,13 @@ export default function AdminCategories() {
                     </td>
                     <td>{cat.displayOrder}</td>
                     <td>
-                      <Badge tone={cat.productCount && cat.productCount > 0 ? "rose" : "gold"}>
+                      <Badge
+                        tone={
+                          cat.productCount && cat.productCount > 0
+                            ? "rose"
+                            : "gold"
+                        }
+                      >
                         {cat.productCount || 0} products
                       </Badge>
                     </td>
@@ -207,7 +221,9 @@ export default function AdminCategories() {
               className="w-full min-h-[90px] border border-border rounded-xl p-3 text-sm focus:border-rose-500 focus:outline-none"
               placeholder="Brief description for category banner and SEO"
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
             />
           </label>
           <Input
@@ -215,7 +231,10 @@ export default function AdminCategories() {
             type="number"
             value={form.displayOrder.toString()}
             onChange={(e) =>
-              setForm({ ...form, displayOrder: parseInt(e.target.value, 10) || 1 })
+              setForm({
+                ...form,
+                displayOrder: parseInt(e.target.value, 10) || 1,
+              })
             }
             required
           />
@@ -228,7 +247,11 @@ export default function AdminCategories() {
               Cancel
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : editingId ? "Save Changes" : "Create Category"}
+              {saving
+                ? "Saving..."
+                : editingId
+                  ? "Save Changes"
+                  : "Create Category"}
             </Button>
           </div>
         </form>
