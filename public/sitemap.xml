@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://www.abazmart.co.uk/</loc>
     <changefreq>daily</changefreq>
@@ -9,6 +9,46 @@
     <loc>https://www.abazmart.co.uk/shop</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/armaf-club-de-nuit-sillage-edp-105ml-unisex-perfume</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/armaf-club-de-nuit-intense-man-edp-200ml-men-s-perfume</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/reef-33-eau-de-parfum-100ml-luxury-unisex-saffron-rosemary-and-oud-fragrance</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/sukin-signature-facial-moisturiser-125ml-hydrating-natural-face-cream-with-aloe-vera-rosehip-and-vitamin-e</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/sally-hansen-advanced-hard-as-nails-strengthener-nail-strengthening-treatment-13-3ml</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/riiffs-parfums-zenith-extrait-de-parfum-100ml-unisex-luxury-fragrance</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/medicube-zero-pore-pad-2-0-dual-textured-facial-toner-pads-for-exfoliation-and-pore-care-70-pads</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.abazmart.co.uk/product/cosrx-salicylic-acid-daily-gentle-cleanser-150ml-deep-pore-cleansing-face-wash-with-0-5-bha-exfoliating-korean-skincare-for-blackheads-and-excess-sebum-control</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.abazmart.co.uk/cart</loc>
@@ -34,15 +74,5 @@
     <loc>https://www.abazmart.co.uk/terms</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
-  </url>
-  <url>
-    <loc>https://www.abazmart.co.uk/login</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://www.abazmart.co.uk/register</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
   </url>
 </urlset>

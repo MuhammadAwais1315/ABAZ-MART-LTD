@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : await query.eq("slug", productId).maybeSingle()
 
       if (!data && !isNumeric) {
-        // Try slug prefix match
+        // 1. Try slug prefix match
         const prefixRes = await supabase
           .from("products")
           .select("*")
@@ -71,16 +71,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (prefixRes.data) {
           data = prefixRes.data
         } else {
-          // Try name match
-          const nameGuess = productId.replace(/-/g, " ")
-          const nameRes = await supabase
+          // 2. Compute slug on the fly across catalog for robust matching with & / - / special characters
+          const { data: allActive } = await supabase
             .from("products")
-            .select("*")
+            .select("id, name, slug")
             .eq("is_active", true)
-            .ilike("name", `%${nameGuess}%`)
-            .maybeSingle()
-          if (nameRes.data) {
-            data = nameRes.data
+
+          if (allActive && allActive.length > 0) {
+            const cleanTarget = productId.toLowerCase().trim()
+            const matched = allActive.find((p: any) => {
+              if (p.slug && p.slug.toLowerCase() === cleanTarget) return true
+              const genSlug = slugify(p.name)
+              if (genSlug === cleanTarget) return true
+              if (cleanTarget.startsWith(genSlug) || genSlug.startsWith(cleanTarget)) return true
+
+              const targetWords = cleanTarget.split("-").filter((w: string) => w.length > 2)
+              const nameWords = genSlug.split("-").filter((w: string) => w.length > 2)
+              const common = targetWords.filter((w: string) => nameWords.includes(w))
+              return common.length >= Math.min(3, nameWords.length)
+            })
+
+            if (matched) {
+              const fullMatch = await supabase
+                .from("products")
+                .select("*")
+                .eq("id", matched.id)
+                .maybeSingle()
+              if (fullMatch.data) {
+                data = fullMatch.data
+              }
+            }
           }
         }
       }
