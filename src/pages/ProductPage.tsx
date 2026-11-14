@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 import {
+  Check,
   Heart,
   Minus,
   Package,
@@ -86,6 +87,30 @@ export default function ProductPage() {
   const [reviewContent, setReviewContent] = useState("")
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
+
+  const totalReviews = reviewsList.length > 0 ? reviewsList.length : (product?.reviewCount || 0)
+
+  const averageRating = useMemo(() => {
+    if (reviewsList.length > 0) {
+      const sum = reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0)
+      return (sum / reviewsList.length).toFixed(1)
+    }
+    return (product?.rating || 5.0).toFixed(1)
+  }, [reviewsList, product?.rating])
+
+  const starBreakdown = useMemo(() => {
+    const counts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    for (const r of reviewsList) {
+      const s = Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5)))
+      counts[s] = (counts[s] || 0) + 1
+    }
+    const total = reviewsList.length
+    return [5, 4, 3, 2, 1].map((stars) => {
+      const count = counts[stars] || 0
+      const pct = total > 0 ? Math.round((count / total) * 100) : stars === 5 ? 100 : 0
+      return { stars, count, pct }
+    })
+  }, [reviewsList])
 
   // Fetch full live catalog for related products
   useEffect(() => {
@@ -355,53 +380,57 @@ export default function ProductPage() {
       <div className="reviews-panel">
         <div className="review-summary">
           <div className="review-score">
-            <strong>{product.rating}</strong>
-            <RatingStars rating={product.rating} />
-            <span>Based on {product.reviewCount ?? reviewsList.length} reviews</span>
+            <strong>{averageRating}</strong>
+            <RatingStars rating={Number(averageRating)} />
+            <span>
+              Based on {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
+            </span>
             <Button onClick={handleOpenReview}>Write a review</Button>
           </div>
           <div className="rating-breakdown">
-            {[5, 4, 3, 2, 1].map((stars) => (
-              <div key={stars}>
-                <span>{stars} star</span>
+            {starBreakdown.map((item) => (
+              <div key={item.stars}>
+                <span>{item.stars} star</span>
                 <div>
-                  <i />
+                  <i style={{ width: `${item.pct}%` }} />
                 </div>
-                <b>
-                  {stars === 5
-                    ? "86%"
-                    : stars === 4
-                      ? "10%"
-                      : stars === 3
-                        ? "3%"
-                        : stars === 2
-                          ? "1%"
-                          : "0%"}
-                </b>
+                <b>{item.pct}%</b>
               </div>
             ))}
           </div>
         </div>
         <div className="review-list">
           {reviewsList.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">
+            <div className="py-12 text-center text-xs text-muted col-span-full bg-white rounded-xl border border-border">
               No reviews yet. Be the first to share your experience with this product!
             </div>
           ) : (
-            reviewsList.map((review, idx) => (
-              <article key={review.id ?? idx}>
-                <div>
-                  <RatingStars rating={review.rating} />
-                  <span>{review.date}</span>
-                </div>
-                <h3>{review.title}</h3>
-                <p>{review.text}</p>
-                <strong>
-                  {review.name}
-                  {review.verified ? " · Verified buyer" : ""}
-                </strong>
-              </article>
-            ))
+            reviewsList.map((review, idx) => {
+              const initial = (review.name || "C").trim().charAt(0).toUpperCase()
+              return (
+                <article key={review.id ?? idx}>
+                  <div>
+                    <div className="review-header">
+                      <RatingStars rating={review.rating} />
+                      <span className="review-date">{review.date}</span>
+                    </div>
+                    <h3>{review.title}</h3>
+                    <p>{review.text}</p>
+                  </div>
+                  <div className="review-footer">
+                    <div className="review-author">
+                      <span className="review-avatar">{initial}</span>
+                      <span className="review-name">{review.name}</span>
+                    </div>
+                    {review.verified && (
+                      <span className="verified-badge">
+                        <Check className="w-3 h-3 text-emerald-600 inline" /> Verified buyer
+                      </span>
+                    )}
+                  </div>
+                </article>
+              )
+            })
           )}
         </div>
       </div>
@@ -474,7 +503,7 @@ export default function ProductPage() {
         <div className="detail-copy">
           <p className="eyebrow">{product.brand}</p>
           <h1>{product.name}</h1>
-          <RatingStars rating={product.rating} count={product.reviewCount} />
+          <RatingStars rating={Number(averageRating)} count={totalReviews} />
           <div className="detail-price">
             {formatPrice(product.price)}{" "}
             {product.oldPrice && <del>{formatPrice(product.oldPrice)}</del>}

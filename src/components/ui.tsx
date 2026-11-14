@@ -72,15 +72,31 @@ export function RatingStars({
   rating,
   count,
   compact = false,
+  showNumber = false,
 }: {
   rating: number
   count?: number
   compact?: boolean
+  showNumber?: boolean
 }) {
+  const cleanRating = Math.max(0, Math.min(5, Number(rating) || 0))
+  const roundedStar = Math.round(cleanRating)
   return (
-    <div className="rating" aria-label={`${rating} out of 5 stars`}>
-      <Star size={compact ? 13 : 15} fill="currentColor" />{" "}
-      <strong>{rating}</strong>
+    <div className="rating" aria-label={`${cleanRating} out of 5 stars`}>
+      <div className="inline-flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            size={compact ? 12 : 14}
+            className={
+              star <= roundedStar
+                ? "text-amber-500 fill-amber-400"
+                : "text-neutral-300 fill-neutral-100"
+            }
+          />
+        ))}
+      </div>
+      {showNumber && <strong>{cleanRating.toFixed(1)}</strong>}
       {count !== undefined && <span>({count})</span>}
     </div>
   )
